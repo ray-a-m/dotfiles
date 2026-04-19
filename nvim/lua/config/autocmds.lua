@@ -82,3 +82,8 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
 -- for a file passed on the command line. Run once for the current buffer so
 -- the initial buffer gets the same treatment as later buffer switches.
 apply_prose_mode(vim.api.nvim_get_current_buf(), "init")
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "VimtexEventInitPost",
+  callback = function() vim.cmd("VimtexTocOpen") end,
+})
