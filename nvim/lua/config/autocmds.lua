@@ -8,21 +8,34 @@
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
 local prose_filetypes = { tex = true, markdown = true }
-local nnp_enabled = false
+local applying = false
 
-vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
+local function apply_prose_mode(buf)
+  if applying then return end
+  -- Skip NoNeckPain side buffers and any other scratch/plugin buffer
+  -- (terminal, file tree, quickfix). Their re-entry was the original loop.
+  if vim.bo[buf].buftype ~= "" then return end
+  if vim.bo[buf].filetype == "no-neck-pain" then return end
+
+  local is_prose = prose_filetypes[vim.bo[buf].filetype] == true
+  local want_scheme = is_prose and "modus_operandi" or "tokyonight"
+  local nnp_on = _G.NoNeckPain and _G.NoNeckPain.state and _G.NoNeckPain.state.enabled
+
+  applying = true
+  if vim.g.colors_name ~= want_scheme then
+    vim.cmd.colorscheme(want_scheme)
+  end
+  if is_prose and not nnp_on then
+    require("no-neck-pain").enable("prose_mode")
+  elseif (not is_prose) and nnp_on then
+    require("no-neck-pain").disable()
+  end
+  applying = false
+end
+
+vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
   group = vim.api.nvim_create_augroup("prose_mode", { clear = true }),
-  callback = function()
-    local is_prose = prose_filetypes[vim.bo.filetype] == true
-    local want_scheme = is_prose and "modus_operandi" or "tokyonight"
-    if vim.g.colors_name ~= want_scheme then
-      vim.cmd.colorscheme(want_scheme)
-    end
-    if is_prose ~= nnp_enabled then
-      vim.schedule(function()
-        vim.cmd("NoNeckPain")
-        nnp_enabled = is_prose
-      end)
-    end
+  callback = function(args)
+    apply_prose_mode(args.buf)
   end,
 })
