@@ -36,10 +36,14 @@ local function apply_prose_mode(buf, event)
     vim.wo.number = false
     vim.wo.relativenumber = false
     vim.wo.signcolumn = "no"
+    vim.wo.cursorline = false
+    vim.o.laststatus = 0
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
     vim.wo.signcolumn = "yes"
+    vim.wo.cursorline = true
+    vim.o.laststatus = 3
   end
 
   -- Only auto-enable; never auto-disable. NoNeckPain's disable() runs async
