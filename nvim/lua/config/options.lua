@@ -13,3 +13,5 @@ vim.opt.breakindent = true
 -- Prose writing defaults
 vim.opt.spell = false  -- enable per-filetype if wanted
 vim.opt.conceallevel = 0  -- don't hide LaTeX commands
+
+vim.g.vimtex_matchparen_enabled = 0
