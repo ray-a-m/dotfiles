@@ -21,14 +21,6 @@ return {
     keys = {
       { "<leader>np", "<cmd>NoNeckPain<cr>", desc = "Toggle No Neck Pain (center buffer)" },
     },
-    init = function()
-      vim.api.nvim_create_autocmd("FileType", {
-        pattern = { "tex", "markdown" },
-        callback = function()
-          vim.cmd("NoNeckPain")
-        end,
-      })
-    end,
     opts = {
       width = 120,
     },

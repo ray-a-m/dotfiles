@@ -4,7 +4,7 @@ return {
   {
     "miikanissi/modus-themes.nvim",
     lazy = false,
-    priority = 100,
+    priority = 1000,
     opts = {
       variants = {
         modus_operandi = "tinted",
