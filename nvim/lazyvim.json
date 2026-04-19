@@ -1,5 +1,5 @@
 {
-  "colorscheme": "modus_operandi",
+  "colorscheme": "tokyonight",
   "extras": [
     "lazyvim.plugins.extras.lang.tex"
   ],
