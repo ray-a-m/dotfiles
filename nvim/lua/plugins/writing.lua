@@ -22,7 +22,7 @@ return {
       { "<leader>np", "<cmd>NoNeckPain<cr>", desc = "Toggle No Neck Pain (center buffer)" },
     },
     opts = {
-      width = 110,
+      width = 100,
       integrations = {
         VimtexTOC = {
           position = "left",
