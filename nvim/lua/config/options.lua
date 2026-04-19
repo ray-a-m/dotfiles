@@ -16,11 +16,5 @@ vim.opt.conceallevel = 0  -- don't hide LaTeX commands
 
 vim.g.vimtex_matchparen_enabled = 0
 
-vim.g.vimtex_toc_config = {
-  split_width = 30,
-  split_pos = "vert leftabove",
-  fold_enable = 1,
-  show_help = 0,
-}
-
 vim.opt.fillchars:append({ vert = " " })
+vim.opt.timeoutlen = 300
