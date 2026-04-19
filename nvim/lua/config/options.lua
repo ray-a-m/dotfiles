@@ -19,6 +19,8 @@ vim.g.vimtex_matchparen_enabled = 0
 vim.g.vimtex_toc_config = {
   split_width = 30,
   split_pos = "vert leftabove",
-  fold_enable = 1,
-  show_help = 0,
+  fold_enable = true,
+  show_help = false,
 }
+
+vim.opt.fillchars:append({ vert = " " })
