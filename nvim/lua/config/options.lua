@@ -18,3 +18,4 @@ vim.g.vimtex_matchparen_enabled = 0
 
 vim.opt.fillchars:append({ vert = " " })
 vim.opt.timeoutlen = 300
+vim.opt.display = "lastline"
