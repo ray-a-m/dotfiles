@@ -85,7 +85,15 @@ apply_prose_mode(vim.api.nvim_get_current_buf(), "init")
 
 vim.api.nvim_create_autocmd("User", {
   pattern = "VimtexEventInitPost",
-  callback = function() vim.cmd("VimtexTocOpen") end,
+  callback = function()
+    vim.cmd("VimtexTocOpen")
+    vim.defer_fn(function()
+      pcall(vim.cmd, "NoNeckPain")
+      vim.defer_fn(function()
+        pcall(vim.cmd, "NoNeckPain")
+      end, 50)
+    end, 100)
+  end,
 })
 
 -- VimTeX hardcodes a 2-line help banner; hide it via highlight (refresh-safe).
