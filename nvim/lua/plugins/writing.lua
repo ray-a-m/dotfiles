@@ -22,7 +22,7 @@ return {
       { "<leader>np", "<cmd>NoNeckPain<cr>", desc = "Toggle No Neck Pain (center buffer)" },
     },
     opts = {
-      width = 100,
+      width = 120,
     },
   },
 }

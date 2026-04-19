@@ -5,3 +5,5 @@ window-padding-x = 4
 window-padding-y = 4
 
 macos-titlebar-style = tabs
+
+adjust-cell-height = 50%
