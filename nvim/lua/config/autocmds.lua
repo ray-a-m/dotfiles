@@ -39,6 +39,9 @@ local function apply_prose_mode(buf, event)
     vim.wo.cursorline = false
     vim.o.laststatus = 0
     vim.b[buf].snacks_indent = false
+    vim.opt.showmode = true
+    vim.opt_local.list = false
+    io.write("\27]12;#000000\7")
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
@@ -46,6 +49,9 @@ local function apply_prose_mode(buf, event)
     vim.wo.cursorline = true
     vim.o.laststatus = 3
     vim.b[buf].snacks_indent = nil
+    vim.opt.showmode = false
+    vim.opt_local.list = true
+    io.write("\27]112\7")
   end
 
   -- Only auto-enable; never auto-disable. NoNeckPain's disable() runs async
