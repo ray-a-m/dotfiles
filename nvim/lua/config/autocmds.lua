@@ -32,21 +32,19 @@ local function apply_prose_mode(buf, event)
   end
   applying = false
 
-  -- Defer NoNeckPain toggling past the current event tick; re-check state
-  -- inside the closure because the plugin's own scheduled handlers may run
-  -- in between and mutate per-tab state.
+  -- Only auto-enable; never auto-disable. NoNeckPain's disable() runs async
+  -- teardown that can crash on get_side_id after refresh_tabs nils the active
+  -- tab entry (state.lua:324). The plugin author has flagged rapid
+  -- filetype-driven toggling as unsupported (issue #481). Toggle off manually
+  -- with <leader>np when leaving prose.
+  if not is_prose then return end
   vim.schedule(function()
     if not vim.api.nvim_buf_is_valid(buf) then return end
     local nnp = _G.NoNeckPain and _G.NoNeckPain.state
-    local nnp_on = nnp and nnp.enabled
-    local ok, err
-    if is_prose and not nnp_on then
-      ok, err = pcall(require("no-neck-pain").enable, "prose_mode")
-    elseif (not is_prose) and nnp_on then
-      ok, err = pcall(require("no-neck-pain").disable)
-    end
-    if ok == false then
-      vim.notify("no-neck-pain toggle failed: " .. tostring(err), vim.log.levels.WARN)
+    if nnp and nnp.enabled then return end
+    local ok, err = pcall(require("no-neck-pain").enable, "prose_mode")
+    if not ok then
+      vim.notify("no-neck-pain enable failed: " .. tostring(err), vim.log.levels.WARN)
     end
   end)
 end
