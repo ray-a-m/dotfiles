@@ -29,6 +29,14 @@ local function apply_prose_mode(buf, event)
     log("  -> SKIP applying guard")
     return
   end
+  -- BufEnter can fire on plugin-created buffers (e.g. NoNeckPain side buffers)
+  -- before their filetype is set. The subsequent FileType event will re-enter
+  -- with ft populated; let that pass handle it, so we don't race by disabling
+  -- NoNeckPain based on an empty ft immediately after enabling it.
+  if event == "BufEnter" and ft == "" then
+    log("  -> SKIP BufEnter with empty ft (await FileType)")
+    return
+  end
   if bt ~= "" then
     log("  -> SKIP non-empty buftype")
     return
