@@ -37,6 +37,9 @@ local function apply_prose_mode(buf, event)
     vim.wo.relativenumber = false
     vim.wo.signcolumn = "no"
     vim.wo.cursorline = false
+    vim.wo.wrap = true
+    vim.wo.linebreak = true
+    vim.wo.breakindent = true
     vim.o.laststatus = 0
     vim.b[buf].snacks_indent = false
     vim.opt.showmode = true
@@ -47,6 +50,9 @@ local function apply_prose_mode(buf, event)
     vim.wo.relativenumber = true
     vim.wo.signcolumn = "yes"
     vim.wo.cursorline = true
+    vim.wo.wrap = false
+    vim.wo.linebreak = false
+    vim.wo.breakindent = false
     vim.o.laststatus = 3
     vim.b[buf].snacks_indent = nil
     vim.opt.showmode = false
