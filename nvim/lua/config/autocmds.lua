@@ -40,6 +40,8 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = true
     vim.wo.linebreak = true
     vim.wo.breakindent = true
+    vim.bo[buf].textwidth = 80
+    vim.bo[buf].formatoptions = "tcqjn"
     vim.o.laststatus = 0
     vim.b[buf].snacks_indent = false
     vim.opt.showmode = true
@@ -53,6 +55,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = false
     vim.wo.linebreak = false
     vim.wo.breakindent = false
+    vim.bo[buf].textwidth = 0
     vim.o.laststatus = 3
     vim.b[buf].snacks_indent = nil
     vim.opt.showmode = false
