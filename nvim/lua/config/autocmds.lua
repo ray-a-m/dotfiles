@@ -87,3 +87,11 @@ vim.api.nvim_create_autocmd("User", {
   pattern = "VimtexEventInitPost",
   callback = function() vim.cmd("VimtexTocOpen") end,
 })
+
+-- VimTeX hardcodes a 2-line help banner; hide it via highlight (refresh-safe).
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "vimtex-toc",
+  callback = function()
+    vim.cmd("highlight VimtexTocHelp guifg=bg ctermfg=NONE")
+  end,
+})
