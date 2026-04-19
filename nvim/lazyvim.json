@@ -1,4 +1,5 @@
 {
+  "colorscheme": "modus_operandi",
   "extras": [
     "lazyvim.plugins.extras.lang.tex"
   ],
