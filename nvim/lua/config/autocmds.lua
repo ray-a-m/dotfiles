@@ -52,3 +52,8 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
     apply_prose_mode(args.buf)
   end,
 })
+
+-- autocmds.lua loads on VeryLazy, after FileType/BufEnter have already fired
+-- for a file passed on the command line. Run once for the current buffer so
+-- the initial buffer gets the same treatment as later buffer switches.
+apply_prose_mode(vim.api.nvim_get_current_buf())
