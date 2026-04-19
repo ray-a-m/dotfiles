@@ -32,6 +32,16 @@ local function apply_prose_mode(buf, event)
   end
   applying = false
 
+  if is_prose then
+    vim.wo.number = false
+    vim.wo.relativenumber = false
+    vim.wo.signcolumn = "no"
+  else
+    vim.wo.number = true
+    vim.wo.relativenumber = true
+    vim.wo.signcolumn = "yes"
+  end
+
   -- Only auto-enable; never auto-disable. NoNeckPain's disable() runs async
   -- teardown that can crash on get_side_id after refresh_tabs nils the active
   -- tab entry (state.lua:324). The plugin author has flagged rapid
