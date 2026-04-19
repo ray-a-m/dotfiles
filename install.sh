@@ -28,7 +28,27 @@ if [ -e ~/.config/nvim ] && [ ! -L ~/.config/nvim ]; then
 fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
 
+echo "==> Symlinking ghostty config"
+GHOSTTY_CONFIG_DIR="$HOME/Library/Application Support/com.mitchellh.ghostty"
+GHOSTTY_CONFIG_FILE="$GHOSTTY_CONFIG_DIR/config.ghostty"
+mkdir -p "$GHOSTTY_CONFIG_DIR"
+if [ -e "$GHOSTTY_CONFIG_FILE" ] && [ ! -L "$GHOSTTY_CONFIG_FILE" ]; then
+    echo "Backing up existing $GHOSTTY_CONFIG_FILE to $GHOSTTY_CONFIG_FILE.bak"
+    mv "$GHOSTTY_CONFIG_FILE" "$GHOSTTY_CONFIG_FILE.bak"
+fi
+ln -sfn "$DOTFILES_DIR/ghostty/config" "$GHOSTTY_CONFIG_FILE"
+
+echo "==> Wiring shell additions into ~/.zshrc"
+SHELL_SOURCE_LINE='source "$HOME/code/dotfiles/shell/zshrc-additions.sh"'
+touch ~/.zshrc
+if ! grep -Fxq "$SHELL_SOURCE_LINE" ~/.zshrc; then
+    echo "$SHELL_SOURCE_LINE" >> ~/.zshrc
+    echo "Added shell additions line to ~/.zshrc"
+else
+    echo "Shell additions line already present in ~/.zshrc"
+fi
+
 echo "==> Done. Launch nvim to finish plugin install."
-echo "==> Next steps:"
-echo "    1. Set Ghostty font to 'JetBrainsMono Nerd Font' at 11pt (via ~/.config/ghostty/config)"
-echo "    2. Add shell aliases and zoxide init (see WORKFLOW.md)"
+echo "==> Remaining manual steps:"
+echo "    1. Run 'gh auth login' to authenticate GitHub CLI"
+echo "    2. Set up Zotero and the Better BibTeX (BBT) extension"
