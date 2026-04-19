@@ -5,15 +5,10 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
--- Better soft-wrap for prose
-vim.opt.wrap = true
-vim.opt.linebreak = true
-vim.opt.breakindent = true
+-- Don't hide LaTeX commands (LazyVim default is 3)
+vim.opt.conceallevel = 0
 
--- Prose writing defaults
-vim.opt.spell = false  -- enable per-filetype if wanted
-vim.opt.conceallevel = 0  -- don't hide LaTeX commands
-
+-- Set before vimtex loads so matchparen stays off from the first buffer
 vim.g.vimtex_matchparen_enabled = 0
 
 vim.opt.fillchars:append({ vert = " " })
