@@ -22,8 +22,8 @@ publish() {
   case "$name" in
     cv)
       src_dir="$HOME/scholarship/research-wip/documents/cv"
-      tex_name="cv.tex"
-      dest_pdf="$HOME/scholarship/research-public/cv.pdf"
+      tex_name="maung_cv.tex"
+      dest_pdf="$HOME/scholarship/research-public/maung_cv.pdf"
       ;;
     dissertation)
       src_dir="$HOME/scholarship/research-wip/documents/dissertation"
