@@ -38,6 +38,30 @@ if [ -e "$GHOSTTY_CONFIG_FILE" ] && [ ! -L "$GHOSTTY_CONFIG_FILE" ]; then
 fi
 ln -sfn "$DOTFILES_DIR/ghostty/config" "$GHOSTTY_CONFIG_FILE"
 
+echo "==> Installing LaTeX packages from latex/ into user TeX tree"
+case "$(uname -s)" in
+    Darwin) TEXMF_ROOT="$HOME/Library/texmf" ;;
+    *)      TEXMF_ROOT="$HOME/texmf" ;;
+esac
+if compgen -G "$DOTFILES_DIR/latex/*.sty" > /dev/null; then
+    for sty in "$DOTFILES_DIR"/latex/*.sty; do
+        name="$(basename "$sty" .sty)"
+        pkg_dir="$TEXMF_ROOT/tex/latex/$name"
+        mkdir -p "$pkg_dir"
+        ln -sfn "$sty" "$pkg_dir/$name.sty"
+        echo "Linked $name.sty -> $pkg_dir/"
+    done
+    if command -v mktexlsr &>/dev/null; then
+        mktexlsr "$TEXMF_ROOT"
+    elif command -v texhash &>/dev/null; then
+        texhash "$TEXMF_ROOT"
+    else
+        echo "Neither mktexlsr nor texhash found; skipping ls-R refresh."
+    fi
+else
+    echo "No .sty files in latex/; skipping."
+fi
+
 echo "==> Wiring shell additions into ~/.zshrc"
 SHELL_SOURCE_LINE='source "$HOME/code/dotfiles/shell/zshrc-additions.sh"'
 touch ~/.zshrc
