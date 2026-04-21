@@ -1,0 +1,94 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{maungstyle}[2026/04/20 v0.1 Raymond Maung personal LaTeX style]
+
+% ── Font ──────────────────────────────────────────────────────────────────────
+\RequirePackage[T1]{fontenc}
+\RequirePackage{libertine}
+\RequirePackage{libertinust1math}
+\RequirePackage{microtype}
+\RequirePackage{yfonts}
+
+% ── Layout ────────────────────────────────────────────────────────────────────
+\RequirePackage{geometry}
+\RequirePackage{fancyhdr}
+\RequirePackage[bottom,flushmargin]{footmisc}
+
+% Baseline fancy header/footer content. Preambles must call \pagestyle{fancy}
+% themselves AFTER their \geometry{...} call — activating the fancy pagestyle
+% before geometry is finalized captures stale margins and miscentres the footer.
+\fancyhead{}
+\fancyfoot{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0pt}
+
+% ── Titles ────────────────────────────────────────────────────────────────────
+\RequirePackage{titlesec}
+
+\titleformat{\section}{\LARGE\bfseries}{\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{3ex plus .5ex minus .2ex}{2ex plus .1ex}
+\titleformat{\subsection}{\normalsize\itshape}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{3ex plus .5ex minus .2ex}{1ex plus .1ex}
+
+% ── Text ──────────────────────────────────────────────────────────────────────
+\RequirePackage{csquotes}
+
+% ── Links ─────────────────────────────────────────────────────────────────────
+% hyperref has strict load-order constraints (must follow amsmath, biblatex,
+% footmisc, etc.), so defer it to end-of-preamble regardless of when the
+% user \usepackage{maungstyle}.
+\RequirePackage{etoolbox}
+\AtEndPreamble{%
+  \RequirePackage[hidelinks, pdfusetitle]{hyperref}%
+  \RequirePackage{bookmark}%
+}
+
+% ── Math ──────────────────────────────────────────────────────────────────────
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{mathtools}
+\RequirePackage{esint}
+\RequirePackage{bm}
+\RequirePackage{nicefrac}
+\RequirePackage{physics2}
+\usephysicsmodule{braket}
+
+% ── Figures ───────────────────────────────────────────────────────────────────
+\RequirePackage{graphicx}
+\RequirePackage{float}
+\RequirePackage{caption}
+\RequirePackage{subcaption}
+
+\captionsetup{labelsep=period}
+
+% ── Tables ────────────────────────────────────────────────────────────────────
+\RequirePackage{array}
+\RequirePackage{booktabs}
+\RequirePackage{multirow}
+
+\renewcommand{\arraystretch}{1.1}
+
+% ── Commands ──────────────────────────────────────────────────────────────────
+
+% Latin abbreviations (\@ handles end-of-sentence period spacing)
+\def\cf{\emph{cf.}\@}
+\def\eg{\emph{e.g.}\@}
+\def\ie{\emph{i.e.}\@}
+\def\etc{\emph{etc.}\@}
+\def\etal{\emph{et al.}\@}
+\def\viz{\emph{viz.}\@}
+\def\sc{\emph{sc.}\@}
+
+% Auto-sizing paired delimiters (use e.g. \abs{x} fixed, \abs*{\frac{a}{b}} auto-sized)
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+% Math operators
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+
+\endinput
