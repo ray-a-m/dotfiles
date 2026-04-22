@@ -40,6 +40,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = true
     vim.wo.linebreak = true
     vim.wo.breakindent = true
+    vim.wo.fillchars = "vert: "
     vim.bo[buf].textwidth = 80
     if vim.b[buf].prose_prev_formatoptions == nil then
       vim.b[buf].prose_prev_formatoptions = vim.bo[buf].formatoptions
@@ -58,6 +59,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = false
     vim.wo.linebreak = false
     vim.wo.breakindent = false
+    vim.wo.fillchars = ""
     vim.bo[buf].textwidth = 0
     if vim.b[buf].prose_prev_formatoptions ~= nil then
       vim.bo[buf].formatoptions = vim.b[buf].prose_prev_formatoptions
