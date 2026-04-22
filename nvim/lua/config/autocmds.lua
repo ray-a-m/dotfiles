@@ -7,7 +7,7 @@
 -- Or remove existing autocmds by their group name (which is prefixed with `lazyvim_` for the defaults)
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
-local prose_filetypes = { tex = true, markdown = true }
+local prose_filetypes = { tex = true }
 local applying_colorscheme = false
 
 local function apply_prose_mode(buf, event)
