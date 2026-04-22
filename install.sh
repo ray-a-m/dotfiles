@@ -2,23 +2,84 @@
 set -e
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OS="$(uname -s)"
 
-echo "==> Installing dependencies via Homebrew"
-if ! command -v brew &>/dev/null; then
-    echo "Homebrew not found. Install from https://brew.sh first."
-    exit 1
-fi
+install_macos_deps() {
+    echo "==> Installing dependencies via Homebrew"
+    if ! command -v brew &>/dev/null; then
+        echo "Homebrew not found. Install from https://brew.sh first."
+        exit 1
+    fi
 
-brew install neovim texlab node tree-sitter-cli zoxide gh
-brew install --cask ghostty
-brew install --cask skim
-brew install --cask font-jetbrains-mono-nerd-font
+    brew install neovim texlab node tree-sitter-cli zoxide gh
+    brew install --cask ghostty
+    brew install --cask skim
+    brew install --cask font-jetbrains-mono-nerd-font
 
-if ! command -v latexmk &>/dev/null; then
-    echo "==> latexmk not found; installing MacTeX (this is ~5GB)"
-    brew install --cask mactex-no-gui
-    echo "==> MacTeX installed. Open a new terminal before continuing."
-fi
+    if ! command -v latexmk &>/dev/null; then
+        echo "==> latexmk not found; installing MacTeX (this is ~5GB)"
+        brew install --cask mactex-no-gui
+        echo "==> MacTeX installed. Open a new terminal before continuing."
+    fi
+}
+
+detect_linux_pm() {
+    if command -v apt-get &>/dev/null; then echo apt
+    elif command -v dnf &>/dev/null; then echo dnf
+    elif command -v pacman &>/dev/null; then echo pacman
+    elif command -v zypper &>/dev/null; then echo zypper
+    else echo ""
+    fi
+}
+
+install_linux_deps() {
+    local pm
+    pm="$(detect_linux_pm)"
+    if [ -z "$pm" ]; then
+        echo "No supported package manager found (apt/dnf/pacman/zypper)."
+        echo "Install manually: neovim nodejs+npm zoxide gh zathura texlive (with latexmk) texlab"
+        exit 1
+    fi
+    echo "==> Detected package manager: $pm"
+
+    case "$pm" in
+        apt)
+            sudo apt-get update
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab
+            if ! command -v gh &>/dev/null; then
+                echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
+            fi
+            ;;
+        dnf)
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab
+            ;;
+        pacman)
+            sudo pacman -S --needed --noconfirm \
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab
+            ;;
+        zypper)
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full
+            command -v texlab &>/dev/null || \
+                echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
+            ;;
+    esac
+
+    if command -v npm &>/dev/null && ! command -v tree-sitter &>/dev/null; then
+        echo "==> Installing tree-sitter-cli via npm"
+        sudo npm install -g tree-sitter-cli
+    fi
+
+    echo "==> Ghostty and JetBrains Mono Nerd Font are not in standard Linux repos."
+    echo "    Install manually:"
+    echo "      Ghostty:   https://ghostty.org/download"
+    echo "      Nerd Font: https://github.com/ryanoasis/nerd-fonts/releases/latest (JetBrainsMono.zip)"
+}
+
+case "$OS" in
+    Darwin) install_macos_deps ;;
+    Linux)  install_linux_deps ;;
+    *)      echo "Unsupported OS: $OS"; exit 1 ;;
+esac
 
 echo "==> Symlinking nvim config"
 mkdir -p ~/.config
@@ -29,8 +90,16 @@ fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
 
 echo "==> Symlinking ghostty config"
-GHOSTTY_CONFIG_DIR="$HOME/Library/Application Support/com.mitchellh.ghostty"
-GHOSTTY_CONFIG_FILE="$GHOSTTY_CONFIG_DIR/config.ghostty"
+case "$OS" in
+    Darwin)
+        GHOSTTY_CONFIG_DIR="$HOME/Library/Application Support/com.mitchellh.ghostty"
+        GHOSTTY_CONFIG_FILE="$GHOSTTY_CONFIG_DIR/config.ghostty"
+        ;;
+    Linux)
+        GHOSTTY_CONFIG_DIR="$HOME/.config/ghostty"
+        GHOSTTY_CONFIG_FILE="$GHOSTTY_CONFIG_DIR/config"
+        ;;
+esac
 mkdir -p "$GHOSTTY_CONFIG_DIR"
 if [ -e "$GHOSTTY_CONFIG_FILE" ] && [ ! -L "$GHOSTTY_CONFIG_FILE" ]; then
     echo "Backing up existing $GHOSTTY_CONFIG_FILE to $GHOSTTY_CONFIG_FILE.bak"
@@ -39,7 +108,7 @@ fi
 ln -sfn "$DOTFILES_DIR/ghostty/config" "$GHOSTTY_CONFIG_FILE"
 
 echo "==> Installing LaTeX packages from latex/ into user TeX tree"
-case "$(uname -s)" in
+case "$OS" in
     Darwin) TEXMF_ROOT="$HOME/Library/texmf" ;;
     *)      TEXMF_ROOT="$HOME/texmf" ;;
 esac
