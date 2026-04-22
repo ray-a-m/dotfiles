@@ -11,6 +11,4 @@ vim.opt.conceallevel = 0
 -- Set before vimtex loads so matchparen stays off from the first buffer
 vim.g.vimtex_matchparen_enabled = 0
 
-vim.opt.fillchars:append({ vert = " " })
 vim.opt.timeoutlen = 300
-vim.opt.display = "lastline"
