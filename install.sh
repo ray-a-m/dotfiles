@@ -12,7 +12,6 @@ install_macos_deps() {
     fi
 
     brew install neovim texlab node tree-sitter-cli zoxide gh
-    brew install --cask ghostty
     brew install --cask skim
     brew install --cask font-jetbrains-mono-nerd-font
 
@@ -69,9 +68,8 @@ install_linux_deps() {
         sudo npm install -g tree-sitter-cli
     fi
 
-    echo "==> Ghostty and JetBrains Mono Nerd Font are not in standard Linux repos."
+    echo "==> JetBrains Mono Nerd Font is not in standard Linux repos."
     echo "    Install manually:"
-    echo "      Ghostty:   https://ghostty.org/download"
     echo "      Nerd Font: https://github.com/ryanoasis/nerd-fonts/releases/latest (JetBrainsMono.zip)"
 }
 
@@ -88,24 +86,6 @@ if [ -e ~/.config/nvim ] && [ ! -L ~/.config/nvim ]; then
     mv ~/.config/nvim ~/.config/nvim.bak
 fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
-
-echo "==> Symlinking ghostty config"
-case "$OS" in
-    Darwin)
-        GHOSTTY_CONFIG_DIR="$HOME/Library/Application Support/com.mitchellh.ghostty"
-        GHOSTTY_CONFIG_FILE="$GHOSTTY_CONFIG_DIR/config.ghostty"
-        ;;
-    Linux)
-        GHOSTTY_CONFIG_DIR="$HOME/.config/ghostty"
-        GHOSTTY_CONFIG_FILE="$GHOSTTY_CONFIG_DIR/config"
-        ;;
-esac
-mkdir -p "$GHOSTTY_CONFIG_DIR"
-if [ -e "$GHOSTTY_CONFIG_FILE" ] && [ ! -L "$GHOSTTY_CONFIG_FILE" ]; then
-    echo "Backing up existing $GHOSTTY_CONFIG_FILE to $GHOSTTY_CONFIG_FILE.bak"
-    mv "$GHOSTTY_CONFIG_FILE" "$GHOSTTY_CONFIG_FILE.bak"
-fi
-ln -sfn "$DOTFILES_DIR/ghostty/config" "$GHOSTTY_CONFIG_FILE"
 
 echo "==> Installing LaTeX packages from latex/ into user TeX tree"
 case "$OS" in
