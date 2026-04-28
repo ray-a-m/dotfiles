@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal configuration files for macOS.
+Personal configuration files for macOS and Linux.
 
 ## Contents
 
