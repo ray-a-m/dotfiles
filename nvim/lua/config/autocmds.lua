@@ -10,6 +10,27 @@
 local prose_filetypes = { tex = true }
 local applying_colorscheme = false
 
+-- NoNeckPain assigns each side window a hl namespace and only writes its own
+-- background_group/text_group into it; Normal stays undefined and falls back
+-- to terminal default rather than colorscheme Normal, drawing a faint line at
+-- the side/main boundary. Inject Normal/NormalNC/WinSeparator into NNP's
+-- namespaces (idempotent across NNP re-runs since it never writes Normal in
+-- default config).
+local function patch_nnp_namespaces()
+  local s = _G.NoNeckPain and _G.NoNeckPain.state
+  if not s or not s.namespaces then return end
+  local normal = vim.api.nvim_get_hl(0, { name = "Normal" })
+  local groups = {
+    "Normal", "NormalNC", "WinSeparator", "VertSplit",
+    "EndOfBuffer", "NonText", "LineNr", "SignColumn",
+  }
+  for _, ns in pairs(s.namespaces) do
+    for _, g in ipairs(groups) do
+      vim.api.nvim_set_hl(ns, g, normal)
+    end
+  end
+end
+
 local function apply_prose_mode(buf, event)
   if applying_colorscheme then return end
   if not vim.api.nvim_buf_is_valid(buf) then return end
@@ -18,13 +39,23 @@ local function apply_prose_mode(buf, event)
   -- before their filetype is set. Wait for the subsequent FileType event so we
   -- don't disable NoNeckPain based on the transient empty ft right after enable.
   if event == "BufEnter" and ft == "" then return end
-  -- Skip NoNeckPain side buffers and any other scratch/plugin buffer
-  -- (terminal, file tree, quickfix). Their re-entry was the original loop.
+  if ft == "no-neck-pain" then
+    for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+      vim.api.nvim_set_option_value("statuscolumn", "", { win = win })
+      -- Default fillchars vert is │ (a real glyph). Even when WinSeparator's
+      -- bg matches Normal, the │ renders in fg = Normal.fg (dark text color),
+      -- drawing a faint vertical bar at the side/prose boundary. Replace with
+      -- a space so the cell has no foreground rendering.
+      vim.api.nvim_set_option_value("fillchars", "vert: ,eob: ", { win = win })
+    end
+    return
+  end
+  -- Skip any other scratch/plugin buffer (terminal, file tree, quickfix).
+  -- Their re-entry was the original loop.
   if vim.bo[buf].buftype ~= "" then return end
-  if ft == "no-neck-pain" then return end
 
   local is_prose = prose_filetypes[ft] == true
-  local want_scheme = is_prose and "modus_operandi" or "tokyonight"
+  local want_scheme = is_prose and "kanagawa-paper-canvas" or "github_light"
 
   applying_colorscheme = true
   if vim.g.colors_name ~= want_scheme then
@@ -41,6 +72,8 @@ local function apply_prose_mode(buf, event)
     vim.wo.linebreak = true
     vim.wo.breakindent = true
     vim.wo.fillchars = "vert: "
+    vim.wo.winhighlight = "WinSeparator:Normal"
+    vim.wo.statuscolumn = ""
     vim.bo[buf].textwidth = 80
     if vim.b[buf].prose_prev_formatoptions == nil then
       vim.b[buf].prose_prev_formatoptions = vim.bo[buf].formatoptions
@@ -60,6 +93,8 @@ local function apply_prose_mode(buf, event)
     vim.wo.linebreak = false
     vim.wo.breakindent = false
     vim.wo.fillchars = ""
+    vim.wo.winhighlight = ""
+    vim.wo.statuscolumn = "%!v:lua.LazyVim.statuscolumn()"
     vim.bo[buf].textwidth = 0
     if vim.b[buf].prose_prev_formatoptions ~= nil then
       vim.bo[buf].formatoptions = vim.b[buf].prose_prev_formatoptions
@@ -79,12 +114,15 @@ local function apply_prose_mode(buf, event)
   vim.schedule(function()
     if not vim.api.nvim_buf_is_valid(buf) then return end
     local nnp = _G.NoNeckPain and _G.NoNeckPain.state
-    if nnp and nnp.enabled then return end
-    -- pcall guards against enable-time internal races in NoNeckPain.
-    local ok, err = pcall(require("no-neck-pain").enable, "prose_mode")
-    if not ok then
-      vim.notify("no-neck-pain enable failed: " .. tostring(err), vim.log.levels.WARN)
+    if not (nnp and nnp.enabled) then
+      -- pcall guards against enable-time internal races in NoNeckPain.
+      local ok, err = pcall(require("no-neck-pain").enable, "prose_mode")
+      if not ok then
+        vim.notify("no-neck-pain enable failed: " .. tostring(err), vim.log.levels.WARN)
+        return
+      end
     end
+    patch_nnp_namespaces()
   end)
 end
 

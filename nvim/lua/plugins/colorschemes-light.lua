@@ -1,13 +1,23 @@
 return {
   {
-    "miikanissi/modus-themes.nvim",
+    "LazyVim/LazyVim",
+    opts = {
+      colorscheme = "github_light",
+    },
+  },
+  {
+    "projekt0n/github-nvim-theme",
+    name = "github-theme",
     lazy = false,
     priority = 1000,
-    opts = {
-      variants = {
-        modus_operandi = "tinted",
-        modus_vivendi = "tinted",
-      },
-    },
+    config = function()
+      require("github-theme").setup({})
+    end,
+  },
+  {
+    "thesimonho/kanagawa-paper.nvim",
+    lazy = false,
+    priority = 1000,
+    opts = {},
   },
 }
