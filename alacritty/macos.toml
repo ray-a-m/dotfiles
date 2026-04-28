@@ -1,0 +1,8 @@
+[window]
+decorations = "Buttonless"
+option_as_alt = "Both"
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Command"
+action = "ToggleFullscreen"

@@ -12,8 +12,8 @@ install_macos_deps() {
     fi
 
     brew install neovim texlab node tree-sitter-cli zoxide gh
-    brew install --cask skim
-    brew install --cask font-jetbrains-mono-nerd-font
+    brew install --cask skim alacritty
+    brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font
 
     if ! command -v latexmk &>/dev/null; then
         echo "==> latexmk not found; installing MacTeX (this is ~5GB)"
@@ -44,20 +44,20 @@ install_linux_deps() {
     case "$pm" in
         apt)
             sudo apt-get update
-            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab alacritty
             if ! command -v gh &>/dev/null; then
                 echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
             fi
             ;;
         dnf)
-            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab alacritty
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab alacritty
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full alacritty
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
@@ -68,9 +68,10 @@ install_linux_deps() {
         sudo npm install -g tree-sitter-cli
     fi
 
-    echo "==> JetBrains Mono Nerd Font is not in standard Linux repos."
-    echo "    Install manually:"
-    echo "      Nerd Font: https://github.com/ryanoasis/nerd-fonts/releases/latest (JetBrainsMono.zip)"
+    echo "==> Nerd Fonts are not in standard Linux repos."
+    echo "    Install manually from https://github.com/ryanoasis/nerd-fonts/releases/latest:"
+    echo "      - JetBrainsMono.zip"
+    echo "      - IBMPlexMono.zip  (patched name: 'BlexMono Nerd Font' — used by alacritty)"
 }
 
 case "$OS" in
@@ -86,6 +87,18 @@ if [ -e ~/.config/nvim ] && [ ! -L ~/.config/nvim ]; then
     mv ~/.config/nvim ~/.config/nvim.bak
 fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
+
+echo "==> Symlinking alacritty config"
+if [ -e ~/.config/alacritty ] && [ ! -L ~/.config/alacritty ]; then
+    echo "Backing up existing ~/.config/alacritty to ~/.config/alacritty.bak"
+    mv ~/.config/alacritty ~/.config/alacritty.bak
+fi
+ln -sfn "$DOTFILES_DIR/alacritty" ~/.config/alacritty
+
+case "$OS" in
+    Darwin) ln -sfn "$DOTFILES_DIR/alacritty/macos.toml" "$DOTFILES_DIR/alacritty/os.toml" ;;
+    Linux)  ln -sfn "$DOTFILES_DIR/alacritty/linux.toml" "$DOTFILES_DIR/alacritty/os.toml" ;;
+esac
 
 echo "==> Installing LaTeX packages from latex/ into user TeX tree"
 case "$OS" in
