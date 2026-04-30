@@ -79,11 +79,12 @@ local function apply_prose_mode(buf, event)
       vim.b[buf].prose_prev_formatoptions = vim.bo[buf].formatoptions
     end
     vim.bo[buf].formatoptions = "tcqjn"
-    vim.o.laststatus = 0
+    vim.o.laststatus = 3
     vim.b[buf].snacks_indent = false
-    vim.opt.showmode = true
+    vim.opt.showmode = false
     vim.wo.list = false
     io.write("\27]12;#000000\7")
+    io.write("\27]11;#e1e1de\7")
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
@@ -105,6 +106,7 @@ local function apply_prose_mode(buf, event)
     vim.opt.showmode = false
     vim.wo.list = true
     io.write("\27]112\7")
+    io.write("\27]11;#ffffff\7")
   end
 
   -- Auto-enable only. Auto-disable is unsafe: rapid filetype-driven toggling
@@ -132,6 +134,40 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
     apply_prose_mode(args.buf, args.event)
   end,
 })
+
+-- Reset terminal background on nvim exit so the shell prompt returns to its
+-- original theme (apply_prose_mode sets bg to match document Normal via OSC 11).
+vim.api.nvim_create_autocmd("VimLeave", {
+  group = vim.api.nvim_create_augroup("reset_term_bg", { clear = true }),
+  callback = function()
+    io.write("\27]111\7")
+  end,
+})
+
+-- Blend the cmdline row into the document background so it doesn't render as
+-- a dark strip below the statusline. Set explicit bg (not link) and re-assert
+-- on every relevant event because kanagawa-paper's noice integration and
+-- noice's own setup both clobber any link-based override.
+local function blend_cmdline_hl()
+  vim.schedule(function()
+    local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+    if not normal.bg then return end
+    local hl = { bg = normal.bg, fg = normal.fg }
+    for _, group in ipairs({
+      "MsgArea", "MsgSeparator",
+      "NoiceCmdline", "NoiceCmdlineIcon", "NoiceCmdlinePrompt",
+      "NoiceMini", "NoicePopup", "NoicePopupBorder",
+    }) do
+      vim.api.nvim_set_hl(0, group, hl)
+    end
+  end)
+end
+vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter", "User" }, {
+  group = vim.api.nvim_create_augroup("blend_cmdline_hl", { clear = true }),
+  pattern = "*",
+  callback = blend_cmdline_hl,
+})
+blend_cmdline_hl()
 
 -- autocmds.lua loads on VeryLazy, after FileType/BufEnter have already fired
 -- for a file passed on the command line. Run once for the current buffer so
