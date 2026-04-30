@@ -12,7 +12,7 @@ install_macos_deps() {
     fi
 
     brew install neovim texlab node tree-sitter-cli zoxide gh
-    brew install --cask skim alacritty
+    brew install --cask skim kitty
     brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font
 
     if ! command -v latexmk &>/dev/null; then
@@ -44,20 +44,20 @@ install_linux_deps() {
     case "$pm" in
         apt)
             sudo apt-get update
-            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab alacritty
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty
             if ! command -v gh &>/dev/null; then
                 echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
             fi
             ;;
         dnf)
-            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab alacritty
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab alacritty
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full alacritty
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
@@ -71,7 +71,7 @@ install_linux_deps() {
     echo "==> Nerd Fonts are not in standard Linux repos."
     echo "    Install manually from https://github.com/ryanoasis/nerd-fonts/releases/latest:"
     echo "      - JetBrainsMono.zip"
-    echo "      - IBMPlexMono.zip  (patched name: 'BlexMono Nerd Font' — used by alacritty)"
+    echo "      - IBMPlexMono.zip  (patched name: 'BlexMono Nerd Font' — used by kitty)"
 }
 
 case "$OS" in
@@ -88,17 +88,12 @@ if [ -e ~/.config/nvim ] && [ ! -L ~/.config/nvim ]; then
 fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
 
-echo "==> Symlinking alacritty config"
-if [ -e ~/.config/alacritty ] && [ ! -L ~/.config/alacritty ]; then
-    echo "Backing up existing ~/.config/alacritty to ~/.config/alacritty.bak"
-    mv ~/.config/alacritty ~/.config/alacritty.bak
+echo "==> Symlinking kitty config"
+if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
+    echo "Backing up existing ~/.config/kitty to ~/.config/kitty.bak"
+    mv ~/.config/kitty ~/.config/kitty.bak
 fi
-ln -sfn "$DOTFILES_DIR/alacritty" ~/.config/alacritty
-
-case "$OS" in
-    Darwin) ln -sfn "$DOTFILES_DIR/alacritty/macos.toml" "$DOTFILES_DIR/alacritty/os.toml" ;;
-    Linux)  ln -sfn "$DOTFILES_DIR/alacritty/linux.toml" "$DOTFILES_DIR/alacritty/os.toml" ;;
-esac
+ln -sfn "$DOTFILES_DIR/kitty" ~/.config/kitty
 
 echo "==> Installing LaTeX packages from latex/ into user TeX tree"
 case "$OS" in
