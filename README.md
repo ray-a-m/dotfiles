@@ -5,7 +5,7 @@ Personal configuration files for macOS and Linux.
 ## Contents
 
 - **`nvim/`** — Neovim config (LazyVim-based, with LaTeX workflow)
-- **`alacritty/`** — Alacritty terminal config
+- **`kitty/`** — Kitty terminal config
 - **`install.sh`** — bootstrap script for a new machine
 - **`WORKFLOW.md`** — daily workflow reference
 
