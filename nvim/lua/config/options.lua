@@ -12,3 +12,5 @@ vim.opt.conceallevel = 0
 vim.g.vimtex_matchparen_enabled = 0
 
 vim.opt.timeoutlen = 300
+
+vim.opt.cmdheight = 0
