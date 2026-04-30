@@ -164,6 +164,7 @@ local function blend_cmdline_hl()
       "MsgArea", "MsgSeparator",
       "NoiceCmdline", "NoiceCmdlineIcon", "NoiceCmdlinePrompt",
       "NoiceMini", "NoicePopup", "NoicePopupBorder",
+      "NoiceSplit", "NoiceSplitBorder",
     }) do
       vim.api.nvim_set_hl(0, group, hl)
     end
