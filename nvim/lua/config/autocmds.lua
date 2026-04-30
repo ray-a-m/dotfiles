@@ -10,6 +10,21 @@
 local prose_filetypes = { tex = true }
 local applying_colorscheme = false
 
+-- Kitty font sizing for prose buffers. Terminal nvim can't change its own font;
+-- it asks kitty over the remote-control socket (allow_remote_control + listen_on
+-- in kitty.conf). 11.0 = kitty default 15.0 minus two presses of cmd+shift+-
+-- (kitty's default change_font_size step is 2.0).
+local kitty_font_default = 15
+local kitty_font_prose = 11
+local current_kitty_font
+
+local function set_kitty_font(size)
+  if current_kitty_font == size then return end
+  if vim.env.KITTY_PID == nil then return end
+  current_kitty_font = size
+  vim.fn.jobstart({ "kitten", "@", "set-font-size", tostring(size) }, { detach = true })
+end
+
 -- NoNeckPain assigns each side window a hl namespace and only writes its own
 -- background_group/text_group into it; Normal stays undefined and falls back
 -- to terminal default rather than colorscheme Normal, drawing a faint line at
@@ -85,6 +100,11 @@ local function apply_prose_mode(buf, event)
     vim.wo.list = false
     io.write("\27]12;#000000\7")
     io.write("\27]11;#e1e1de\7")
+    -- OSC 10 (default fg). Without this, kitty UI overlays like the close-tab
+    -- confirmation render in the configured foreground (#cdd9e5) against our
+    -- OSC 11 light background, becoming invisible.
+    io.write("\27]10;#1f1f28\7")
+    set_kitty_font(kitty_font_prose)
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
@@ -107,6 +127,10 @@ local function apply_prose_mode(buf, event)
     vim.wo.list = true
     io.write("\27]112\7")
     io.write("\27]11;#ffffff\7")
+    io.write("\27]10;#1f2328\7")
+    -- Don't restore kitty font here. apply_prose_mode runs on every BufEnter,
+    -- so resizing on tex→code would shrink/grow the window on every buffer
+    -- switch. Once shrunk for a .tex buffer, stay shrunk; VimLeave restores.
   end
 
   -- Auto-enable only. Auto-disable is unsafe: rapid filetype-driven toggling
@@ -141,6 +165,11 @@ vim.api.nvim_create_autocmd("VimLeave", {
   group = vim.api.nvim_create_augroup("reset_term_bg", { clear = true }),
   callback = function()
     io.write("\27]111\7")
+    io.write("\27]110\7")
+    io.write("\27]112\7")
+    if vim.env.KITTY_PID and current_kitty_font ~= kitty_font_default then
+      vim.fn.system({ "kitten", "@", "set-font-size", tostring(kitty_font_default) })
+    end
   end,
 })
 
