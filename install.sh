@@ -11,9 +11,9 @@ install_macos_deps() {
         exit 1
     fi
 
-    brew install neovim texlab node tree-sitter-cli zoxide gh
+    brew install neovim texlab node tree-sitter-cli zoxide gh starship
     brew install --cask skim kitty
-    brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font
+    brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font font-monaspace-nerd-font
 
     if ! command -v latexmk &>/dev/null; then
         echo "==> latexmk not found; installing MacTeX (this is ~5GB)"
@@ -54,14 +54,19 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty starship
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty starship
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
     esac
+
+    if ! command -v starship &>/dev/null; then
+        echo "==> starship not in this distro's repos; install via:"
+        echo "    curl -sS https://starship.rs/install.sh | sh"
+    fi
 
     if command -v npm &>/dev/null && ! command -v tree-sitter &>/dev/null; then
         echo "==> Installing tree-sitter-cli via npm"
@@ -94,6 +99,13 @@ if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
     mv ~/.config/kitty ~/.config/kitty.bak
 fi
 ln -sfn "$DOTFILES_DIR/kitty" ~/.config/kitty
+
+echo "==> Symlinking starship config"
+if [ -e ~/.config/starship.toml ] && [ ! -L ~/.config/starship.toml ]; then
+    echo "Backing up existing ~/.config/starship.toml to ~/.config/starship.toml.bak"
+    mv ~/.config/starship.toml ~/.config/starship.toml.bak
+fi
+ln -sfn "$DOTFILES_DIR/shell/starship.toml" ~/.config/starship.toml
 
 echo "==> Installing LaTeX packages from latex/ into user TeX tree"
 case "$OS" in
