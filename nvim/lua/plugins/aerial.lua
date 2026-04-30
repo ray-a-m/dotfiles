@@ -14,6 +14,9 @@ return {
     float = {
       border = "none",
       relative = "editor",
+      -- Machine-specific: width sized to fit inside no-neck-pain's left
+      -- padding on a MacBook Air display. Tune per machine if the float
+      -- overlaps the centered document text.
       override = function(conf, _source_winid)
         conf.anchor = "NW"
         conf.row = 0

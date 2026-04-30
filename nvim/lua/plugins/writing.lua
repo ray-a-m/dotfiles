@@ -22,6 +22,8 @@ return {
       { "<leader>np", "<cmd>NoNeckPain<cr>", desc = "Toggle No Neck Pain (center buffer)" },
     },
     opts = {
+      -- Machine-specific: centered document width tuned for MacBook Air.
+      -- Tune per machine to keep prose readable at the display's column count.
       width = 100,
     },
   },
