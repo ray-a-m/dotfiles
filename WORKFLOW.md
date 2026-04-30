@@ -18,11 +18,10 @@ Shell aliases (in ~/.zshrc):
     alias wip="cd ~/scholarship/research-wip"
     alias pub="cd ~/scholarship/research-public"
     alias dots="cd ~/code/dotfiles"
-    alias v="nvim"
 
     eval "$(zoxide init zsh)"
 
-Typical: wip -> cd documents/papers/symmetry-reality -> v body.tex.
+Typical: wip -> cd documents/papers/symmetry-reality -> nvim body.tex.
 
 ## Repo architecture
 
@@ -37,7 +36,7 @@ Day-to-day writing happens in research-wip. When a paper is ready for public rel
 
 ## Neovim LaTeX workflow
 
-1. cd into the paper's directory, v main.tex.
+1. cd into the paper's directory, nvim main.tex.
 2. :VimtexCompile starts latexmk in continuous mode. Recompiles on every save.
 3. :VimtexView opens Skim. Skim auto-refreshes on every recompile.
 4. Write. Save with :w or rely on autosave (fires 1s after leaving insert mode for .tex/.bib/.md).
