@@ -173,3 +173,103 @@ blend_cmdline_hl()
 -- for a file passed on the command line. Run once for the current buffer so
 -- the initial buffer gets the same treatment as later buffer switches.
 apply_prose_mode(vim.api.nvim_get_current_buf(), "init")
+
+-- Aerial outline float decorations:
+--   * blend float bg into Normal so the panel matches the document
+--   * add virt_lines between entries for row spacing (terminal nvim has no
+--     per-buffer line-height)
+--   * disable aerial's hardcoded WinLeave-closes-float behavior (window.lua's
+--     float branch registers a close-on-leave autocmd that close_automatic_events
+--     does not cover); we delete those autocmds by their description
+local aerial_ns = vim.api.nvim_create_namespace("aerial_decorations")
+local AERIAL_VIRT_LINES = { { { " " } } }
+
+local function set_aerial_winhl(buf)
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    pcall(vim.api.nvim_set_option_value, "winhighlight",
+      "NormalFloat:Normal,FloatBorder:Normal,FloatTitle:Normal,EndOfBuffer:Normal,CursorLine:Visual",
+      { win = win })
+  end
+end
+
+local function add_aerial_spacing(buf)
+  if not vim.api.nvim_buf_is_valid(buf) then return end
+  vim.api.nvim_buf_clear_namespace(buf, aerial_ns, 0, -1)
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  for i = 0, line_count - 1 do
+    pcall(vim.api.nvim_buf_set_extmark, buf, aerial_ns, i, 0, {
+      virt_lines = AERIAL_VIRT_LINES,
+    })
+  end
+end
+
+local function kill_aerial_close_autocmds()
+  for _, au in ipairs(vim.api.nvim_get_autocmds({ event = "WinEnter" })) do
+    if au.desc and au.desc:find("aerial") then
+      pcall(vim.api.nvim_del_autocmd, au.id)
+    end
+  end
+  for _, au in ipairs(vim.api.nvim_get_autocmds({ event = "WinLeave" })) do
+    if au.desc and au.desc:find("aerial") then
+      pcall(vim.api.nvim_del_autocmd, au.id)
+    end
+  end
+end
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "aerial",
+  group = vim.api.nvim_create_augroup("aerial_decorate", { clear = true }),
+  callback = function(args)
+    local buf = args.buf
+    if vim.b[buf]._aerial_attached then
+      kill_aerial_close_autocmds()
+      return
+    end
+    vim.b[buf]._aerial_attached = true
+    vim.schedule(function()
+      set_aerial_winhl(buf)
+      add_aerial_spacing(buf)
+      kill_aerial_close_autocmds()
+    end)
+    vim.api.nvim_buf_attach(buf, false, {
+      on_lines = function()
+        vim.schedule(function()
+          if vim.api.nvim_buf_is_valid(buf) then
+            add_aerial_spacing(buf)
+            set_aerial_winhl(buf)
+          end
+        end)
+        return false
+      end,
+      on_detach = function()
+        if vim.api.nvim_buf_is_valid(buf) then
+          vim.b[buf]._aerial_attached = nil
+        end
+      end,
+    })
+  end,
+})
+
+-- Belt-and-suspenders: every time we enter the aerial float, scrub any close
+-- autocmds aerial may have armed since last check.
+vim.api.nvim_create_autocmd("WinEnter", {
+  group = vim.api.nvim_create_augroup("aerial_no_close", { clear = true }),
+  callback = function()
+    if vim.bo.filetype == "aerial" then
+      kill_aerial_close_autocmds()
+    end
+  end,
+})
+
+-- Highlight the section the cursor is currently in. Aerial applies AerialLine
+-- to the closest symbol's row but the prose theme leaves the group undefined.
+local function set_aerial_line_hl()
+  vim.api.nvim_set_hl(0, "AerialLine", { bg = "#4FC3F7", bold = true })
+  vim.api.nvim_set_hl(0, "AerialLineNC", { bg = "#4FC3F7", bold = true })
+end
+vim.api.nvim_create_autocmd("ColorScheme", {
+  group = vim.api.nvim_create_augroup("aerial_line_hl", { clear = true }),
+  pattern = "*",
+  callback = function() vim.schedule(set_aerial_line_hl) end,
+})
+set_aerial_line_hl()

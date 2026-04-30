@@ -23,20 +23,6 @@ return {
     },
     opts = {
       width = 100,
-      integrations = {
-        VimtexTOC = {
-          position = "left",
-          reopen = false,
-        },
-      },
     },
-    config = function(_, opts)
-      require("no-neck-pain.util.constants").INTEGRATIONS.VimtexTOC = {
-        fileTypePattern = "vimtex-toc",
-        close = "VimtexTocClose",
-        open = "VimtexTocOpen",
-      }
-      require("no-neck-pain").setup(opts)
-    end,
   },
 }
