@@ -51,6 +51,25 @@ publish() {
   )
 }
 
+# Split a PDF into 20-page chunks. Prompts for output directory each time.
+# Original file is never modified. Usage: pdfsplit foo.pdf
+pdfsplit() {
+  if [[ -z "$1" ]]; then
+    echo "usage: pdfsplit <file.pdf>"
+    return 1
+  fi
+  local input="$1"
+  local outdir
+  read "outdir?Output directory: "
+  if [[ -z "$outdir" ]]; then
+    echo "pdfsplit: no output directory given, aborting"
+    return 1
+  fi
+  outdir="${outdir/#\~/$HOME}"
+  mkdir -p "$outdir" || return 1
+  qpdf --split-pages=20 "$input" "$outdir/$(basename "$input")"
+}
+
 # zoxide - smarter cd
 eval "$(zoxide init zsh)"
 
