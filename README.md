@@ -9,6 +9,7 @@ Personal configuration files for macOS and Linux.
 - **`hypr/`** — Hyprland window manager config (Omarchy; per-file symlinks, machine-specific `monitors.conf` stays local)
 - **`waybar/`**, **`walker/`**, **`swayosd/`** — Omarchy bar/launcher/OSD configs
 - **`omarchy/hooks/`**, **`omarchy/themes/`** — custom Omarchy hooks and themes
+- **`xdg/`** — preferred-terminal list and default-application MIME mappings
 - **`shell/`** — zsh additions (sourced from `~/.zshrc`) and starship prompt
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
 - **`install.sh`** — bootstrap script for a new machine (macOS or Linux)

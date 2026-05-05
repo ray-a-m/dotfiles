@@ -12,7 +12,7 @@ install_macos_deps() {
     fi
 
     brew install neovim texlab node tree-sitter-cli zoxide gh starship
-    brew install --cask skim kitty
+    brew install --cask skim kitty firefox
     brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font font-monaspace-nerd-font
 
     if ! command -v latexmk &>/dev/null; then
@@ -44,20 +44,20 @@ install_linux_deps() {
     case "$pm" in
         apt)
             sudo apt-get update
-            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty firefox-esr
             if ! command -v gh &>/dev/null; then
                 echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
             fi
             ;;
         dnf)
-            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty firefox
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty starship
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty starship firefox
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty starship
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty starship MozillaFirefox
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
@@ -106,6 +106,18 @@ if [ -e ~/.config/starship.toml ] && [ ! -L ~/.config/starship.toml ]; then
     mv ~/.config/starship.toml ~/.config/starship.toml.bak
 fi
 ln -sfn "$DOTFILES_DIR/shell/starship.toml" ~/.config/starship.toml
+
+echo "==> Symlinking XDG default-application files"
+for f in xdg-terminals.list mimeapps.list; do
+    src="$DOTFILES_DIR/xdg/$f"
+    dst="$HOME/.config/$f"
+    [ -e "$src" ] || continue
+    if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+        mv "$dst" "$dst.bak.$(date +%s)"
+        echo "Backed up $dst"
+    fi
+    ln -sfn "$src" "$dst"
+done
 
 # Per-file symlinks for Omarchy app configs. Per-file (rather than dir-level)
 # because we want machine-specific files like ~/.config/hypr/monitors.conf to
