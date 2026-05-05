@@ -107,6 +107,44 @@ if [ -e ~/.config/starship.toml ] && [ ! -L ~/.config/starship.toml ]; then
 fi
 ln -sfn "$DOTFILES_DIR/shell/starship.toml" ~/.config/starship.toml
 
+# Per-file symlinks for Omarchy app configs. Per-file (rather than dir-level)
+# because we want machine-specific files like ~/.config/hypr/monitors.conf to
+# stay locally owned, and we want Omarchy to keep adding new files alongside ours.
+echo "==> Symlinking Omarchy app configs (hypr, waybar, walker, swayosd)"
+for app in hypr waybar walker swayosd; do
+    src_dir="$DOTFILES_DIR/$app"
+    dst_dir="$HOME/.config/$app"
+    [ -d "$src_dir" ] || continue
+    mkdir -p "$dst_dir"
+    for src in "$src_dir"/*; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        dst="$dst_dir/$name"
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+            mv "$dst" "$dst.bak.$(date +%s)"
+            echo "Backed up $dst"
+        fi
+        ln -sfn "$src" "$dst"
+    done
+done
+
+echo "==> Symlinking custom Omarchy hooks and themes"
+for sub in hooks themes; do
+    src_dir="$DOTFILES_DIR/omarchy/$sub"
+    dst_dir="$HOME/.config/omarchy/$sub"
+    [ -d "$src_dir" ] || continue
+    mkdir -p "$dst_dir"
+    for src in "$src_dir"/*; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        dst="$dst_dir/$name"
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+            mv "$dst" "$dst.bak.$(date +%s)"
+        fi
+        ln -sfn "$src" "$dst"
+    done
+done
+
 echo "==> Installing LaTeX packages from latex/ into user TeX tree"
 case "$OS" in
     Darwin) TEXMF_ROOT="$HOME/Library/texmf" ;;

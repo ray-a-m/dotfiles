@@ -6,7 +6,12 @@ Personal configuration files for macOS and Linux.
 
 - **`nvim/`** — Neovim config (LazyVim-based, with LaTeX workflow)
 - **`kitty/`** — Kitty terminal config
-- **`install.sh`** — bootstrap script for a new machine
+- **`hypr/`** — Hyprland window manager config (Omarchy; per-file symlinks, machine-specific `monitors.conf` stays local)
+- **`waybar/`**, **`walker/`**, **`swayosd/`** — Omarchy bar/launcher/OSD configs
+- **`omarchy/hooks/`**, **`omarchy/themes/`** — custom Omarchy hooks and themes
+- **`shell/`** — zsh additions (sourced from `~/.zshrc`) and starship prompt
+- **`latex/`** — custom `.sty` packages installed into the user TeX tree
+- **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
 - **`WORKFLOW.md`** — daily workflow reference
 
 ## Setup on a new machine
