@@ -51,6 +51,13 @@ provider = "websearch"
 prefix = "$"
 provider = "clipboard"
 
+# Override the dmenu provider's activate key. omarchy-menu invokes
+# `walker --dmenu`, so this binds Space (instead of the default Return)
+# to confirm the highlighted entry in any omarchy-menu submenu. Other
+# providers (apps, emoji, calc) keep Return.
+[providers.actions]
+dmenu = [{ action = "select", default = true, bind = "space" }]
+
 [[emergencies]]
 text = "Restart Walker"
 command = "omarchy-restart-walker"
