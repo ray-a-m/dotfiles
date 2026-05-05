@@ -165,6 +165,11 @@ local function set_aerial_winhl(buf)
     pcall(vim.api.nvim_set_option_value, "winhighlight",
       "NormalFloat:Normal,FloatBorder:Normal,FloatTitle:Normal,EndOfBuffer:Normal,CursorLine:Visual",
       { win = win })
+    -- Force signcolumn on so the active-row glyph (set by refresh_aerial_marker)
+    -- has a column to render in. Aerial's float defaults to signcolumn=auto,
+    -- which works with extmarks but only when at least one sign exists; setting
+    -- yes:1 keeps the column reserved so the layout doesn't jump on update.
+    pcall(vim.api.nvim_set_option_value, "signcolumn", "yes:1", { win = win })
   end
 end
 
@@ -237,15 +242,66 @@ vim.api.nvim_create_autocmd("WinEnter", {
   end,
 })
 
--- Highlight the section the cursor is currently in. Aerial applies AerialLine
--- to the closest symbol's row but most colorschemes leave the group undefined.
-local function set_aerial_line_hl()
-  vim.api.nvim_set_hl(0, "AerialLine", { bg = "#4FC3F7", bold = true })
-  vim.api.nvim_set_hl(0, "AerialLineNC", { bg = "#4FC3F7", bold = true })
+-- Active-item indicator for aerial outline. Aerial flags the closest symbol
+-- to the cursor by setting the AerialLine line_hl_group on that row; most
+-- colorschemes leave AerialLine undefined, so the cue is invisible by default
+-- AND any explicit color we'd set would be hardcoded against the theme.
+-- Solution: keep AerialLine transparent, mirror the active row with a glyph
+-- in the signcolumn that uses the theme's `Special` highlight — so the
+-- indicator's color tracks Omarchy theme switches the same way the rest of
+-- the editor does.
+local aerial_marker_ns = vim.api.nvim_create_namespace("aerial_marker")
+local AERIAL_MARKER_GLYPH = "❯"
+local AERIAL_MARKER_HL = "Special"
+
+local function clear_aerial_line_hl()
+  vim.api.nvim_set_hl(0, "AerialLine", {})
+  vim.api.nvim_set_hl(0, "AerialLineNC", {})
 end
+
+-- Compute the active aerial row from the source cursor directly via aerial's
+-- window API. Doing it this way (rather than scanning aerial's own AerialLine
+-- extmark) avoids a one-event-loop-tick lag that caused ghost-row glitches
+-- when paragraph-jumping with { and }. We also run synchronously (no
+-- vim.schedule) so the marker repositions in the same frame as the cursor.
+-- WinScrolled is intentionally NOT subscribed: aerial moves its own float
+-- cursor on every section change, which fires WinScrolled inside aerial and
+-- triggered extra clear+set cycles during fast key-repeat. CursorMoved on
+-- the source side is sufficient.
+local function refresh_aerial_marker()
+  local cur_buf = vim.api.nvim_get_current_buf()
+  local cur_win = vim.api.nvim_get_current_win()
+
+  local ok_util, util = pcall(require, "aerial.util")
+  if not ok_util then return end
+  -- Cursor in the aerial buffer itself doesn't represent a section change
+  -- in the source; skip so the marker doesn't drift while clicking the TOC.
+  if util.is_aerial_buffer(cur_buf) then return end
+
+  local source_bufnr, aer_bufnr = util.get_buffers(cur_buf)
+  if not aer_bufnr or not vim.api.nvim_buf_is_valid(aer_bufnr) then return end
+
+  local ok_window, window = pcall(require, "aerial.window")
+  if not ok_window then return end
+
+  local pos = window.get_position_in_win(source_bufnr, cur_win)
+  if not pos or not pos.lnum then return end
+
+  vim.api.nvim_buf_clear_namespace(aer_bufnr, aerial_marker_ns, 0, -1)
+  pcall(vim.api.nvim_buf_set_extmark, aer_bufnr, aerial_marker_ns, pos.lnum - 1, 0, {
+    sign_text = AERIAL_MARKER_GLYPH,
+    sign_hl_group = AERIAL_MARKER_HL,
+  })
+end
+
 vim.api.nvim_create_autocmd("ColorScheme", {
-  group = vim.api.nvim_create_augroup("aerial_line_hl", { clear = true }),
+  group = vim.api.nvim_create_augroup("aerial_marker_hl", { clear = true }),
   pattern = "*",
-  callback = function() vim.schedule(set_aerial_line_hl) end,
+  callback = function() vim.schedule(clear_aerial_line_hl) end,
 })
-set_aerial_line_hl()
+clear_aerial_line_hl()
+
+vim.api.nvim_create_autocmd({ "CursorMoved", "CursorHold", "BufEnter" }, {
+  group = vim.api.nvim_create_augroup("aerial_marker_refresh", { clear = true }),
+  callback = refresh_aerial_marker,
+})
