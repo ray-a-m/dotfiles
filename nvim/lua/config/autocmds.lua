@@ -1,14 +1,7 @@
 -- Autocmds are automatically loaded on the VeryLazy event
 -- Default autocmds that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
---
--- Add any additional autocmds here
--- with `vim.api.nvim_create_autocmd`
---
--- Or remove existing autocmds by their group name (which is prefixed with `lazyvim_` for the defaults)
--- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
 local prose_filetypes = { tex = true }
-local applying_colorscheme = false
 
 -- NoNeckPain assigns each side window a hl namespace and only writes its own
 -- background_group/text_group into it; Normal stays undefined and falls back
@@ -31,8 +24,11 @@ local function patch_nnp_namespaces()
   end
 end
 
+-- Prose mode: spatial-only overrides for .tex files. Theme/colors are NOT
+-- touched here — the active colorscheme (driven by Omarchy via plugins/theme.lua)
+-- applies to both code and prose. To rice prose-specific colors later, do it
+-- in a dedicated highlight-override block, not here.
 local function apply_prose_mode(buf, event)
-  if applying_colorscheme then return end
   if not vim.api.nvim_buf_is_valid(buf) then return end
   local ft = vim.bo[buf].filetype
   -- BufEnter can fire on plugin-created buffers (e.g. NoNeckPain side buffers)
@@ -55,13 +51,6 @@ local function apply_prose_mode(buf, event)
   if vim.bo[buf].buftype ~= "" then return end
 
   local is_prose = prose_filetypes[ft] == true
-  local want_scheme = is_prose and "kanagawa-paper-canvas" or "github_light"
-
-  applying_colorscheme = true
-  if vim.g.colors_name ~= want_scheme then
-    vim.cmd.colorscheme(want_scheme)
-  end
-  applying_colorscheme = false
 
   if is_prose then
     vim.wo.number = false
@@ -83,12 +72,6 @@ local function apply_prose_mode(buf, event)
     vim.b[buf].snacks_indent = false
     vim.opt.showmode = false
     vim.wo.list = false
-    io.write("\27]12;#000000\7")
-    io.write("\27]11;#e1e1de\7")
-    -- OSC 10 (default fg). Without this, kitty UI overlays like the close-tab
-    -- confirmation render in the configured foreground (#cdd9e5) against our
-    -- OSC 11 light background, becoming invisible.
-    io.write("\27]10;#1f1f28\7")
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
@@ -109,9 +92,6 @@ local function apply_prose_mode(buf, event)
     vim.b[buf].snacks_indent = nil
     vim.opt.showmode = false
     vim.wo.list = true
-    io.write("\27]112\7")
-    io.write("\27]11;#ffffff\7")
-    io.write("\27]10;#1f2328\7")
   end
 
   -- Auto-enable only. Auto-disable is unsafe: rapid filetype-driven toggling
@@ -140,21 +120,9 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
   end,
 })
 
--- Reset terminal background on nvim exit so the shell prompt returns to its
--- original theme (apply_prose_mode sets bg to match document Normal via OSC 11).
-vim.api.nvim_create_autocmd("VimLeave", {
-  group = vim.api.nvim_create_augroup("reset_term_bg", { clear = true }),
-  callback = function()
-    io.write("\27]111\7")
-    io.write("\27]110\7")
-    io.write("\27]112\7")
-  end,
-})
-
 -- Blend the cmdline row into the document background so it doesn't render as
--- a dark strip below the statusline. Set explicit bg (not link) and re-assert
--- on every relevant event because kanagawa-paper's noice integration and
--- noice's own setup both clobber any link-based override.
+-- a dark strip below the statusline. Reads Normal's bg/fg at runtime, so it
+-- adapts to whichever colorscheme Omarchy is driving.
 local function blend_cmdline_hl()
   vim.schedule(function()
     local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
@@ -270,7 +238,7 @@ vim.api.nvim_create_autocmd("WinEnter", {
 })
 
 -- Highlight the section the cursor is currently in. Aerial applies AerialLine
--- to the closest symbol's row but the prose theme leaves the group undefined.
+-- to the closest symbol's row but most colorschemes leave the group undefined.
 local function set_aerial_line_hl()
   vim.api.nvim_set_hl(0, "AerialLine", { bg = "#4FC3F7", bold = true })
   vim.api.nvim_set_hl(0, "AerialLineNC", { bg = "#4FC3F7", bold = true })
