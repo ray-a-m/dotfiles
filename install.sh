@@ -128,6 +128,9 @@ for app in hypr waybar walker swayosd; do
     done
 done
 
+echo "==> Ensuring per-machine Hyprland override file exists"
+touch ~/.config/hypr/local.conf
+
 echo "==> Symlinking custom Omarchy hooks and themes"
 for sub in hooks themes; do
     src_dir="$DOTFILES_DIR/omarchy/$sub"
