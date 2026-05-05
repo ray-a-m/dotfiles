@@ -164,6 +164,38 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/udev" ]; then
     sudo udevadm trigger --subsystem-match=usb --action=add
 fi
 
+if [ -d "$DOTFILES_DIR/applications" ]; then
+    echo "==> Symlinking PWA .desktop files into ~/.local/share/applications/"
+    mkdir -p ~/.local/share/applications
+    for src in "$DOTFILES_DIR"/applications/*.desktop; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        dst="$HOME/.local/share/applications/$name"
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+            mv "$dst" "$dst.bak.$(date +%s)"
+            echo "Backed up $dst"
+        fi
+        ln -sfn "$src" "$dst"
+    done
+    if command -v update-desktop-database &>/dev/null; then
+        update-desktop-database ~/.local/share/applications &>/dev/null || true
+    fi
+fi
+
+if [ "$OS" = "Linux" ]; then
+    if command -v omarchy-install-chromium-google-account &>/dev/null && \
+       [ -f ~/.config/chromium-flags.conf ]; then
+        echo "==> Ensuring Chromium can sign in to Google accounts"
+        omarchy-install-chromium-google-account
+    fi
+    if command -v omarchy-install-dropbox &>/dev/null && \
+       command -v pacman &>/dev/null && \
+       ! pacman -Q dropbox &>/dev/null; then
+        echo "==> Installing Dropbox (will need browser auth after)"
+        omarchy-install-dropbox
+    fi
+fi
+
 echo "==> Symlinking custom Omarchy hooks and themes"
 for sub in hooks themes; do
     src_dir="$DOTFILES_DIR/omarchy/$sub"
