@@ -197,9 +197,12 @@ if [ -d "$DOTFILES_DIR/applications" ]; then
 fi
 
 if [ "$OS" = "Linux" ]; then
-    if command -v omarchy-install-chromium-google-account &>/dev/null && \
-       [ -f ~/.config/chromium-flags.conf ]; then
+    if command -v omarchy-install-chromium-google-account &>/dev/null; then
+        # The omarchy script no-ops if chromium-flags.conf doesn't exist yet
+        # (Chromium creates it on first launch). On a fresh machine we want
+        # the OAuth creds in place BEFORE first launch, so seed the file.
         echo "==> Ensuring Chromium can sign in to Google accounts"
+        touch ~/.config/chromium-flags.conf
         omarchy-install-chromium-google-account
     fi
     if command -v omarchy-install-dropbox &>/dev/null && \
