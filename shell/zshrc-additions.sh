@@ -72,6 +72,3 @@ pdfsplit() {
 
 # zoxide - smarter cd
 eval "$(zoxide init zsh)"
-
-# starship prompt
-eval "$(starship init zsh)"

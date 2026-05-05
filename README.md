@@ -12,7 +12,7 @@ Personal configuration files for macOS and Linux.
 - **`applications/`** — `.desktop` files for browser-based apps (Gmail, Drive, Claude, Fastmail, etc.) launched as Chromium PWAs against per-app profiles. Icons in `applications/icons/`.
 - **`udev/`** — Linux udev rules; currently `99-usb-wakeup.rules` enables wake-on-USB for s2idle suspend (symlinked into `/etc/udev/rules.d/` by `install.sh`).
 - **`xdg/`** — preferred-terminal list and default-application MIME mappings
-- **`shell/`** — zsh additions (sourced from `~/.zshrc`) and starship prompt
+- **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
 - **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
 - **`WORKFLOW.md`** — daily workflow reference
