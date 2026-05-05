@@ -1,0 +1,11 @@
+# Allow USB hubs (root and downstream) to generate wake events.
+#
+# This box only supports s2idle (no S3). On s2idle, a USB hot-plug or HID
+# interrupt will only wake the system if every hub up to the SoC has
+# power/wakeup=enabled. Arch defaults all hubs to disabled.
+#
+# bDeviceClass==09 = USB hub. Matches both root hubs (usb1..usb4) and
+# downstream hubs inside docks/monitors. Without this, plugging the dock
+# or pressing a key on a dock-attached keyboard does not wake the laptop.
+
+ACTION=="add", SUBSYSTEM=="usb", ATTR{bDeviceClass}=="09", ATTR{power/wakeup}="enabled"

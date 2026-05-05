@@ -151,6 +151,19 @@ done
 echo "==> Ensuring per-machine Hyprland override file exists"
 touch ~/.config/hypr/local.conf
 
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/udev" ]; then
+    echo "==> Symlinking udev rules into /etc/udev/rules.d/"
+    for src in "$DOTFILES_DIR"/udev/*.rules; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        dst="/etc/udev/rules.d/$name"
+        sudo ln -sfn "$src" "$dst"
+    done
+    echo "==> Reloading udev rules"
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger --subsystem-match=usb --action=add
+fi
+
 echo "==> Symlinking custom Omarchy hooks and themes"
 for sub in hooks themes; do
     src_dir="$DOTFILES_DIR/omarchy/$sub"
