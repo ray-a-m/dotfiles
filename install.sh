@@ -211,6 +211,16 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing Dropbox (will need browser auth after)"
         omarchy-install-dropbox
     fi
+    # Extra packages I always want present on an Omarchy box. Aether is in
+    # the omarchy pacman repo (theme creator); zoom is AUR-only.
+    if command -v omarchy-pkg-add &>/dev/null; then
+        echo "==> Ensuring Aether (Omarchy theme creator) is installed"
+        omarchy-pkg-add aether
+    fi
+    if command -v yay &>/dev/null && ! pacman -Q zoom &>/dev/null; then
+        echo "==> Installing Zoom from AUR"
+        yay -S --noconfirm zoom
+    fi
 fi
 
 echo "==> Symlinking custom Omarchy hooks and themes"
