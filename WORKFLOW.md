@@ -30,7 +30,7 @@ Typical: wip -> cd documents/papers/symmetry-reality -> nvim body.tex.
     └── research-wip/       (private GitHub repo: .tex sources)
 
     ~/code/
-    └── dotfiles/           (public GitHub repo: this repo; symlinked to ~/.config/nvim)
+    └── dotfiles/           (private GitHub repo: this repo; symlinked to ~/.config/nvim)
 
 Day-to-day writing happens in research-wip. When a paper is ready for public release, copy the PDF and bib to the corresponding path in research-public and push.
 
