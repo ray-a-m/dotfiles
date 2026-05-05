@@ -107,6 +107,14 @@ if [ -e ~/.config/starship.toml ] && [ ! -L ~/.config/starship.toml ]; then
 fi
 ln -sfn "$DOTFILES_DIR/shell/starship.toml" ~/.config/starship.toml
 
+echo "==> Symlinking Claude Code user instructions"
+mkdir -p ~/.claude
+if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
+    echo "Backing up existing ~/.claude/CLAUDE.md to ~/.claude/CLAUDE.md.bak"
+    mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak
+fi
+ln -sfn "$DOTFILES_DIR/claude/CLAUDE.md" ~/.claude/CLAUDE.md
+
 echo "==> Symlinking XDG default-application files"
 for f in xdg-terminals.list mimeapps.list; do
     src="$DOTFILES_DIR/xdg/$f"
