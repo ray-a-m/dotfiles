@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Re-apply 99-usb-wakeup.rules on resume from s2idle. The udev rule fires on
+# ACTION=="add", which doesn't happen on resume (root hubs aren't re-added),
+# so without this hook power/wakeup reverts to disabled after every suspend
+# and the laptop won't wake from dock plug or keypress through a hub.
+case "$1" in
+  post) /usr/bin/udevadm trigger --subsystem-match=usb --action=add ;;
+esac

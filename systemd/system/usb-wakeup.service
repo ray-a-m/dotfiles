@@ -1,0 +1,15 @@
+[Unit]
+Description=Re-trigger udev so 99-usb-wakeup.rules sticks at boot
+# 99-usb-wakeup.rules fires on ACTION=="add". On this box something (probably
+# power-profiles-daemon, or a kernel-side reset late in boot) is clearing
+# power/wakeup back to disabled after udev's initial pass. Run after multi-
+# user is up so any such daemon has already started, then re-trigger udev.
+After=multi-user.target systemd-udev-settle.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/udevadm trigger --subsystem-match=usb --action=add
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

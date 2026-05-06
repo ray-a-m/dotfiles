@@ -152,6 +152,32 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/udev" ]; then
     sudo udevadm trigger --subsystem-match=usb --action=add
 fi
 
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
+    if [ -d "$DOTFILES_DIR/systemd/system" ]; then
+        echo "==> Symlinking systemd units"
+        for src in "$DOTFILES_DIR"/systemd/system/*.service; do
+            [ -e "$src" ] || continue
+            name="$(basename "$src")"
+            sudo ln -sfn "$src" "/etc/systemd/system/$name"
+        done
+        sudo systemctl daemon-reload
+        for src in "$DOTFILES_DIR"/systemd/system/*.service; do
+            [ -e "$src" ] || continue
+            name="$(basename "$src")"
+            sudo systemctl enable --now "$name" 2>/dev/null || true
+        done
+    fi
+    if [ -d "$DOTFILES_DIR/systemd/system-sleep" ]; then
+        echo "==> Symlinking systemd sleep hooks"
+        for src in "$DOTFILES_DIR"/systemd/system-sleep/*; do
+            [ -e "$src" ] || continue
+            chmod +x "$src" 2>/dev/null
+            name="$(basename "$src")"
+            sudo ln -sfn "$src" "/usr/lib/systemd/system-sleep/$name"
+        done
+    fi
+fi
+
 if [ -d "$DOTFILES_DIR/applications" ]; then
     echo "==> Symlinking PWA .desktop files into ~/.local/share/applications/"
     mkdir -p ~/.local/share/applications
