@@ -3,6 +3,8 @@
 # `omarchy-hyprland-monitor-internal on`; we add mirroring on top so the
 # external resumes mirroring rather than extending.
 
+source "$(dirname "$0")/mirror-helper.sh"
+
 if omarchy-hw-external-monitors; then
-    omarchy-hyprland-monitor-internal-mirror on
+    mirror_on
 fi

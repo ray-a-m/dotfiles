@@ -5,8 +5,10 @@
 # drop mirror first, then disable internal. With no external, suspend.
 # Requires logind to ignore lid events (see /etc/systemd/logind.conf.d/).
 
+source "$(dirname "$0")/mirror-helper.sh"
+
 if omarchy-hw-external-monitors; then
-    omarchy-hyprland-monitor-internal-mirror off
+    mirror_off
     omarchy-hyprland-monitor-internal off
 else
     systemctl suspend
