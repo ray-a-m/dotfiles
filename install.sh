@@ -54,7 +54,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player
             ;;
         zypper)
             sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox
@@ -94,6 +94,15 @@ if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
     mv ~/.config/kitty ~/.config/kitty.bak
 fi
 ln -sfn "$DOTFILES_DIR/kitty" ~/.config/kitty
+
+if [ -d "$DOTFILES_DIR/spotify-player" ]; then
+    echo "==> Symlinking spotify-player config"
+    mkdir -p ~/.config/spotify-player
+    for src in "$DOTFILES_DIR"/spotify-player/*; do
+        [ -e "$src" ] || continue
+        ln -sfn "$src" ~/.config/spotify-player/"$(basename "$src")"
+    done
+fi
 
 echo "==> Symlinking Claude Code user instructions"
 mkdir -p ~/.claude

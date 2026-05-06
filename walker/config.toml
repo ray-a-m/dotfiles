@@ -1,4 +1,5 @@
 force_keyboard_focus = true                                                 # forces keyboard forcus to stay in Walker
+disable_mouse = true                                                        # prevents the cursor from flashing into walker on h/l
 selection_wrap = true                                                       # wrap list if at bottom or top
 theme = "omarchy-default"                                                   # theme to use
 additional_theme_location = "~/.local/share/omarchy/default/walker/themes/"
