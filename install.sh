@@ -257,8 +257,8 @@ if [ "$OS" = "Linux" ]; then
     fi
 fi
 
-echo "==> Symlinking custom Omarchy hooks, themes, and extensions"
-for sub in hooks themes extensions; do
+echo "==> Symlinking custom Omarchy hooks, themes, themed, and extensions"
+for sub in hooks themes themed extensions; do
     src_dir="$DOTFILES_DIR/omarchy/$sub"
     dst_dir="$HOME/.config/omarchy/$sub"
     [ -d "$src_dir" ] || continue

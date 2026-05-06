@@ -76,7 +76,7 @@ show_portals_menu() {
     *Blackboard*) gtk-launch blackboard ;;
     *Admin*)      gtk-launch wordpress-admin ;;
     *Editor*)     gtk-launch wordpress-editor ;;
-    *GitHub*)     gtk-launch GitHub ;;
+    *GitHub*)     gtk-launch github ;;
     *)            show_main_menu ;;
   esac
 }
