@@ -1,14 +1,18 @@
 [Unit]
-Description=Re-trigger udev so 99-usb-wakeup.rules sticks at boot
-# 99-usb-wakeup.rules fires on ACTION=="add". On this box something (probably
-# power-profiles-daemon, or a kernel-side reset late in boot) is clearing
-# power/wakeup back to disabled after udev's initial pass. Run after multi-
-# user is up so any such daemon has already started, then re-trigger udev.
-After=multi-user.target systemd-udev-settle.service
+Description=Force USB power/wakeup=enabled across hubs and HID devices
+# The udev-rule + udevadm-trigger approach didn't stick at boot — wakeup
+# state remained disabled even after `systemctl status` confirmed the unit
+# ran successfully after multi-user.target. Either udev's writes don't
+# take that early in boot, or something resets them right after.
+#
+# Direct sysfs write at this stage works (manual tests confirm). We run
+# late, after user-sessions, when any earlier power-management daemon has
+# already finished its initial pass.
+After=multi-user.target systemd-user-sessions.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/udevadm trigger --subsystem-match=usb --action=add
+ExecStart=/bin/bash -c 'for f in /sys/bus/usb/devices/*/power/wakeup; do [ -w "$f" ] && echo enabled > "$f"; done 2>/dev/null'
 RemainAfterExit=yes
 
 [Install]

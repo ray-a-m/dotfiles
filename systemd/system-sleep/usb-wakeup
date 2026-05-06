@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Re-apply 99-usb-wakeup.rules on resume from s2idle. The udev rule fires on
-# ACTION=="add", which doesn't happen on resume (root hubs aren't re-added),
-# so without this hook power/wakeup reverts to disabled after every suspend
-# and the laptop won't wake from dock plug or keypress through a hub.
+# Re-enable USB power/wakeup on resume from s2idle. Direct sysfs write
+# instead of `udevadm trigger` for the same reason as the boot service:
+# we observed the udev path silently failing to apply on this box.
 case "$1" in
-  post) /usr/bin/udevadm trigger --subsystem-match=usb --action=add ;;
+  post)
+    for f in /sys/bus/usb/devices/*/power/wakeup; do
+      [ -w "$f" ] && echo enabled > "$f"
+    done 2>/dev/null
+    ;;
 esac
