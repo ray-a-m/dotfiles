@@ -52,12 +52,12 @@ show_mail_menu() {
 }
 
 show_research_menu() {
-  case $(menu "Research" "Zotero\n  UIC Library\n  Claude\n  ChatGPT\n  Obsidian") in
-    *Zotero*)   gtk-launch zotero ;;
-    *Library*)  gtk-launch uic-library ;;
-    *Claude*)   gtk-launch claude ;;
+  case $(menu "Research" "  ChatGPT\n  Claude\n  Obsidian\n  UIC Library\nZotero") in
     *ChatGPT*)  gtk-launch chatgpt ;;
+    *Claude*)   gtk-launch claude ;;
     *Obsidian*) gtk-launch obsidian ;;
+    *Library*)  gtk-launch uic-library ;;
+    *Zotero*)   gtk-launch zotero ;;
     *)          show_main_menu ;;
   esac
 }
