@@ -163,11 +163,18 @@ fi
 
 if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
     if [ -d "$DOTFILES_DIR/systemd/system" ]; then
-        echo "==> Symlinking systemd units"
+        # Copy (not symlink) the unit files. systemd's unit loader rejects
+        # symlinks in /etc/systemd/system/ that resolve into /home/, so the
+        # symlinked unit silently fails to load at boot (LoadState=not-found
+        # despite is-enabled=enabled). The dotfile is still authoritative;
+        # re-run install.sh after editing to push the snapshot into /etc/.
+        echo "==> Installing systemd units (copy, not symlink)"
         for src in "$DOTFILES_DIR"/systemd/system/*.service; do
             [ -e "$src" ] || continue
             name="$(basename "$src")"
-            sudo ln -sfn "$src" "/etc/systemd/system/$name"
+            # Replace any prior symlink so cp doesn't refuse on same-file.
+            sudo rm -f "/etc/systemd/system/$name" "/etc/systemd/system/multi-user.target.wants/$name"
+            sudo cp "$src" "/etc/systemd/system/$name"
         done
         sudo systemctl daemon-reload
         for src in "$DOTFILES_DIR"/systemd/system/*.service; do
@@ -177,12 +184,16 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
         done
     fi
     if [ -d "$DOTFILES_DIR/systemd/system-sleep" ]; then
-        echo "==> Symlinking systemd sleep hooks"
+        # Sleep hooks are executed scripts, not parsed by systemd's unit
+        # loader, so symlinks here work — but we copy for consistency with
+        # the unit-file flow.
+        echo "==> Installing systemd sleep hooks (copy, not symlink)"
         for src in "$DOTFILES_DIR"/systemd/system-sleep/*; do
             [ -e "$src" ] || continue
-            chmod +x "$src" 2>/dev/null
             name="$(basename "$src")"
-            sudo ln -sfn "$src" "/usr/lib/systemd/system-sleep/$name"
+            sudo rm -f "/usr/lib/systemd/system-sleep/$name"
+            sudo cp "$src" "/usr/lib/systemd/system-sleep/$name"
+            sudo chmod +x "/usr/lib/systemd/system-sleep/$name"
         done
     fi
 fi
