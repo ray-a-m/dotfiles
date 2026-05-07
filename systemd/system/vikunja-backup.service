@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup vikunja DB + attachments to private GitHub repo
+After=network-online.target vikunja.service
+Wants=network-online.target
+ConditionPathExists=/var/lib/vikunja/todo-list/.git
+
+[Service]
+Type=oneshot
+User=vikunja
+Group=vikunja
+Environment=HOME=/var/lib/vikunja
+WorkingDirectory=/var/lib/vikunja
+ExecStart=/usr/local/bin/vikunja-backup

@@ -3,7 +3,14 @@
 # before its dispatch, so redefining show_*_menu functions here overrides the
 # stock ones. The stock script is left untouched (survives package upgrades).
 #
-# Top-level layout: Mail / Research / Files / Portals / System.
+# Top-level layout: Tasks / Mail / Research / Files / Portals / System.
+#
+# Note on back-nav: walker's `-c` flag only paints a visual mark, and walker
+# hard-sets cursor to row 0 in dmenu mode (set_autoselect(true) in upstream).
+# So "remember where I was" via cursor relocation isn't achievable without
+# patching walker or reordering the input (which shifts display order). For
+# now, the back path just re-opens the parent menu cleanly with the cursor
+# at the top.
 #
 # Dropped from main: Apps (use SUPER+SPACE), Learn, Trigger, Setup, Install,
 # Remove, Update, About. They're still reachable via `omarchy-menu <name>`
@@ -33,7 +40,8 @@ menu() {
 }
 
 show_main_menu() {
-  case $(menu "Go" "󰇮  Mail\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
+  case $(menu "Go" "  Tasks\n󰇮  Mail\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
+    *Tasks*)    gtk-launch tasks ;;
     *Mail*)     show_mail_menu ;;
     *Research*) show_research_menu ;;
     *Files*)    show_files_menu ;;

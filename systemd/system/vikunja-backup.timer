@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily vikunja backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=10min
+Unit=vikunja-backup.service
+
+[Install]
+WantedBy=timers.target

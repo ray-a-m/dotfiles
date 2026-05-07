@@ -161,6 +161,15 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/udev" ]; then
     sudo udevadm trigger --subsystem-match=usb --action=add
 fi
 
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/bin" ]; then
+    echo "==> Installing scripts from bin/ into /usr/local/bin/"
+    for src in "$DOTFILES_DIR"/bin/*; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        sudo install -Dm 755 "$src" "/usr/local/bin/$name"
+    done
+fi
+
 if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
     if [ -d "$DOTFILES_DIR/systemd/system" ]; then
         # Copy (not symlink) the unit files. systemd's unit loader rejects
@@ -169,15 +178,17 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
         # despite is-enabled=enabled). The dotfile is still authoritative;
         # re-run install.sh after editing to push the snapshot into /etc/.
         echo "==> Installing systemd units (copy, not symlink)"
-        for src in "$DOTFILES_DIR"/systemd/system/*.service; do
+        for src in "$DOTFILES_DIR"/systemd/system/*.service "$DOTFILES_DIR"/systemd/system/*.timer; do
             [ -e "$src" ] || continue
             name="$(basename "$src")"
             # Replace any prior symlink so cp doesn't refuse on same-file.
-            sudo rm -f "/etc/systemd/system/$name" "/etc/systemd/system/multi-user.target.wants/$name"
+            sudo rm -f "/etc/systemd/system/$name" \
+                "/etc/systemd/system/multi-user.target.wants/$name" \
+                "/etc/systemd/system/timers.target.wants/$name"
             sudo cp "$src" "/etc/systemd/system/$name"
         done
         sudo systemctl daemon-reload
-        for src in "$DOTFILES_DIR"/systemd/system/*.service; do
+        for src in "$DOTFILES_DIR"/systemd/system/*.service "$DOTFILES_DIR"/systemd/system/*.timer; do
             [ -e "$src" ] || continue
             name="$(basename "$src")"
             sudo systemctl enable --now "$name" 2>/dev/null || true
