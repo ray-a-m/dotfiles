@@ -207,6 +207,27 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
             sudo chmod +x "/usr/lib/systemd/system-sleep/$name"
         done
     fi
+    if [ -d "$DOTFILES_DIR/systemd/user" ]; then
+        # User units run under the per-user systemd manager; install into
+        # ~/.config/systemd/user/. No sudo, no /etc/ load-from-/home
+        # restriction, but copy (not symlink) for consistency with the
+        # system-level flow above.
+        echo "==> Installing systemd user units"
+        USER_UNIT_DIR="$HOME/.config/systemd/user"
+        mkdir -p "$USER_UNIT_DIR"
+        for src in "$DOTFILES_DIR"/systemd/user/*.service "$DOTFILES_DIR"/systemd/user/*.timer; do
+            [ -e "$src" ] || continue
+            name="$(basename "$src")"
+            rm -f "$USER_UNIT_DIR/$name"
+            cp "$src" "$USER_UNIT_DIR/$name"
+        done
+        systemctl --user daemon-reload 2>/dev/null || true
+        for src in "$DOTFILES_DIR"/systemd/user/*.timer; do
+            [ -e "$src" ] || continue
+            name="$(basename "$src")"
+            systemctl --user enable --now "$name" 2>/dev/null || true
+        done
+    fi
 fi
 
 if [ -d "$DOTFILES_DIR/applications" ]; then
@@ -239,6 +260,64 @@ if [ -d "$DOTFILES_DIR/applications" ]; then
             gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" &>/dev/null || true
         fi
     fi
+fi
+
+# Firefox: symlink user.js + userChrome.css into the active profile.
+# Firefox creates a randomly-named profile dir on first run, so on a
+# fresh machine you must launch Firefox at least once before this works
+# — the script no-ops with a hint if no profile is found yet.
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/firefox" ]; then
+    # Locate the profile root. XDG-respecting Firefox builds put it
+    # under ~/.config/mozilla/firefox/; default builds use ~/.mozilla/.
+    FF_ROOT=""
+    for candidate in "$HOME/.config/mozilla/firefox" "$HOME/.mozilla/firefox"; do
+        [ -f "$candidate/profiles.ini" ] && FF_ROOT="$candidate" && break
+    done
+
+    if [ -n "$FF_ROOT" ]; then
+        # The active profile is named under [Install...] -> Default=<path>.
+        FF_PROFILE=$(awk -F= '/^\[Install/{ok=1; next} ok && /^Default=/{print $2; exit}' \
+            "$FF_ROOT/profiles.ini")
+        if [ -n "$FF_PROFILE" ] && [ -d "$FF_ROOT/$FF_PROFILE" ]; then
+            echo "==> Linking Firefox config into $FF_ROOT/$FF_PROFILE/"
+            mkdir -p "$FF_ROOT/$FF_PROFILE/chrome"
+            ln -sfn "$DOTFILES_DIR/firefox/user.js" \
+                "$FF_ROOT/$FF_PROFILE/user.js"
+            ln -sfn "$DOTFILES_DIR/firefox/userChrome.css" \
+                "$FF_ROOT/$FF_PROFILE/chrome/userChrome.css"
+        else
+            echo "==> Firefox profile not found in $FF_ROOT — launch Firefox once, then re-run install.sh"
+        fi
+    fi
+
+    # System-side Firefox autoconfig: copies the chrome-toggle bootstrap
+    # into /usr/lib/firefox/. Required for the Ctrl+; toggle bound
+    # in firefox.cfg. These files get wiped whenever pacman upgrades the
+    # firefox package; the hook below redeploys them automatically.
+    if [ -f "$DOTFILES_DIR/firefox/autoconfig.js" ] && \
+       [ -f "$DOTFILES_DIR/firefox/firefox.cfg" ] && \
+       [ -d /usr/lib/firefox ]; then
+        echo "==> Installing Firefox autoconfig (Ctrl+; chrome toggle)"
+        sudo install -Dm644 "$DOTFILES_DIR/firefox/autoconfig.js" \
+            /usr/lib/firefox/defaults/pref/autoconfig.js
+        sudo install -Dm644 "$DOTFILES_DIR/firefox/firefox.cfg" \
+            /usr/lib/firefox/firefox.cfg
+    fi
+fi
+
+# Pacman hooks: redeploy system-side artifacts that pacman wipes when
+# upstream packages upgrade. Currently used for the Firefox autoconfig
+# bootstrap (see firefox-userchrome.hook). The hook itself runs
+# /bin/sh -c "cp ..." with hardcoded dotfile paths — pacman runs hooks
+# as root with no usable environment, so $HOME / $DOTFILES_DIR cannot
+# be expanded inside the hook file.
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/pacman-hooks" ]; then
+    echo "==> Installing pacman hooks"
+    for src in "$DOTFILES_DIR"/pacman-hooks/*.hook; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        sudo install -Dm644 "$src" "/etc/pacman.d/hooks/$name"
+    done
 fi
 
 if [ "$OS" = "Linux" ]; then

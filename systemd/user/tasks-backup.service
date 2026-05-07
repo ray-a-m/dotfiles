@@ -1,0 +1,10 @@
+[Unit]
+Description=Push ~/tasks/ to GitHub
+ConditionPathExists=%h/tasks/.git
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/tasks
+ExecStart=/usr/local/bin/tasks-backup

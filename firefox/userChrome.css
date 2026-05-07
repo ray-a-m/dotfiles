@@ -1,0 +1,40 @@
+/* No @namespace declaration: modern Firefox chrome is HTML
+ * (the chrome <window> root was migrated to <html> around Firefox 71).
+ * Declaring the XUL namespace as default would scope unprefixed
+ * selectors like [chrome-shown] to XUL elements only, which means
+ * they wouldn't match the HTML root where the toggle attribute lives.
+ *
+ * Hide the top chrome (tabs strip + URL bar + bookmarks toolbar) by
+ * margin-pushing #navigator-toolbox above the visible window. Reveal
+ * via Ctrl+; (Semicolon), which the autoconfig-loaded firefox.cfg
+ * toggles by setting the [chrome-shown] attribute on :root.
+ *
+ * Stable assumptions:
+ *   - This rule depends on /usr/lib/firefox/firefox.cfg being deployed
+ *     and the autoconfig sandbox setup being active. Without those, the
+ *     attribute is never set and the chrome stays hidden permanently
+ *     — at which point fall back to running install.sh, which redeploys
+ *     the system files. The pacman hook automates this after firefox
+ *     package upgrades.
+ *   - margin-top is the only property reliably honored on chrome XUL
+ *     widgets to push them out of layout. position:fixed and
+ *     visibility:collapse have failure modes we found the hard way.
+ *
+ * Sidebar: revamp icon bar is disabled via user.js. Ctrl+B / Ctrl+H
+ * toggle the legacy #sidebar-box on demand.
+ */
+
+#navigator-toolbox {
+  margin-top: -100px;
+  transition: margin-top 0.15s ease;
+}
+
+:root[chrome-shown] #navigator-toolbox,
+html[chrome-shown] #navigator-toolbox,
+[chrome-shown] #navigator-toolbox {
+  margin-top: 0;
+}
+
+#sidebar-main {
+  visibility: collapse !important;
+}

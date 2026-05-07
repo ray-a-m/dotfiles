@@ -1,11 +1,11 @@
 [Unit]
-Description=Daily vikunja backup
+Description=Daily push of ~/tasks/ to GitHub
 
 [Timer]
 OnCalendar=daily
 Persistent=true
 RandomizedDelaySec=10min
-Unit=vikunja-backup.service
+Unit=tasks-backup.service
 
 [Install]
 WantedBy=timers.target
