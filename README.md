@@ -34,7 +34,9 @@ This repo is private — the new machine needs an SSH key registered with GitHub
 ## Aesthetic baseline
 
 On Linux this repo is intentionally close to *base Omarchy* so the next
-ricing pass starts from a known reference. Specifically:
+ricing pass starts from a known reference. **Active ricing initiative is
+tracked in [`RICING.md`](RICING.md) — read that first if working on theme,
+Quickshell, or workspace changes.** Specifically:
 
 - **Kitty** (`kitty/kitty.conf`) mirrors base Omarchy: JetBrainsMono Nerd
   Font 9pt, slanted bottom tabs, ctrl+insert / shift+insert. Colors come
