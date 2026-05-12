@@ -18,8 +18,8 @@ Personal configuration files for macOS and Linux.
 - **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
 - **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
-- **`WORKFLOW.md`** — daily workflow reference
-- **`TODO.md`** — outstanding work (cross-platform parity, hardware tests, vendor migrations)
+- **`TODO.md`** — outstanding work (cross-platform parity, vendor migrations) + dock/lid diagnostics
+- **`RICING.md`** — active aesthetic ricing-pass orientation
 
 ## Setup on a new machine
 
