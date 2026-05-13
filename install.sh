@@ -222,7 +222,7 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
             cp "$src" "$USER_UNIT_DIR/$name"
         done
         systemctl --user daemon-reload 2>/dev/null || true
-        for src in "$DOTFILES_DIR"/systemd/user/*.timer; do
+        for src in "$DOTFILES_DIR"/systemd/user/*.service "$DOTFILES_DIR"/systemd/user/*.timer; do
             [ -e "$src" ] || continue
             name="$(basename "$src")"
             systemctl --user enable --now "$name" 2>/dev/null || true

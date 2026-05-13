@@ -1,0 +1,17 @@
+[Unit]
+Description=Hyprland monitor hot-plug + dock policy watcher
+# Previously started by `exec-once` in hypr/local.conf, which has no respawn
+# semantics — if the script exited (e.g. socket not yet ready at startup),
+# nothing would restart it, and the dock policy would silently stop working.
+# Running under the user manager gives us Restart=always + journal logging.
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.config/hypr/scripts/monitor-watcher.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
