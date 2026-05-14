@@ -54,7 +54,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player yazi jq
             ;;
         zypper)
             sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox
@@ -344,6 +344,22 @@ if [ "$OS" = "Linux" ]; then
     if command -v yay &>/dev/null && ! pacman -Q zoom &>/dev/null; then
         echo "==> Installing Zoom from AUR"
         yay -S --noconfirm zoom
+    fi
+    # firefox-pwa hosts the subset of omarchy-menu PWAs whose upstreams
+    # publish a manifest and don't block non-Chromium browsers (currently
+    # Claude, ChatGPT, GitHub, Fastmail) so external links open in the
+    # main Firefox instead of being trapped in a Chromium app window. The
+    # rest (Gmail, Drive, WordPress, UIC services) stay on Chromium —
+    # Google blocks firefoxpwa with a 400, the others have no manifest.
+    # pwa-setup creates the Personal profile, drops userChrome+user.js,
+    # and registers each PWA. Idempotent — safe to re-run.
+    if command -v yay &>/dev/null && ! pacman -Q firefox-pwa &>/dev/null; then
+        echo "==> Installing firefox-pwa from AUR"
+        yay -S --noconfirm firefox-pwa
+    fi
+    if command -v firefoxpwa &>/dev/null && command -v pwa-setup &>/dev/null; then
+        echo "==> Registering firefoxpwa profiles + PWAs"
+        pwa-setup
     fi
 fi
 

@@ -71,7 +71,8 @@ show_research_menu() {
 }
 
 show_files_menu() {
-  case $(menu "Files" "  Dropbox\n  Personal\n  UIC") in
+  case $(menu "Files" "  File Explorer\n  Dropbox\n  Personal\n  UIC") in
+    *Explorer*) gtk-launch yazi ;;
     *Dropbox*)  gtk-launch dropbox ;;
     *Personal*) gtk-launch personal-gdrive ;;
     *UIC*)      gtk-launch uic-gdrive ;;
