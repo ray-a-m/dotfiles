@@ -305,3 +305,13 @@ vim.api.nvim_create_autocmd({ "CursorMoved", "CursorHold", "BufEnter" }, {
   group = vim.api.nvim_create_augroup("aerial_marker_refresh", { clear = true }),
   callback = refresh_aerial_marker,
 })
+
+-- Visual-mode selection bg — light green (lotusGreen3) instead of
+-- whatever the active colorscheme picks. Interim; will likely be
+-- absorbed into a future glass-aesthetic pass. See RICING.md Session-3c.
+vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter" }, {
+  group = vim.api.nvim_create_augroup("philosophy-visual-highlight", { clear = true }),
+  callback = function()
+    vim.api.nvim_set_hl(0, "Visual", { bg = "#b7d0ae" })
+  end,
+})

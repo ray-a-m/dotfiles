@@ -54,7 +54,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player yazi jq
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player yazi jq quickshell
             ;;
         zypper)
             sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox
@@ -94,6 +94,17 @@ if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
     mv ~/.config/kitty ~/.config/kitty.bak
 fi
 ln -sfn "$DOTFILES_DIR/kitty" ~/.config/kitty
+
+# Quickshell uses a single top-level symlink (no machine-local override
+# needed, unlike hypr/). RICING.md §Quickshell.
+if [ -d "$DOTFILES_DIR/quickshell" ]; then
+    echo "==> Symlinking quickshell config"
+    if [ -e ~/.config/quickshell ] && [ ! -L ~/.config/quickshell ]; then
+        echo "Backing up existing ~/.config/quickshell to ~/.config/quickshell.bak"
+        mv ~/.config/quickshell ~/.config/quickshell.bak
+    fi
+    ln -sfn "$DOTFILES_DIR/quickshell" ~/.config/quickshell
+fi
 
 if [ -d "$DOTFILES_DIR/spotify-player" ]; then
     echo "==> Symlinking spotify-player config"

@@ -1,7 +1,7 @@
 @import "../omarchy/current/theme/waybar.css";
 
 * {
-  background-color: @background;
+  background-color: transparent;
   color: @foreground;
 
   border: none;
@@ -11,12 +11,25 @@
   font-size: 12px;
 }
 
-.modules-left {
-  margin-left: 8px;
+/* Floating glass pills: bar window is fully transparent, and each of the
+ * three module sections gets its own translucent pill with rounded corners
+ * and accent border. The bar runs with `"exclusive": false` so windows
+ * tile up under it and the wallpaper extends edge-to-edge. No compositor
+ * blur — see RICING.md Session-3d for why (would darken the empty gaps
+ * between pills). Real per-pill blur comes with Omarchy 4.0's Quickshell
+ * migration. */
+window#waybar {
+  background-color: transparent;
 }
 
+.modules-left,
+.modules-center,
 .modules-right {
-  margin-right: 8px;
+  background-color: alpha(@background, 0.55);
+  border: 1px solid @color4;
+  border-radius: 14px;
+  padding: 0 10px;
+  margin: 6px 8px;
 }
 
 #workspaces button {

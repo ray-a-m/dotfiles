@@ -38,11 +38,22 @@ return {
     },
   },
   config = function(_, opts)
-    require("super-kanban").setup(opts)
-
     local card_module = require("super-kanban.ui.card")
     local list_module = require("super-kanban.ui.list")
     local board_module = require("super-kanban.ui.board")
+
+    -- Capture the resolved config table (defaults deep-merged with our opts)
+    -- so the centering patch below can read list/board dimensions without
+    -- re-implementing the merge. list_module.setup gets the same shared
+    -- config reference as every other ui submodule.
+    local resolved_config
+    local original_list_module_setup = list_module.setup
+    list_module.setup = function(conf)
+      resolved_config = conf
+      return original_list_module_setup(conf)
+    end
+
+    require("super-kanban").setup(opts)
 
     -- Upstream nil-guard workarounds. super-kanban (alpha as of 2026-05)
     -- dereferences card.visible_index in two hot paths without checking
@@ -70,6 +81,21 @@ return {
       ensure_visible_index(current_card)
       return original_create_card(self, placement, current_card)
     end
+
+    -- Column-header banners. Defaults inherit `Visual` from the colorscheme,
+    -- which on kanagawa-lotus = lotusViolet3 (#c9cbd1, faint lilac-gray) and
+    -- barely registers against the parchment column body. Override to lotus
+    -- light blue + dark slate text so the headers read as solid pill labels.
+    -- Interim — likely replaced by a Quickshell-driven design pass later.
+    local function apply_kanban_banners()
+      vim.api.nvim_set_hl(0, "SuperKanbanListWinbar", { bg = "#b5cbd2", fg = "#545464", bold = true })
+      vim.api.nvim_set_hl(0, "SuperKanbanListWinbarEdge", { fg = "#b5cbd2", bg = "NONE" })
+    end
+    apply_kanban_banners()
+    vim.api.nvim_create_autocmd("ColorScheme", {
+      group = vim.api.nvim_create_augroup("super-kanban-banner", { clear = true }),
+      callback = apply_kanban_banners,
+    })
 
     -- Aesthetic chrome strip. super-kanban renders two cosmetic pieces
     -- with no opt-out: (a) the board's top winbar with filename and
@@ -102,6 +128,60 @@ return {
         end)
       end,
     })
+
+-- Center the list cluster inside the board. Default behavior anchors
+    -- lists at the left edge (config.board.padding.left = 8); a wide-only
+    -- terminal leaves an oversized right gutter when few lists are open.
+    -- Override the two col-write call sites in list.lua to compute a
+    -- centering offset from the live board width and visible list count.
+    -- Falls back to default left-anchoring when lists overflow the board.
+    local LIST_GAP = 3
+    local DEFAULT_PADDING_LEFT = 8
+    local function compute_col(self, visual_index)
+      local board = self.ctx and self.ctx.board
+      local board_win = board and board.win and board.win.win
+      local list_w = (resolved_config and resolved_config.list and resolved_config.list.width) or 32
+      if not (board_win and vim.api.nvim_win_is_valid(board_win)) or not self.ctx.lists then
+        return DEFAULT_PADDING_LEFT + (list_w + LIST_GAP) * (visual_index - 1)
+      end
+      local board_width = vim.api.nvim_win_get_width(board_win)
+      local total_span = #self.ctx.lists * (list_w + LIST_GAP) - LIST_GAP
+      local pad = (total_span <= board_width)
+          and math.max(DEFAULT_PADDING_LEFT, math.floor((board_width - total_span) / 2))
+        or DEFAULT_PADDING_LEFT
+      return pad + (list_w + LIST_GAP) * (visual_index - 1)
+    end
+
+    -- list.lua:60 — initial col on mount. Wrap original; mutate opts.col
+    -- after creation but before list:mount calls self.win:show().
+    local original_list_setup_win = list_module.setup_win
+    list_module.setup_win = function(self)
+      original_list_setup_win(self)
+      if self.win and self.win.opts then
+        self.win.opts.col = compute_col(self, self.index)
+      end
+    end
+
+    -- list.lua:205 — rewrites col on every scroll/reposition. Full
+    -- replacement (rather than wrap-and-mutate) so snacks redraws once
+    -- at the centered position instead of twice.
+    list_module.update_visible_position = function(self, new_visible_index)
+      if type(new_visible_index) == "number" and new_visible_index > 0 then
+        self.win.opts.col = compute_col(self, new_visible_index)
+        if self:closed() then
+          self.win:show()
+        end
+        self.visible_index = new_visible_index
+        self.win:update()
+        self:update_scroll_info(
+          self.scroll_info.top,
+          self.scroll_info.bot - 1,
+          #self.ctx.lists[self.index].cards
+        )
+      else
+        self:exit()
+      end
+    end
 
     -- Persistence is wired only inside super-kanban's board:on_exit(),
     -- which fires on WinClosed of the floating board window. That's
