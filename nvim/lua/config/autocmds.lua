@@ -1,7 +1,7 @@
 -- Autocmds are automatically loaded on the VeryLazy event
 -- Default autocmds that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
 
-local prose_filetypes = { tex = true }
+local prose_filetypes = { tex = true, markdown = true }
 
 -- NoNeckPain assigns each side window a hl namespace and only writes its own
 -- background_group/text_group into it; Normal stays undefined and falls back
@@ -304,14 +304,4 @@ clear_aerial_line_hl()
 vim.api.nvim_create_autocmd({ "CursorMoved", "CursorHold", "BufEnter" }, {
   group = vim.api.nvim_create_augroup("aerial_marker_refresh", { clear = true }),
   callback = refresh_aerial_marker,
-})
-
--- Visual-mode selection bg — light green (lotusGreen3) instead of
--- whatever the active colorscheme picks. Interim; will likely be
--- absorbed into a future glass-aesthetic pass. See RICING.md Session-3c.
-vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter" }, {
-  group = vim.api.nvim_create_augroup("philosophy-visual-highlight", { clear = true }),
-  callback = function()
-    vim.api.nvim_set_hl(0, "Visual", { bg = "#b7d0ae" })
-  end,
 })

@@ -1,6 +1,7 @@
 {
   "colorscheme": "tokyonight",
   "extras": [
+    "lazyvim.plugins.extras.lang.markdown",
     "lazyvim.plugins.extras.lang.tex"
   ],
   "install_version": 8,
