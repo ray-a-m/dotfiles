@@ -356,6 +356,13 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing Zoom from AUR"
         yay -S --noconfirm zoom
     fi
+    # mpvpaper is required by omarchy/hooks/theme-set for any theme whose
+    # wallpaper is a video (e.g. blue-girl's mornye mp4). Without it the
+    # hook silently fails and the wallpaper layer goes blank.
+    if command -v yay &>/dev/null && ! pacman -Q mpvpaper &>/dev/null; then
+        echo "==> Installing mpvpaper from AUR"
+        yay -S --noconfirm mpvpaper
+    fi
     # firefox-pwa hosts the subset of omarchy-menu PWAs whose upstreams
     # publish a manifest and don't block non-Chromium browsers (currently
     # Claude, ChatGPT, GitHub, Fastmail) so external links open in the

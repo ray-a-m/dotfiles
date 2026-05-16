@@ -1,31 +1,26 @@
-# Palette for the `philosophy` theme.
-#
-# Synced 2026-05-15 (third iteration) to match Kanagawa's *lotus* variant
-# so the whole stack sits on a parchment background — including nvim.
-# Values pulled from kanagawa.nvim's `lotus` theme table; ANSI slots
-# follow the light-theme convention (cf. flexoki-light, catppuccin-latte).
-# History of the pivots is in RICING.md Session-3b.
+# Kanagawa wave. ANSI slots match wave's `term` table in
+# kanagawa.nvim/lua/kanagawa/themes.lua.
 
-accent = "#4d699b"
-cursor = "#545464"
-foreground = "#545464"
-background = "#f2ecbc"
-selection_foreground = "#545464"
-selection_background = "#c9cbd1"
+accent = "#7e9cd8"
+cursor = "#dcd7ba"
+foreground = "#dcd7ba"
+background = "#1f1f28"
+selection_foreground = "#dcd7ba"
+selection_background = "#223249"
 
-color0 = "#d5cea3"
-color1 = "#c84053"
-color2 = "#6f894e"
-color3 = "#77713f"
-color4 = "#4d699b"
-color5 = "#b35b79"
-color6 = "#597b75"
-color7 = "#545464"
-color8 = "#43436c"
-color9 = "#d7474b"
-color10 = "#6e915f"
-color11 = "#836f4a"
-color12 = "#5d57a3"
-color13 = "#624c83"
-color14 = "#5e857a"
-color15 = "#c9cbd1"
+color0 = "#16161d"
+color1 = "#c34043"
+color2 = "#76946a"
+color3 = "#c0a36e"
+color4 = "#7e9cd8"
+color5 = "#957fb8"
+color6 = "#6a9589"
+color7 = "#c8c093"
+color8 = "#727169"
+color9 = "#e82424"
+color10 = "#98bb6c"
+color11 = "#e6c384"
+color12 = "#7fb4ca"
+color13 = "#938aa9"
+color14 = "#7aa89f"
+color15 = "#dcd7ba"

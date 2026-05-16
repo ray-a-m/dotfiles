@@ -82,14 +82,11 @@ return {
       return original_create_card(self, placement, current_card)
     end
 
-    -- Column-header banners. Defaults inherit `Visual` from the colorscheme,
-    -- which on kanagawa-lotus = lotusViolet3 (#c9cbd1, faint lilac-gray) and
-    -- barely registers against the parchment column body. Override to lotus
-    -- light blue + dark slate text so the headers read as solid pill labels.
-    -- Interim — likely replaced by a Quickshell-driven design pass later.
+    -- Wave's default Visual (waveBlue1) is too close in luminance to the
+    -- bg, so banners don't register without an override.
     local function apply_kanban_banners()
-      vim.api.nvim_set_hl(0, "SuperKanbanListWinbar", { bg = "#b5cbd2", fg = "#545464", bold = true })
-      vim.api.nvim_set_hl(0, "SuperKanbanListWinbarEdge", { fg = "#b5cbd2", bg = "NONE" })
+      vim.api.nvim_set_hl(0, "SuperKanbanListWinbar", { bg = "#2d4f67", fg = "#dcd7ba", bold = true })
+      vim.api.nvim_set_hl(0, "SuperKanbanListWinbarEdge", { fg = "#2d4f67", bg = "NONE" })
     end
     apply_kanban_banners()
     vim.api.nvim_create_autocmd("ColorScheme", {

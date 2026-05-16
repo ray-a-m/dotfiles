@@ -1,0 +1,25 @@
+#!/bin/bash
+# Swap swaybg ↔ mpvpaper based on whether the current wallpaper is a
+# video. Omarchy's bg-next always launches swaybg, which silently
+# fails on video files.
+
+CURRENT_BG=$(readlink -f "$HOME/.config/omarchy/current/background" 2>/dev/null)
+[[ -z $CURRENT_BG || ! -e $CURRENT_BG ]] && exit 0
+
+EXT="${CURRENT_BG##*.}"
+case "${EXT,,}" in
+  mp4|webm|mkv|mov|avi)
+    pkill -x swaybg
+    pkill -x mpvpaper
+    sleep 0.1
+    setsid uwsm-app -- mpvpaper -f -o "no-audio loop hwdec=auto panscan=1.0 speed=0.5" '*' "$CURRENT_BG" >/dev/null 2>&1 &
+    ;;
+  *)
+    if pgrep -x mpvpaper >/dev/null; then
+      pkill -x mpvpaper
+      pkill -x swaybg
+      sleep 0.1
+      setsid uwsm-app -- swaybg -i "$CURRENT_BG" -m fill >/dev/null 2>&1 &
+    fi
+    ;;
+esac
