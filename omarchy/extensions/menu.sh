@@ -3,7 +3,7 @@
 # before its dispatch, so redefining show_*_menu functions here overrides the
 # stock ones. The stock script is left untouched (survives package upgrades).
 #
-# Top-level layout: Tasks / Mail / Research / Files / Portals / System.
+# Top-level layout: File Explorer / Tasks / Mail / Research / Files / Portals / System.
 #
 # Note on back-nav: walker's `-c` flag only paints a visual mark, and walker
 # hard-sets cursor to row 0 in dmenu mode (set_autoselect(true) in upstream).
@@ -40,7 +40,8 @@ menu() {
 }
 
 show_main_menu() {
-  case $(menu "Go" "  Tasks\n󰇮  Mail\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
+  case $(menu "Go" "󰝰  File Explorer\n  Tasks\n󰇮  Mail\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
+    *Explorer*) gtk-launch yazi ;;
     *Tasks*)    gtk-launch tasks ;;
     *Mail*)     show_mail_menu ;;
     *Research*) show_research_menu ;;
@@ -60,10 +61,10 @@ show_mail_menu() {
 }
 
 show_research_menu() {
-  case $(menu "Research" "  ChatGPT\n  Claude\n  Obsidian\n  UIC Library\nZotero") in
+  case $(menu "Research" "  ChatGPT\n  Claude\n  Notes\n  UIC Library\nZotero") in
     *ChatGPT*)  gtk-launch chatgpt ;;
     *Claude*)   gtk-launch claude ;;
-    *Obsidian*) gtk-launch obsidian ;;
+    *Notes*)    gtk-launch obsidian ;;
     *Library*)  gtk-launch uic-library ;;
     *Zotero*)   gtk-launch zotero ;;
     *)          show_main_menu ;;
@@ -71,8 +72,7 @@ show_research_menu() {
 }
 
 show_files_menu() {
-  case $(menu "Files" "  File Explorer\n  Dropbox\n  Personal\n  UIC") in
-    *Explorer*) gtk-launch yazi ;;
+  case $(menu "Files" "  Dropbox\n  Personal\n  UIC") in
     *Dropbox*)  gtk-launch dropbox ;;
     *Personal*) gtk-launch personal-gdrive ;;
     *UIC*)      gtk-launch uic-gdrive ;;
