@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>start</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #fafcff; }
+  body:focus { outline: none; }
+</style>
+</head>
+<body tabindex="-1">
+<script>
+  // Pull focus off the URL bar onto the page so Vimium owns keystrokes from
+  // the first frame. Two attempts — immediate + delayed — because Firefox's
+  // startup focus assignment races with `load`. tabindex=-1 makes <body> a
+  // valid focus target without inserting it into the tab order.
+  document.body.focus();
+  window.addEventListener('load', () => document.body.focus());
+  setTimeout(() => document.body.focus(), 100);
+</script>
+</body>
+</html>

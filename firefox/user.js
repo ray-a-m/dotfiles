@@ -1,11 +1,13 @@
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 
-// Open to about:blank on startup. Vimium runs from the first page and no
-// focused search input intercepts keystrokes, so vim mode is live the moment
-// Firefox finishes launching. DuckDuckGo's centered search bar used to steal
-// focus and force a deliberate Esc/click before vim keys worked.
+// Open to a local start.html that grabs focus on load so Vimium attaches
+// immediately. about:blank by itself doesn't work — Firefox leaves the URL
+// bar focused on launch (nothing on the page to focus), so `o` lands in
+// the URL bar instead of triggering Vimium's open prompt. The HTML page
+// calls document.body.focus() in `load` + a 100ms setTimeout to pull focus
+// onto the page across Firefox's startup focus race.
 user_pref("browser.startup.page", 1);
-user_pref("browser.startup.homepage", "about:blank");
+user_pref("browser.startup.homepage", "file:///home/raymond/code/dotfiles/firefox/start.html");
 
 // New tabs land on about:blank (Vimium-enabled) instead of about:newtab
 // (privileged, Vimium can't run). With the tab strip hidden, this means
