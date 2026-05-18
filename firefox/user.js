@@ -1,8 +1,11 @@
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 
-// Open to DuckDuckGo on startup so Vimium runs from the first page.
+// Open to about:blank on startup. Vimium runs from the first page and no
+// focused search input intercepts keystrokes, so vim mode is live the moment
+// Firefox finishes launching. DuckDuckGo's centered search bar used to steal
+// focus and force a deliberate Esc/click before vim keys worked.
 user_pref("browser.startup.page", 1);
-user_pref("browser.startup.homepage", "https://duckduckgo.com");
+user_pref("browser.startup.homepage", "about:blank");
 
 // New tabs land on about:blank (Vimium-enabled) instead of about:newtab
 // (privileged, Vimium can't run). With the tab strip hidden, this means
