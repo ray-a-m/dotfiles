@@ -61,7 +61,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.linebreak = true
     vim.wo.breakindent = true
     vim.wo.fillchars = "vert: "
-    vim.wo.winhighlight = "WinSeparator:Normal"
+    vim.wo.winhighlight = "WinSeparator:Normal,Normal:ProseNormal,NormalNC:ProseNormal"
     vim.wo.statuscolumn = ""
     vim.bo[buf].textwidth = 80
     if vim.b[buf].prose_prev_formatoptions == nil then
@@ -72,6 +72,7 @@ local function apply_prose_mode(buf, event)
     vim.b[buf].snacks_indent = false
     vim.opt.showmode = false
     vim.wo.list = false
+    vim.o.showtabline = 0
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
@@ -92,6 +93,7 @@ local function apply_prose_mode(buf, event)
     vim.b[buf].snacks_indent = nil
     vim.opt.showmode = false
     vim.wo.list = true
+    vim.o.showtabline = 2
   end
 
   -- Auto-enable only. Auto-disable is unsafe: rapid filetype-driven toggling
@@ -120,6 +122,69 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
   end,
 })
 
+-- Match nvim's Normal bg to the kitty bg (sourced from the active Omarchy
+-- theme's colors.toml). Kitty's 14px window_padding_width (kitty.conf) paints
+-- the theme's `background` color, while the colorscheme (catppuccin-latte for
+-- blue-girl) ships a slightly different shade — Raymond brightened
+-- colors.toml's background for legibility at ~80% window opacity, but didn't
+-- shift the nvim colorscheme. The mismatch renders as a visible inner "frame"
+-- between the Hyprland border and the buffer content. Reading colors.toml at
+-- runtime keeps this theme-agnostic across `omarchy-theme-set` swaps.
+local function read_theme_bg()
+  local path = vim.fn.expand("~/.config/omarchy/current/theme/colors.toml")
+  local f = io.open(path, "r")
+  if not f then return nil end
+  for line in f:lines() do
+    local hex = line:match('^%s*background%s*=%s*"#?(%x+)"')
+    if hex and (#hex == 6 or #hex == 8) then
+      f:close()
+      return tonumber(hex:sub(1, 6), 16)
+    end
+  end
+  f:close()
+  return nil
+end
+-- Prose-mode foreground override. Kitty's `background_opacity` only applies
+-- to cells using the default background — since match_normal_to_theme_bg
+-- aligns nvim's Normal.bg with kitty's bg, prose text falls into that bucket
+-- and goes translucent. Over dark wallpaper patches the catppuccin-latte
+-- text fg (#4c4f69) loses contrast. The ProseNormal group below carries the
+-- same bg (so nothing else changes) but a darker fg, and apply_prose_mode
+-- maps Normal/NormalNC onto it via winhighlight for tex/markdown only.
+local function define_prose_normal(bg)
+  vim.api.nvim_set_hl(0, "ProseNormal", {
+    bg = bg,
+    -- Deep desaturated navy: slightly darker overall than catppuccin-mocha
+    -- base (#1e1e2e) for weight on dark wallpaper patches, but with more
+    -- blue saturation so it reads as colored "ink" rather than pure void.
+    fg = 0x1c2238,
+  })
+end
+local function match_normal_to_theme_bg()
+  vim.schedule(function()
+    local bg = read_theme_bg()
+    if not bg then return end
+    local cur = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+    cur.bg = bg
+    vim.api.nvim_set_hl(0, "Normal", cur)
+    define_prose_normal(bg)
+    -- Mirror onto NormalNC so unfocused windows don't repaint with a darker
+    -- shade. catppuccin-latte (and most schemes) ship NormalNC slightly darker
+    -- to highlight the active window — but with the explorer/aerial floats
+    -- already signaling focus, the bg shift on the document is just visual
+    -- noise. Keep both identical.
+    local nc = vim.api.nvim_get_hl(0, { name = "NormalNC", link = false })
+    nc.bg = bg
+    vim.api.nvim_set_hl(0, "NormalNC", nc)
+  end)
+end
+vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter" }, {
+  group = vim.api.nvim_create_augroup("match_normal_to_theme_bg", { clear = true }),
+  pattern = "*",
+  callback = match_normal_to_theme_bg,
+})
+match_normal_to_theme_bg()
+
 -- Blend the cmdline row into the document background so it doesn't render as
 -- a dark strip below the statusline. Reads Normal's bg/fg at runtime, so it
 -- adapts to whichever colorscheme Omarchy is driving.
@@ -144,6 +209,29 @@ vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter", "User" }, {
   callback = blend_cmdline_hl,
 })
 blend_cmdline_hl()
+
+-- Blend snacks picker windows into Normal. Snacks's `SnacksPicker` group links
+-- to NormalFloat, which on Omarchy-driven themes is a few shades darker than
+-- Normal — making picker windows draw as visible panels instead of transparent
+-- overlays on the NoNeckPain pad. SnacksPickerInput/List/Box all link back to
+-- SnacksPicker (per snacks/picker/util/highlight.lua:winhl), so one override
+-- cascades to every picker chrome window.
+--
+-- Cannot be set via the source's `win.{input,list}.wo.winhighlight`: snacks's
+-- `Snacks.win.resolve(user, defaults)` (win.lua:223) has defaults override user
+-- when winhighlight conflicts, so the picker rebuilds its winhighlight from the
+-- highlight-group names. Re-linking the names is the only path that works.
+local function blend_snacks_picker_hl()
+  vim.schedule(function()
+    vim.api.nvim_set_hl(0, "SnacksPicker", { link = "Normal" })
+  end)
+end
+vim.api.nvim_create_autocmd({ "ColorScheme", "VimEnter" }, {
+  group = vim.api.nvim_create_augroup("blend_snacks_picker_hl", { clear = true }),
+  pattern = "*",
+  callback = blend_snacks_picker_hl,
+})
+blend_snacks_picker_hl()
 
 -- autocmds.lua loads on VeryLazy, after FileType/BufEnter have already fired
 -- for a file passed on the command line. Run once for the current buffer so
@@ -239,6 +327,38 @@ vim.api.nvim_create_autocmd("WinEnter", {
     if vim.bo.filetype == "aerial" then
       kill_aerial_close_autocmds()
     end
+  end,
+})
+
+-- Aerial buffer-local nav keys: <C-j> drops into the explorer below, <C-l>
+-- jumps to the main document. Buffer-local so they don't bleed elsewhere.
+-- <C-l> needs an explicit binding because vim's wincmd-l from aerial's float
+-- routes through the NoNeckPain left pad first, costing two presses.
+local function focus_main_doc()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    local cfg = vim.api.nvim_win_get_config(win)
+    if cfg.relative == "" and vim.bo[buf].filetype ~= "no-neck-pain" then
+      vim.api.nvim_set_current_win(win)
+      return
+    end
+  end
+end
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "aerial",
+  group = vim.api.nvim_create_augroup("aerial_nav_keys", { clear = true }),
+  callback = function(args)
+    vim.keymap.set("n", "<C-j>", function()
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "snacks_picker_list" then
+          vim.api.nvim_set_current_win(win)
+          return
+        end
+      end
+      pcall(vim.cmd, "wincmd j")
+    end, { buffer = args.buf, desc = "Focus snacks explorer below" })
+    vim.keymap.set("n", "<C-l>", focus_main_doc,
+      { buffer = args.buf, desc = "Focus main document" })
   end,
 })
 
