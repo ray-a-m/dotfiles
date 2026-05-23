@@ -60,7 +60,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = true
     vim.wo.linebreak = true
     vim.wo.breakindent = true
-    vim.wo.fillchars = "vert: "
+    vim.wo.fillchars = "vert: ,eob: "
     vim.wo.winhighlight = "WinSeparator:Normal,Normal:ProseNormal,NormalNC:ProseNormal"
     vim.wo.statuscolumn = ""
     vim.bo[buf].textwidth = 80
@@ -154,10 +154,9 @@ end
 local function define_prose_normal(bg)
   vim.api.nvim_set_hl(0, "ProseNormal", {
     bg = bg,
-    -- Deep desaturated navy: slightly darker overall than catppuccin-mocha
-    -- base (#1e1e2e) for weight on dark wallpaper patches, but with more
-    -- blue saturation so it reads as colored "ink" rather than pure void.
-    fg = 0x1c2238,
+    -- Near-black with a faint navy cast — heavier than catppuccin-mocha base
+    -- so prose reads as ink, not text. Saturation kept to a whisper.
+    fg = 0x0a0d18,
   })
 end
 local function match_normal_to_theme_bg()
@@ -424,4 +423,31 @@ clear_aerial_line_hl()
 vim.api.nvim_create_autocmd({ "CursorMoved", "CursorHold", "BufEnter" }, {
   group = vim.api.nvim_create_augroup("aerial_marker_refresh", { clear = true }),
   callback = refresh_aerial_marker,
+})
+
+-- Aerial float geometry is computed in plugins/aerial.lua's `float.override`
+-- callback, which only runs at open time. On window resize NoNeckPain rebalances
+-- its side pads correctly but the aerial float keeps its old width — the result
+-- is a TOC that doesn't track the new column count, shifting the prose buffer
+-- visually relative to it. Close + reopen so the override re-runs with fresh
+-- vim.o.columns. Deferred so NoNeckPain's own VimResized handler can finish
+-- rebalancing first (aerial reads NNP's pad width to derive its own).
+vim.api.nvim_create_autocmd("VimResized", {
+  group = vim.api.nvim_create_augroup("aerial_resize", { clear = true }),
+  callback = function()
+    local aerial_open = false
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
+        aerial_open = true
+        break
+      end
+    end
+    if not aerial_open then return end
+    pcall(vim.cmd, "AerialClose")
+    vim.defer_fn(function()
+      if prose_filetypes[vim.bo.filetype] then
+        pcall(vim.cmd, "AerialOpen")
+      end
+    end, 50)
+  end,
 })
