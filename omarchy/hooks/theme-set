@@ -6,19 +6,41 @@
 CURRENT_BG=$(readlink -f "$HOME/.config/omarchy/current/background" 2>/dev/null)
 [[ -z $CURRENT_BG || ! -e $CURRENT_BG ]] && exit 0
 
+# Kill by exact name and wait until it's actually gone (up to ~3s).
+kill_and_wait() {
+  local name=$1
+  for _ in $(seq 1 30); do
+    pgrep -x "$name" >/dev/null || return 0
+    pkill -x "$name" 2>/dev/null
+    sleep 0.1
+  done
+}
+
+# Reap any swaybg for the next N seconds. Guards both directions of the
+# login race: upstream autostart may spawn swaybg *before* or *after* this
+# hook fires (cold-boot ordering jitters), and either way swaybg's empty
+# surface ends up on top of mpvpaper.
+reap_swaybg_window() {
+  local seconds=${1:-8}
+  ( for _ in $(seq 1 $((seconds * 10))); do
+      pkill -x swaybg 2>/dev/null
+      sleep 0.1
+    done ) >/dev/null 2>&1 &
+  disown
+}
+
 EXT="${CURRENT_BG##*.}"
 case "${EXT,,}" in
   mp4|webm|mkv|mov|avi)
-    pkill -x swaybg
-    pkill -x mpvpaper
-    sleep 0.1
+    kill_and_wait swaybg
+    kill_and_wait mpvpaper
+    reap_swaybg_window 8
     setsid uwsm-app -- mpvpaper -f -o "no-audio loop hwdec=auto panscan=1.0 speed=0.5" '*' "$CURRENT_BG" >/dev/null 2>&1 &
     ;;
   *)
     if pgrep -x mpvpaper >/dev/null; then
-      pkill -x mpvpaper
-      pkill -x swaybg
-      sleep 0.1
+      kill_and_wait mpvpaper
+      kill_and_wait swaybg
       setsid uwsm-app -- swaybg -i "$CURRENT_BG" -m fill >/dev/null 2>&1 &
     fi
     ;;
