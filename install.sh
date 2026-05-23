@@ -11,7 +11,7 @@ install_macos_deps() {
         exit 1
     fi
 
-    brew install neovim texlab node tree-sitter-cli zoxide gh
+    brew install neovim texlab node tree-sitter-cli zoxide gh zsh-autosuggestions zsh-syntax-highlighting
     brew install --cask skim kitty firefox
     brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font font-monaspace-nerd-font
 
@@ -44,20 +44,21 @@ install_linux_deps() {
     case "$pm" in
         apt)
             sudo apt-get update
-            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty firefox-esr
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty firefox-esr zsh zsh-autosuggestions zsh-syntax-highlighting
             if ! command -v gh &>/dev/null; then
                 echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
             fi
             ;;
         dnf)
-            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty firefox
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty firefox zsh zsh-autosuggestions zsh-syntax-highlighting
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player yazi jq quickshell
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player yazi jq quickshell \
+                zsh zsh-autosuggestions zsh-syntax-highlighting
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox zsh zsh-autosuggestions zsh-syntax-highlighting
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
@@ -422,14 +423,27 @@ else
     echo "No .sty files in latex/; skipping."
 fi
 
-echo "==> Wiring shell additions into ~/.zshrc"
-SHELL_SOURCE_LINE='source "$HOME/code/dotfiles/shell/zshrc-additions.sh"'
-touch ~/.zshrc
-if ! grep -Fxq "$SHELL_SOURCE_LINE" ~/.zshrc; then
-    echo "$SHELL_SOURCE_LINE" >> ~/.zshrc
-    echo "Added shell additions line to ~/.zshrc"
-else
-    echo "Shell additions line already present in ~/.zshrc"
+echo "==> Wiring shell additions into ~/.zshrc and ~/.bashrc"
+SHELL_SOURCE_LINE='source "$HOME/code/dotfiles/shell/rc-additions.sh"'
+for rc in ~/.zshrc ~/.bashrc; do
+    touch "$rc"
+    if ! grep -Fxq "$SHELL_SOURCE_LINE" "$rc"; then
+        echo "$SHELL_SOURCE_LINE" >> "$rc"
+        echo "Added shell additions line to $rc"
+    else
+        echo "Shell additions line already present in $rc"
+    fi
+done
+
+# Set zsh as login shell on Linux if it isn't already. macOS already defaults
+# to zsh since Catalina, so we skip the chsh there.
+if [ "$OS" = "Linux" ] && command -v zsh >/dev/null; then
+    ZSH_PATH="$(command -v zsh)"
+    if [ "${SHELL:-}" != "$ZSH_PATH" ]; then
+        echo "==> Setting zsh as login shell (chsh -s $ZSH_PATH)"
+        echo "    You will be prompted for your password; takes effect on next login."
+        chsh -s "$ZSH_PATH" || echo "    chsh failed; run it manually."
+    fi
 fi
 
 echo "==> Done. Launch nvim to finish plugin install."
