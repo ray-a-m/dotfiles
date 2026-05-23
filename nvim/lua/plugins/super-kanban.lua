@@ -18,16 +18,20 @@ return {
     -- Navigate the board with bare hjkl (defaults are <C-hjkl>).
     -- Trade-off: lose hjkl as in-card cursor motion in normal mode; cards are
     -- single-line titles so it doesn't bite. Multi-line note popup (<CR> to
-    -- open) keeps normal vim motion. <A-hjkl> still moves cards.
+    -- open) keeps normal vim motion. <C-hjkl> moves cards (was <A-hjkl>).
     mappings = {
-      ["<C-h>"] = false,
-      ["<C-j>"] = false,
-      ["<C-k>"] = false,
-      ["<C-l>"] = false,
+      ["<A-h>"] = false,
+      ["<A-j>"] = false,
+      ["<A-k>"] = false,
+      ["<A-l>"] = false,
       ["h"] = "jump_left",
       ["j"] = "jump_down",
       ["k"] = "jump_up",
       ["l"] = "jump_right",
+      ["<C-h>"] = "move_left",
+      ["<C-j>"] = "move_down",
+      ["<C-k>"] = "move_up",
+      ["<C-l>"] = "move_right",
       ["<C-f>"] = "create_card_after",
       ["<C-r>"] = "rename_list",
       -- <C-d> archives rather than toggling a checkbox: marking done means
