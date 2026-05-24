@@ -141,7 +141,7 @@ PanelWindow {
                         onEntered: extraLabel.color = panel.paletteAccent
                         onExited: extraLabel.color = panel.paletteForeground
                         onClicked: {
-                            Hyprland.dispatch("exec, " + modelData.cmd)
+                            Hyprland.dispatch("exec " + modelData.cmd)
                             panel.expanded = false
                         }
                     }

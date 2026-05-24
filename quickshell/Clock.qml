@@ -176,7 +176,7 @@ PanelWindow {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     acceptedButtons: Qt.RightButton
-                    onClicked: Hyprland.dispatch("exec, omarchy-launch-floating-terminal-with-presentation omarchy-tz-select")
+                    onClicked: Hyprland.dispatch("exec omarchy-launch-floating-terminal-with-presentation omarchy-tz-select")
                 }
             }
 
@@ -193,7 +193,7 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Hyprland.dispatch("exec, omarchy-capture-screenrecording")
+                    onClicked: Hyprland.dispatch("exec omarchy-capture-screenrecording")
                 }
             }
 
@@ -210,7 +210,7 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Hyprland.dispatch("exec, omarchy-toggle-idle")
+                    onClicked: Hyprland.dispatch("exec omarchy-toggle-idle")
                 }
             }
 
@@ -227,7 +227,7 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Hyprland.dispatch("exec, omarchy-toggle-notification-silencing")
+                    onClicked: Hyprland.dispatch("exec omarchy-toggle-notification-silencing")
                 }
             }
 
@@ -250,7 +250,7 @@ PanelWindow {
                     hoverEnabled: true
                     onEntered: updateIcon.color = panel.paletteAccent
                     onExited: updateIcon.color = panel.paletteForeground
-                    onClicked: Hyprland.dispatch("exec, omarchy-launch-floating-terminal-with-presentation omarchy-update")
+                    onClicked: Hyprland.dispatch("exec omarchy-launch-floating-terminal-with-presentation omarchy-update")
                 }
             }
         }
