@@ -235,7 +235,10 @@ PanelWindow {
             Text {
                 id: updateIcon
                 visible: panel.updateAvailable
-                text: ""
+                // U+F021 fa-sync. Use fromCodePoint because PUA literal chars
+                // get silently stripped by some source-write paths — the same
+                // hazard the indicators above already guard against.
+                text: String.fromCodePoint(0xF021)
                 color: panel.paletteForeground
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 11
