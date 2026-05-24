@@ -23,4 +23,24 @@ return {
     "MeanderingProgrammer/render-markdown.nvim",
     enabled = false,
   },
+  -- Inline LaTeX math rendering for markdown via Kitty's graphics protocol.
+  -- Scope is just math expressions (not headings/codeblocks), so it's
+  -- compatible with prose mode's "raw text over wallpaper" feel — only the
+  -- math gets rasterized, the prose stays as plain glyphs. Requires kitty
+  -- >= 0.28, nodejs, npm, imagemagick, and rsvg-convert (librsvg).
+  --
+  -- `foreground` is pinned to an explicit hex instead of mdmath's default
+  -- 'Normal' lookup: with ft-lazy-loading, mdmath's setup() fires at
+  -- VimEnter before catppuccin-latte's Normal.fg has settled, and the
+  -- internal `hl_as_hex('Normal')` resolves to nil → fatal validate crash.
+  -- The pinned color matches ProseNormal.fg (autocmds.lua) so equation
+  -- images blend with the surrounding ink.
+  {
+    "Thiago4532/mdmath.nvim",
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    ft = "markdown",
+    opts = {
+      foreground = "#000000",
+    },
+  },
 }

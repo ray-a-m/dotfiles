@@ -51,3 +51,8 @@ local function nav_right()
   vim.api.nvim_set_current_win(target_win)
 end
 vim.keymap.set("n", "<C-l>", nav_right, { desc = "Window right (skip NNP pad)" })
+
+-- Close current tab. Extends LazyVim's <leader><tab>… subgroup (which also
+-- ships `d` for delete-tab, `n` for new, `o` for close-others) with `c` so
+-- close-tab discovers via which-key alongside its siblings.
+vim.keymap.set("n", "<leader><tab>c", "<cmd>tabclose<cr>", { desc = "Close Tab" })

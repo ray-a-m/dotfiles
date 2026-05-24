@@ -38,3 +38,14 @@ html[chrome-shown] #navigator-toolbox,
 #sidebar-main {
   visibility: collapse !important;
 }
+
+/* Chrome surface: white when revealed via Ctrl+;. Without these rules the
+ * toolbox inherits the system Firefox theme (dark on most desktops), which
+ * makes the briefly-summoned URL bar feel like a foreign panel. Painting it
+ * white keeps the editor-like feel of the rest of the browser. */
+:root[chrome-shown] #navigator-toolbox,
+:root[chrome-shown] #TabsToolbar,
+:root[chrome-shown] #nav-bar,
+:root[chrome-shown] #PersonalToolbar {
+  background-color: white !important;
+}

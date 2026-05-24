@@ -72,7 +72,9 @@ local function apply_prose_mode(buf, event)
     vim.b[buf].snacks_indent = false
     vim.opt.showmode = false
     vim.wo.list = false
-    vim.o.showtabline = 0
+    -- 1 (not 0) so prose mode still surfaces the tab strip when >1 tab is open.
+    -- A single-tab prose buffer stays bar-free; opening a second tab reveals titles.
+    vim.o.showtabline = 1
   else
     vim.wo.number = true
     vim.wo.relativenumber = true
@@ -154,9 +156,10 @@ end
 local function define_prose_normal(bg)
   vim.api.nvim_set_hl(0, "ProseNormal", {
     bg = bg,
-    -- Near-black with a faint navy cast — heavier than catppuccin-mocha base
-    -- so prose reads as ink, not text. Saturation kept to a whisper.
-    fg = 0x0a0d18,
+    -- Pure black: prose reads as ink on page. Catppuccin-latte's default
+    -- `#4c4f69` is a bluish-gray that goes washy over translucent bg patches;
+    -- the prior `#0a0d18` was a half-step that still read as dark gray.
+    fg = 0x000000,
   })
 end
 local function match_normal_to_theme_bg()
