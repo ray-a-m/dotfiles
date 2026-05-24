@@ -139,8 +139,12 @@ done
 # Per-file symlinks for Omarchy app configs. Per-file (rather than dir-level)
 # because we want machine-specific files like ~/.config/hypr/monitors.conf to
 # stay locally owned, and we want Omarchy to keep adding new files alongside ours.
-echo "==> Symlinking Omarchy app configs (hypr, waybar, walker, swayosd)"
-for app in hypr waybar walker swayosd; do
+# waybar dropped 2026-05-24: the Quickshell shell at ~/.config/quickshell/
+# replaces it entirely. Disabling is via ~/.local/state/omarchy/toggles/waybar-off
+# (created by this script below); the upstream omarchy autostart sees that
+# flag and skips spawning waybar.
+echo "==> Symlinking Omarchy app configs (hypr, walker, swayosd)"
+for app in hypr walker swayosd; do
     src_dir="$DOTFILES_DIR/$app"
     dst_dir="$HOME/.config/$app"
     [ -d "$src_dir" ] || continue
@@ -156,6 +160,14 @@ for app in hypr waybar walker swayosd; do
         ln -sfn "$src" "$dst"
     done
 done
+
+echo "==> Suppressing waybar autostart (Quickshell takes over)"
+# Omarchy's default ~/.local/share/omarchy/default/hypr/autostart.conf only
+# spawns waybar when this flag file is absent. We migrated to Quickshell
+# 2026-05-24 so flip the toggle on; the file's existence is all that's
+# checked (contents irrelevant).
+mkdir -p ~/.local/state/omarchy/toggles
+touch ~/.local/state/omarchy/toggles/waybar-off
 
 echo "==> Ensuring per-machine Hyprland override file exists"
 touch ~/.config/hypr/local.conf
