@@ -4,6 +4,11 @@ alias wip="cd ~/scholarship/research-wip"
 alias pub="cd ~/scholarship/research-public"
 alias dots="cd ~/code/dotfiles"
 
+# Restart the wallpaper (mpvpaper for video themes, swaybg otherwise) by
+# re-running the omarchy theme-set hook. Use when mpvpaper crashes and the
+# screen goes blank — no respawn watchdog is in place by design.
+alias wallpaper="$HOME/.config/omarchy/hooks/theme-set"
+
 # One-shot: stage all, commit with "." message, and push
 save() {
   git add -A && git commit -m "." && git push
