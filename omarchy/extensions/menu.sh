@@ -3,7 +3,7 @@
 # before its dispatch, so redefining show_*_menu functions here overrides the
 # stock ones. The stock script is left untouched (survives package upgrades).
 #
-# Top-level layout: File Explorer / Tasks / Mail / Research / Files / Portals / System.
+# Top-level layout: File Explorer / Tasks / Mail / Notes / Research / Files / Portals / System.
 #
 # Note on back-nav: walker's `-c` flag only paints a visual mark, and walker
 # hard-sets cursor to row 0 in dmenu mode (set_autoselect(true) in upstream).
@@ -40,10 +40,11 @@ menu() {
 }
 
 show_main_menu() {
-  case $(menu "Go" "󰝰  File Explorer\n  Tasks\n󰇮  Mail\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
+  case $(menu "Go" "󰝰  File Explorer\n  Tasks\n󰇮  Mail\n󰏫  Notes\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
     *Explorer*) gtk-launch yazi ;;
     *Tasks*)    gtk-launch tasks ;;
     *Mail*)     show_mail_menu ;;
+    *Notes*)    gtk-launch obsidian ;;
     *Research*) show_research_menu ;;
     *Files*)    show_files_menu ;;
     *Portals*)  show_portals_menu ;;
@@ -61,10 +62,9 @@ show_mail_menu() {
 }
 
 show_research_menu() {
-  case $(menu "Research" "  ChatGPT\n  Claude\n  Notes\n  UIC Library\nZotero") in
+  case $(menu "Research" "  ChatGPT\n  Claude\n  UIC Library\nZotero") in
     *ChatGPT*)  gtk-launch chatgpt ;;
     *Claude*)   gtk-launch claude ;;
-    *Notes*)    gtk-launch obsidian ;;
     *Library*)  gtk-launch uic-library ;;
     *Zotero*)   gtk-launch zotero ;;
     *)          show_main_menu ;;
