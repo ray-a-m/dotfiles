@@ -24,6 +24,19 @@ LID_FILE="/proc/acpi/button/lid/LID/state"
 
 log() { printf '[monitor-watcher] %s\n' "$*" >&2; }
 
+# mpvpaper occasionally crashes during dock transitions when wl_outputs
+# churn (observed 2026-06-10: SIGABRT in libavcodec/libmpv ~1s after a
+# burst of monitoradded/removed events). Heal by re-firing the theme-set
+# hook only if BOTH daemons are dead — normal events where mpvpaper
+# survives are no-ops, so this doesn't add churn.
+heal_wallpaper() {
+    sleep 1  # let output topology settle
+    pgrep -x mpvpaper >/dev/null && return
+    pgrep -x swaybg   >/dev/null && return
+    log "wallpaper daemons dead post-event; re-firing theme-set hook"
+    "$HOME/.config/omarchy/hooks/theme-set"
+}
+
 reevaluate() {
     if grep -q closed "$LID_FILE"; then
         if omarchy-hw-external-monitors; then
@@ -69,7 +82,7 @@ reevaluate
 
 socat -U - "UNIX-CONNECT:$sock" | while IFS= read -r line; do
     case "$line" in
-        monitoradded*|monitorremoved*) reevaluate ;;
+        monitoradded*|monitorremoved*) reevaluate; heal_wallpaper ;;
     esac
 done
 
