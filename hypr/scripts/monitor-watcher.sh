@@ -37,6 +37,26 @@ heal_wallpaper() {
     "$HOME/.config/omarchy/hooks/theme-set"
 }
 
+# Quickshell sometimes survives a dock transition as a process but loses
+# its layer surfaces — pills disappear even though the process is alive
+# (observed 2026-06-10: bar pills gone after docked→undocked, fixed by
+# restart). Check for any quickshell-* layer surface; if none, restart.
+# Normal events where the surfaces survive are no-ops.
+heal_quickshell() {
+    # sleep already absorbed by heal_wallpaper above
+    if hyprctl layers 2>/dev/null | grep -q 'namespace: quickshell-'; then
+        return
+    fi
+    log "quickshell has no layer surfaces post-event; restarting"
+    pkill -x quickshell 2>/dev/null
+    for _ in $(seq 1 20); do
+        pgrep -x quickshell >/dev/null || break
+        sleep 0.1
+    done
+    setsid uwsm-app -- quickshell -d -n >/dev/null 2>&1 &
+    disown
+}
+
 reevaluate() {
     if grep -q closed "$LID_FILE"; then
         if omarchy-hw-external-monitors; then
@@ -82,7 +102,7 @@ reevaluate
 
 socat -U - "UNIX-CONNECT:$sock" | while IFS= read -r line; do
     case "$line" in
-        monitoradded*|monitorremoved*) reevaluate; heal_wallpaper ;;
+        monitoradded*|monitorremoved*) reevaluate; heal_wallpaper; heal_quickshell ;;
     esac
 done
 
