@@ -1,51 +1,35 @@
 /* No @namespace declaration: modern Firefox chrome is HTML
  * (the chrome <window> root was migrated to <html> around Firefox 71).
  * Declaring the XUL namespace as default would scope unprefixed
- * selectors like [chrome-shown] to XUL elements only, which means
+ * selectors like [chrome-hidden] to XUL elements only, which means
  * they wouldn't match the HTML root where the toggle attribute lives.
  *
- * Hide the top chrome (tabs strip + URL bar + bookmarks toolbar) by
- * margin-pushing #navigator-toolbox above the visible window. Reveal
- * via Ctrl+; (Semicolon), which the autoconfig-loaded firefox.cfg
- * toggles by setting the [chrome-shown] attribute on :root.
+ * Default state: top chrome (tabs strip + URL bar + bookmarks toolbar)
+ * is visible. Ctrl+; (Semicolon) toggles the [chrome-hidden] attribute
+ * on :root, which margin-pushes #navigator-toolbox above the visible
+ * window. The autoconfig-loaded firefox.cfg owns the keybinding.
  *
  * Stable assumptions:
- *   - This rule depends on /usr/lib/firefox/firefox.cfg being deployed
+ *   - The toggle depends on /usr/lib/firefox/firefox.cfg being deployed
  *     and the autoconfig sandbox setup being active. Without those, the
- *     attribute is never set and the chrome stays hidden permanently
- *     — at which point fall back to running install.sh, which redeploys
- *     the system files. The pacman hook automates this after firefox
- *     package upgrades.
+ *     attribute is never set — but since the default is now "shown,"
+ *     a broken autoconfig only loses the hide-toggle, not the chrome
+ *     itself. The pacman hook redeploys after firefox package upgrades.
  *   - margin-top is the only property reliably honored on chrome XUL
  *     widgets to push them out of layout. position:fixed and
  *     visibility:collapse have failure modes we found the hard way.
  *
- * Sidebar: revamp icon bar is disabled via user.js. Ctrl+B / Ctrl+H
- * toggle the legacy #sidebar-box on demand.
+ * Vertical tabs live in the sidebar (#sidebar-main), enabled via
+ * sidebar.revamp + sidebar.verticalTabs in user.js. The Ctrl+; toggle
+ * only affects the top chrome — the sidebar stays visible regardless.
  */
 
 #navigator-toolbox {
-  margin-top: -100px;
   transition: margin-top 0.15s ease;
 }
 
-:root[chrome-shown] #navigator-toolbox,
-html[chrome-shown] #navigator-toolbox,
-[chrome-shown] #navigator-toolbox {
-  margin-top: 0;
-}
-
-#sidebar-main {
-  visibility: collapse !important;
-}
-
-/* Chrome surface: white when revealed via Ctrl+;. Without these rules the
- * toolbox inherits the system Firefox theme (dark on most desktops), which
- * makes the briefly-summoned URL bar feel like a foreign panel. Painting it
- * white keeps the editor-like feel of the rest of the browser. */
-:root[chrome-shown] #navigator-toolbox,
-:root[chrome-shown] #TabsToolbar,
-:root[chrome-shown] #nav-bar,
-:root[chrome-shown] #PersonalToolbar {
-  background-color: white !important;
+:root[chrome-hidden] #navigator-toolbox,
+html[chrome-hidden] #navigator-toolbox,
+[chrome-hidden] #navigator-toolbox {
+  margin-top: -100px;
 }
