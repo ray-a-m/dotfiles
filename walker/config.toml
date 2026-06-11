@@ -10,16 +10,15 @@ hide_action_hints = true                                                    # gl
 
 [keybinds]
 quick_activate = []
-# Vim-style global navigation: j/k move down/up. Walker has no per-
-# invocation keybind config, so these bind globally — typing 'j' or
-# 'k' as the first char in search inputs (apps, emoji, clipboard)
-# triggers nav instead of typing. h was previously bound to close so
-# it doubled as "back a layer" in nested omarchy-menu, but it was
-# removed because typing 'h' as the first search char (e.g. 'wh' for
-# WhatsApp) got swallowed.
+# Vim-style global navigation: j/k move down/up, h closes walker (= "go
+# back" in nested omarchy-menu submenus, since the menu script reopens
+# the parent on walker exit). Walker has no per-invocation keybind
+# config, so these bind globally — typing 'h', 'j', or 'k' as the first
+# char in search inputs (apps, emoji, clipboard) triggers nav/close
+# instead of typing. Trade chosen for omarchy-menu UX.
 next = ["ctrl j", "Down", "j"]
 previous = ["ctrl k", "Up", "k"]
-close = ["Escape"]
+close = ["Escape", "h"]
 
 [columns]
 symbols = 1 # providers to be queried by default
@@ -58,7 +57,8 @@ provider = "clipboard"
 # Override the dmenu provider's activate key. omarchy-menu invokes
 # `walker --dmenu`, so this binds `l` (vim "go right/forward") to
 # confirm the highlighted entry. Other providers (apps, emoji, calc)
-# keep Return.
+# keep Return. Pair with `h` in [keybinds].close above for the vim
+# left-to-go-back gesture.
 [providers.actions]
 dmenu = [{ action = "select", default = true, bind = "l" }]
 
