@@ -9,9 +9,9 @@ user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("browser.startup.page", 1);
 user_pref("browser.startup.homepage", "https://arxiv.org/list/physics.hist-ph/recent");
 
-// New tabs land on about:blank (Vimium-enabled) instead of about:newtab
-// (privileged, Vimium can't run). With the tab strip hidden, this means
-// Ctrl+T → blank → `o` to type a URL.
+// New tabs land on about:blank (Vimium-enabled) instead of about:newtab,
+// which is a privileged page where Vimium can't run. Flow: Ctrl+T →
+// blank → `o` to type a URL.
 user_pref("browser.newtabpage.enabled", false);
 
 // Use the revamped sidebar with vertical tabs (Firefox 136+). Tabs
