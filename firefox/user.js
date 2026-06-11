@@ -1,13 +1,13 @@
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 
-// Open to a local start.html that grabs focus on load so Vimium attaches
-// immediately. about:blank by itself doesn't work — Firefox leaves the URL
-// bar focused on launch (nothing on the page to focus), so `o` lands in
-// the URL bar instead of triggering Vimium's open prompt. The HTML page
-// calls document.body.focus() in `load` + a 100ms setTimeout to pull focus
-// onto the page across Firefox's startup focus race.
+// Open to the arXiv physics.hist-ph listing — daily-rotating preprints
+// in philosophy of physics, which doubles as a research-current morning
+// page. Real page content also dodges the Vimium focus race that
+// about:blank trips (the URL bar holds focus when there's no page
+// content, so `o` lands in the URL bar instead of opening Vimium's
+// prompt).
 user_pref("browser.startup.page", 1);
-user_pref("browser.startup.homepage", "file:///home/raymond/code/dotfiles/firefox/start.html");
+user_pref("browser.startup.homepage", "https://arxiv.org/list/physics.hist-ph/recent");
 
 // New tabs land on about:blank (Vimium-enabled) instead of about:newtab
 // (privileged, Vimium can't run). With the tab strip hidden, this means
