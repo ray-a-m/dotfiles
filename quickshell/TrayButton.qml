@@ -13,22 +13,28 @@
 // to the right edge.
 //
 // v4 scope:
-//   - Static icons, no live state (battery %, signal, volume).
-//     Live state is the next iteration once placement is stable.
+//   - Most icons stay static (signal, volume) — wire up live state as
+//     each one gets requested.
+//   - Battery has live state: glyph tracks discharge bracket / switches
+//     to bolt while charging; an inline "NN%" label sits next to it so
+//     the level is readable at a glance without hover or click.
+//     Right-click pops a `notify-send` with the full
+//     `omarchy-battery-status` line (time to empty, draw, capacity Wh).
 //   - SNI system tray still deferred (separate protocol binding).
 //
-// Glyphs (JetBrainsMono Nerd Font, all in the Font Awesome BMP range
-// so a single `\uXXXX` escape suffices — no surrogate pair handling):
+// Glyphs (JetBrainsMono Nerd Font, all in the Font Awesome BMP range):
 //   bluetooth   U+F293 fa-bluetooth-b
 //   wifi        U+F1EB fa-wifi
 //   audio       U+F028 fa-volume-up
 //   cpu         U+F2DB fa-microchip
-//   battery     U+F240 fa-battery-full
+//   battery     U+F240..U+F244 fa-battery-(full|three-quarters|half|quarter|empty)
+//   charging    U+F0E7 fa-bolt
 //   gear        U+F013 fa-cog
 //
-// Escapes (not literal glyphs) because the source travels through tools
-// that strip out non-ASCII control-plane chars; the runtime expansion
-// is identical and the font lookup is unchanged.
+// All glyphs go through String.fromCodePoint rather than embedding the
+// literal character. Mirrors the Clock.qml convention (its comment
+// explains the source-pipeline stripping hazard that bit BMP glyphs
+// previously) and means this file is ASCII-clean end to end.
 
 import QtQuick
 import Quickshell
@@ -45,6 +51,63 @@ PanelWindow {
     property color paletteForeground: "#F0D29F"
 
     property bool expanded: false
+
+    // Live battery state. -1 sentinel = "not yet read"; the glyph falls
+    // back to fa-battery-full and the percent label suppresses itself.
+    property int batteryPercent: -1
+    property bool batteryCharging: false
+
+    // sysfs read avoids a process spawn on the hot path. blockLoading
+    // makes reload() synchronous so text() returns the fresh value
+    // inside the timer tick. The files are 3-12 bytes each.
+    FileView {
+        id: batteryCapacityFile
+        path: "/sys/class/power_supply/BAT0/capacity"
+        blockLoading: true
+        printErrors: false
+    }
+    FileView {
+        id: batteryStatusFile
+        path: "/sys/class/power_supply/BAT0/status"
+        blockLoading: true
+        printErrors: false
+    }
+    Timer {
+        interval: 30000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            batteryCapacityFile.reload()
+            batteryStatusFile.reload()
+            const c = batteryCapacityFile.text()
+            const s = batteryStatusFile.text()
+            if (c) {
+                const p = parseInt(c.trim())
+                if (!isNaN(p)) panel.batteryPercent = p
+            }
+            if (s) {
+                const t = s.trim().toLowerCase()
+                panel.batteryCharging = (t === "charging" || t === "full")
+            }
+        }
+    }
+
+    // Font Awesome battery glyph by current state. Bolt while charging;
+    // otherwise a five-bracket discharge scale.
+    function batteryGlyph() {
+        if (panel.batteryCharging) return String.fromCodePoint(0xF0E7)  // bolt
+        const p = panel.batteryPercent
+        if (p < 0)   return String.fromCodePoint(0xF240)  // unknown -> full
+        if (p >= 88) return String.fromCodePoint(0xF240)  // full
+        if (p >= 63) return String.fromCodePoint(0xF241)  // three-quarters
+        if (p >= 38) return String.fromCodePoint(0xF242)  // half
+        if (p >= 11) return String.fromCodePoint(0xF243)  // quarter
+        return String.fromCodePoint(0xF244)               // empty
+    }
+    function batteryLabel() {
+        return panel.batteryPercent >= 0 ? panel.batteryPercent + "%" : ""
+    }
 
     FileView {
         id: paletteFile
@@ -112,37 +175,67 @@ PanelWindow {
             // The Repeater drives off an empty list when collapsed, so the
             // Row's implicit width drops to just the cog cell — which is
             // what lets the panel collapse cleanly.
+            //
+            // `label` adds an inline text fragment after the glyph
+            // (battery uses it for "NN%"); `rclick` is an optional shell
+            // command bound to right-click. Empty values are skipped by
+            // the delegate.
             Repeater {
                 model: panel.expanded ? [
-                    { glyph: "", cmd: "omarchy-launch-bluetooth" },
-                    { glyph: "", cmd: "omarchy-launch-wifi" },
-                    { glyph: "", cmd: "omarchy-launch-audio" },
-                    { glyph: "", cmd: "omarchy-launch-or-focus-tui btop" },
-                    { glyph: "", cmd: "omarchy-menu power" },
+                    { glyph: String.fromCodePoint(0xF293), label: "", cmd: "omarchy-launch-bluetooth", rclick: "" },
+                    { glyph: String.fromCodePoint(0xF1EB), label: "", cmd: "omarchy-launch-wifi", rclick: "" },
+                    { glyph: String.fromCodePoint(0xF028), label: "", cmd: "omarchy-launch-audio", rclick: "" },
+                    { glyph: String.fromCodePoint(0xF2DB), label: "", cmd: "omarchy-launch-or-focus-tui btop", rclick: "" },
+                    { glyph: panel.batteryGlyph(), label: panel.batteryLabel(),
+                      cmd: "omarchy-menu power",
+                      rclick: "notify-send -u low \"$(omarchy-battery-status)\"" },
                 ] : []
                 delegate: Item {
                     required property var modelData
-                    width: pill.iconCell
+                    width: extraRow.implicitWidth
                     height: pill.iconCell
 
-                    Text {
-                        id: extraLabel
-                        anchors.centerIn: parent
-                        text: modelData.glyph
-                        color: panel.paletteForeground
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 14
+                    Row {
+                        id: extraRow
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 4
+
+                        Text {
+                            id: extraGlyph
+                            text: modelData.glyph
+                            color: panel.paletteForeground
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            id: extraLabel
+                            visible: modelData.label && modelData.label.length > 0
+                            text: modelData.label || ""
+                            color: panel.paletteForeground
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 11
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
-                        onEntered: extraLabel.color = panel.paletteAccent
-                        onExited: extraLabel.color = panel.paletteForeground
-                        onClicked: {
-                            Hyprland.dispatch("exec " + modelData.cmd)
-                            panel.expanded = false
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onEntered: { extraGlyph.color = panel.paletteAccent; extraLabel.color = panel.paletteAccent }
+                        onExited:  { extraGlyph.color = panel.paletteForeground; extraLabel.color = panel.paletteForeground }
+                        onClicked: (mouse) => {
+                            if (mouse.button === Qt.RightButton && modelData.rclick) {
+                                // Right-click stays expanded so the
+                                // notification surfaces alongside the
+                                // open row; cog collapses.
+                                Hyprland.dispatch("exec " + modelData.rclick)
+                            } else {
+                                Hyprland.dispatch("exec " + modelData.cmd)
+                                panel.expanded = false
+                            }
                         }
                     }
                 }
@@ -157,7 +250,7 @@ PanelWindow {
                 Text {
                     id: cogLabel
                     anchors.centerIn: parent
-                    text: ""
+                    text: String.fromCodePoint(0xF013)
                     color: panel.paletteForeground
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 14
