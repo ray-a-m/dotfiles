@@ -3,7 +3,8 @@
 # before its dispatch, so redefining show_*_menu functions here overrides the
 # stock ones. The stock script is left untouched (survives package upgrades).
 #
-# Top-level layout: File Explorer / Tasks / Mail / Notes / Research / Files / Portals / System.
+# Top-level layout: Tasks / Mail / Notes / Research / Files / Portals / System.
+# (File Explorer is on SUPER+E, so it's omitted here.)
 #
 # Note on back-nav: walker's `-c` flag only paints a visual mark, and walker
 # hard-sets cursor to row 0 in dmenu mode (set_autoselect(true) in upstream).
@@ -40,8 +41,7 @@ menu() {
 }
 
 show_main_menu() {
-  case $(menu "Go" "󰝰  File Explorer\n  Tasks\n󰇮  Mail\n󰏫  Notes\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
-    *Explorer*) gtk-launch yazi ;;
+  case $(menu "Go" "  Tasks\n󰇮  Mail\n󰏫  Notes\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
     *Tasks*)    gtk-launch tasks ;;
     *Mail*)     show_mail_menu ;;
     *Notes*)    gtk-launch obsidian ;;
