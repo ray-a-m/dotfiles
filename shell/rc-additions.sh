@@ -1,3 +1,8 @@
+# Force Firefox/LibreWolf to use native Wayland when launched from a shell.
+# Hyprland's envs.conf already sets this for keybind-launched apps; this
+# covers the terminal-launch case.
+export MOZ_ENABLE_WAYLAND=1
+
 # Scholarship shortcuts
 alias scholarship="cd ~/scholarship"
 alias wip="cd ~/scholarship/research-wip"
