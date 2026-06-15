@@ -10,7 +10,7 @@ Personal configuration files for macOS and Linux.
 - **`waybar/`**, **`walker/`**, **`swayosd/`** — Omarchy bar/launcher/OSD configs. Waybar still active; Quickshell is being grown in parallel and will replace it once stable (see `RICING.md`).
 - **`quickshell/`** — Quickshell config (QML). Top-level `shell.qml` entry point + `GlassPill.qml` primitive. Reads the active Omarchy palette from `colors.toml` at startup. Symlinked as one top-level link to `~/.config/quickshell/` (no per-machine override layer, unlike `hypr/`).
 - **`omarchy/hooks/`**, **`omarchy/themes/`** — custom Omarchy hooks and themes. `themes/philosophy/` is the first custom theme; activate with `omarchy-theme-set philosophy`.
-- **`applications/`** — `.desktop` files for omarchy-menu apps. Mixed engines: most are firefoxpwa PWAs (so external links open in main Firefox) launched via `bin/pwa-launch <Name>`; sites without a real PWA manifest (Drive, WordPress admin, UIC Library, Blackboard) stay as Chromium `--app=` windows via `omarchy-launch-webapp`. Two profiles in each engine: `Personal` and `Institutional`. Icons in `applications/icons/`. See `applications/README.md`.
+- **`applications/`** — `.desktop` files for omarchy-menu apps. Mixed engines: most are firefoxpwa PWAs (so external links open in main Firefox) launched via `bin/pwa-launch <Name>`; sites without a real PWA manifest (Drive, WordPress admin, UIC Library, Canvas) stay as Chromium `--app=` windows via `omarchy-launch-webapp`. Two profiles in each engine: `Personal` and `Institutional`. Icons in `applications/icons/`. See `applications/README.md`.
 - **`bin/`** — helper scripts deployed to `/usr/local/bin/` by `install.sh`. Currently `pwa-launch` (resolves a PWA display name → firefoxpwa ULID at runtime, so `.desktop` files in this repo work on every machine despite per-machine random ULIDs) and `pwa-setup` (creates the two firefoxpwa profiles, seeds them with `user.js` + `userChrome.css` for chromeless display and main-Firefox link routing, and registers every PWA).
 - **`udev/`** — Linux udev rules; currently `99-usb-wakeup.rules` enables wake-on-USB for s2idle suspend (symlinked into `/etc/udev/rules.d/` by `install.sh`).
 - **`firefox/`** — Profile-side: `user.js` (startup page, sidebar/newtab prefs, userChrome opt-in) and `userChrome.css` (hide chrome, reveal when `[chrome-shown]` attribute is set). `install.sh` finds the active profile via `profiles.ini` and symlinks them in, so the same minimal-UI Firefox follows you to any new machine after a one-time launch. System-side: `autoconfig.js` and `firefox.cfg` (deployed via sudo to `/usr/lib/firefox/`) bind **Ctrl+;** to toggle that attribute. Survives Firefox package upgrades via the pacman hook below.
@@ -20,7 +20,7 @@ Personal configuration files for macOS and Linux.
 - **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
 - **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
-- **`TODO.md`** — outstanding work (cross-platform parity, vendor migrations) + dock/lid diagnostics
+- **`TODO.md`** — outstanding work (cross-platform parity) + dock/lid diagnostics
 - **`RICING.md`** — active aesthetic ricing-pass orientation
 
 ## Setup on a new machine

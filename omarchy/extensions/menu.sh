@@ -81,8 +81,8 @@ show_files_menu() {
 }
 
 show_portals_menu() {
-  case $(menu "Portals" "  Blackboard\nAdmin\nEditor\n  GitHub") in
-    *Blackboard*) gtk-launch blackboard ;;
+  case $(menu "Portals" "  Canvas\nAdmin\nEditor\n  GitHub") in
+    *Canvas*)     gtk-launch canvas ;;
     *Admin*)      gtk-launch wordpress-admin ;;
     *Editor*)     gtk-launch wordpress-editor ;;
     *GitHub*)     gtk-launch github ;;
