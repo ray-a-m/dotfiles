@@ -13,15 +13,42 @@
 // Current panels:
 //   - Workspaces: top-left 3×3 numpad grid (no pill chrome)
 //   - Clock:      top-center date/time + omarchy update indicator
+//   - Calendar:   popout below the clock pill, toggled by left-clicking
+//                 the date text or by SUPER+SHIFT+C via IpcHandler. Hidden
+//                 by default.
 //   - TrayButton: top-right collapsible cog → expanded status row
 //
-// The hello-world `quickshell` badge from earlier sessions is retired;
-// git history has it if a reference is needed.
+// Cross-panel state: ShellRoot owns `calendarOpen`. Clock emits
+// `dateLeftClicked()` on left-click; the handler here toggles the
+// property, and Calendar binds its `open` to it. Keeps each panel
+// file decoupled — Clock doesn't need to know Calendar exists, and
+// Calendar doesn't need to know what triggers it.
+//
+// IPC: `qs ipc call calendar toggle` flips the same property, so a
+// Hyprland keybind can open/close the calendar without going through
+// the Clock pill. See hypr/bindings.conf for the SUPER+SHIFT+C wiring.
 
 import Quickshell
+import Quickshell.Io
 
 ShellRoot {
+    id: shell
+
+    property bool calendarOpen: false
+
+    IpcHandler {
+        target: "calendar"
+        function toggle(): void { shell.calendarOpen = !shell.calendarOpen }
+        function open(): void { shell.calendarOpen = true }
+        function close(): void { shell.calendarOpen = false }
+    }
+
     Workspaces {}
-    Clock {}
+    Clock {
+        onDateLeftClicked: shell.calendarOpen = !shell.calendarOpen
+    }
+    Calendar {
+        open: shell.calendarOpen
+    }
     TrayButton {}
 }

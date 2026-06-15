@@ -31,6 +31,11 @@ PanelWindow {
     id: panel
     WlrLayershell.namespace: "quickshell-clock"
 
+    // Emitted on left-click of the date text. shell.qml wires this to
+    // toggle the Calendar popout; right-click keeps its existing
+    // tz-select behavior locally.
+    signal dateLeftClicked()
+
     property color paletteAccent: "#4C97D7"
     property color paletteBackground: "#24180C"
     property color paletteForeground: "#F0D29F"
@@ -175,8 +180,14 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    acceptedButtons: Qt.RightButton
-                    onClicked: Hyprland.dispatch("exec omarchy-launch-floating-terminal-with-presentation omarchy-tz-select")
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (mouse) => {
+                        if (mouse.button === Qt.RightButton) {
+                            Hyprland.dispatch("exec omarchy-launch-floating-terminal-with-presentation omarchy-tz-select")
+                        } else {
+                            panel.dateLeftClicked()
+                        }
+                    }
                 }
             }
 
