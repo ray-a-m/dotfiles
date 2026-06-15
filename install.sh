@@ -270,20 +270,6 @@ if [ -d "$DOTFILES_DIR/applications" ]; then
     if command -v update-desktop-database &>/dev/null; then
         update-desktop-database ~/.local/share/applications &>/dev/null || true
     fi
-
-    if [ -d "$DOTFILES_DIR/applications/icons" ]; then
-        echo "==> Symlinking PWA icons into hicolor theme"
-        ICON_DST="$HOME/.local/share/icons/hicolor/256x256/apps"
-        mkdir -p "$ICON_DST"
-        for src in "$DOTFILES_DIR"/applications/icons/*.png; do
-            [ -e "$src" ] || continue
-            name="$(basename "$src" .png)"
-            ln -sfn "$src" "$ICON_DST/webapp-$name.png"
-        done
-        if command -v gtk-update-icon-cache &>/dev/null; then
-            gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" &>/dev/null || true
-        fi
-    fi
 fi
 
 # Firefox: symlink user.js + userChrome.css into the active profile.
