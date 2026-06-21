@@ -54,7 +54,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player yazi jq quickshell \
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player cmus yazi jq quickshell \
                 zsh zsh-autosuggestions zsh-syntax-highlighting
             ;;
         zypper)
@@ -113,6 +113,15 @@ if [ -d "$DOTFILES_DIR/spotify-player" ]; then
     for src in "$DOTFILES_DIR"/spotify-player/*; do
         [ -e "$src" ] || continue
         ln -sfn "$src" ~/.config/spotify-player/"$(basename "$src")"
+    done
+fi
+
+if [ -d "$DOTFILES_DIR/cmus" ]; then
+    echo "==> Symlinking cmus config"
+    mkdir -p ~/.config/cmus
+    for src in "$DOTFILES_DIR"/cmus/*; do
+        [ -e "$src" ] || continue
+        ln -sfn "$src" ~/.config/cmus/"$(basename "$src")"
     done
 fi
 

@@ -1,0 +1,11 @@
+bind -f common g win-top
+bind -f common G win-bottom
+bind -f common h seek -5
+bind -f common l seek +5
+bind -f common H seek -1m
+bind -f common L seek +1m
+bind -f common u win-page-up
+bind -f common d win-page-down
+bind -f common space player-pause
+bind -f library h win-next
+bind -f library l win-next
