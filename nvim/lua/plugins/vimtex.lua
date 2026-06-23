@@ -20,6 +20,12 @@ return {
     }
     vim.g.vimtex_quickfix_mode = 0
     vim.g.vimtex_mappings_disable = { ["n"] = { "K" } }
+    -- Highlighting delegated to the treesitter `latex` parser. Vimtex's
+    -- regex syntax engine bogs down on long single-line paragraphs (e.g.
+    -- the 1.5k–2.7k-char prose lines in older body.tex files), causing
+    -- per-keystroke lag and uneven highlighting. TS handles long lines
+    -- without breaking a sweat.
+    vim.g.vimtex_syntax_enabled = 0
     vim.g.vimtex_syntax_conceal_disable = 1
 
     -- `:Compile` — one-shot save + start continuous latexmk + open viewer.

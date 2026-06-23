@@ -390,7 +390,22 @@ end
 -- cursor on every section change, which fires WinScrolled inside aerial and
 -- triggered extra clear+set cycles during fast key-repeat. CursorMoved on
 -- the source side is sufficient.
+-- Aerial-window-visible guard: when aerial's float is closed, get_buffers
+-- still returns a valid aer_bufnr (aerial caches the symbol buffer), so
+-- without this check the expensive get_position_in_win + extmark work
+-- runs on every CursorMoved for no visible payoff.
+local function aerial_window_visible()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
+      return true
+    end
+  end
+  return false
+end
+
 local function refresh_aerial_marker()
+  if not aerial_window_visible() then return end
+
   local cur_buf = vim.api.nvim_get_current_buf()
   local cur_win = vim.api.nvim_get_current_win()
 
@@ -399,6 +414,12 @@ local function refresh_aerial_marker()
   -- Cursor in the aerial buffer itself doesn't represent a section change
   -- in the source; skip so the marker doesn't drift while clicking the TOC.
   if util.is_aerial_buffer(cur_buf) then return end
+
+  -- Row-cache guard: CursorMoved fires for column-only motion too (h/l/w/f/$),
+  -- which can't change the active section. Skip unless the row actually moved.
+  local row = vim.api.nvim_win_get_cursor(cur_win)[1]
+  if vim.w[cur_win].aerial_marker_last_row == row then return end
+  vim.w[cur_win].aerial_marker_last_row = row
 
   local source_bufnr, aer_bufnr = util.get_buffers(cur_buf)
   if not aer_bufnr or not vim.api.nvim_buf_is_valid(aer_bufnr) then return end

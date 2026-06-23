@@ -58,6 +58,37 @@ Quickshell, or workspace changes.** Specifically:
   aliases, `save` / `publish` / `pdfsplit` functions). No starship; the
   default zsh prompt takes over.
 
+## Neovim performance notes
+
+Three deliberate overrides of LazyVim defaults / vimtex defaults exist
+because each was found to cause noticeable typing or motion lag on long
+`body.tex` files. Each lives at the line cited; revisit the rationale
+before reverting.
+
+- **`vim.opt.clipboard = ""`** (`nvim/lua/config/options.lua`). LazyVim
+  defaults to `unnamedplus`; on Wayland that routes every register touch
+  through `wl-copy` / `wl-paste` synchronously, and compositor jitter
+  shows up as periodic 100–300ms typing hangs (profile showed
+  `provider#clipboard#Call` as the dominant cost during typing — 21
+  calls in 15s, all subprocess-shellouts). Cross to the system clipboard
+  explicitly with `"+y` / `"+p`. If you ever want sync back without the
+  shellout cost, the path is nvim's built-in OSC52 clipboard provider
+  (kitty supports OSC52).
+- **`vim.g.vimtex_syntax_enabled = 0`** (`nvim/lua/plugins/vimtex.lua`).
+  Vimtex's regex syntax engine bogs down on long single-line paragraphs;
+  treesitter's `latex` parser handles them cleanly. Trade: math-zone-
+  aware snippet conditions (`vimtex#syntax#in_mathzone()`) and
+  preamble-defined custom-command highlighting are gone. Neither is in
+  use today; reconsider only if either appears in workflow.
+- **Aerial marker guards** (`nvim/lua/config/autocmds.lua`,
+  `refresh_aerial_marker`). `CursorMoved` fires for every cursor motion,
+  and the inner `aerial.window.get_position_in_win` call accumulates
+  cost — especially when aerial's window is closed (the buffer still
+  exists, so the work runs to update an invisible marker). Two guards:
+  skip when no aerial window is visible, and skip when the cursor row
+  didn't change. Preserves the synchronous-update behavior for the
+  case it actually matters (aerial open + row change).
+
 To switch themes across the whole stack: `omarchy-theme-set <name>`.
 Kitty repaints automatically (via `omarchy-restart-terminal`); nvim
 needs `:Lazy reload` in any open session, or just restart it.

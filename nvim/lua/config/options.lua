@@ -14,3 +14,10 @@ vim.g.vimtex_matchparen_enabled = 0
 vim.opt.timeoutlen = 300
 
 vim.opt.cmdheight = 1
+
+-- Override LazyVim's default `clipboard = "unnamedplus"`. On Wayland, that
+-- routes every register-touch through `wl-copy`/`wl-paste` synchronously,
+-- and intermittent compositor latency surfaces as periodic 100–300ms typing
+-- hangs (profile showed `provider#clipboard#Call` as the dominant cost).
+-- Cross to the system clipboard explicitly with `"+y` / `"+p`.
+vim.opt.clipboard = ""
