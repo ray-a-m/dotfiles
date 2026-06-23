@@ -26,7 +26,6 @@ return {
     -- per-keystroke lag and uneven highlighting. TS handles long lines
     -- without breaking a sweat.
     vim.g.vimtex_syntax_enabled = 0
-    vim.g.vimtex_syntax_conceal_disable = 1
 
     -- `:Compile` — one-shot save + start continuous latexmk + open viewer.
     -- Idempotent: re-running while compilation is already live just refreshes

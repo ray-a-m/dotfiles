@@ -381,15 +381,6 @@ local function clear_aerial_line_hl()
   vim.api.nvim_set_hl(0, "AerialLineNC", {})
 end
 
--- Compute the active aerial row from the source cursor directly via aerial's
--- window API. Doing it this way (rather than scanning aerial's own AerialLine
--- extmark) avoids a one-event-loop-tick lag that caused ghost-row glitches
--- when paragraph-jumping with { and }. We also run synchronously (no
--- vim.schedule) so the marker repositions in the same frame as the cursor.
--- WinScrolled is intentionally NOT subscribed: aerial moves its own float
--- cursor on every section change, which fires WinScrolled inside aerial and
--- triggered extra clear+set cycles during fast key-repeat. CursorMoved on
--- the source side is sufficient.
 -- Aerial-window-visible guard: when aerial's float is closed, get_buffers
 -- still returns a valid aer_bufnr (aerial caches the symbol buffer), so
 -- without this check the expensive get_position_in_win + extmark work
@@ -403,6 +394,15 @@ local function aerial_window_visible()
   return false
 end
 
+-- Compute the active aerial row from the source cursor directly via aerial's
+-- window API. Doing it this way (rather than scanning aerial's own AerialLine
+-- extmark) avoids a one-event-loop-tick lag that caused ghost-row glitches
+-- when paragraph-jumping with { and }. We also run synchronously (no
+-- vim.schedule) so the marker repositions in the same frame as the cursor.
+-- WinScrolled is intentionally NOT subscribed: aerial moves its own float
+-- cursor on every section change, which fires WinScrolled inside aerial and
+-- triggered extra clear+set cycles during fast key-repeat. CursorMoved on
+-- the source side is sufficient.
 local function refresh_aerial_marker()
   if not aerial_window_visible() then return end
 

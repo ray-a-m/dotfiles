@@ -58,6 +58,10 @@ Quickshell, or workspace changes.** Specifically:
   aliases, `save` / `publish` / `pdfsplit` functions). No starship; the
   default zsh prompt takes over.
 
+To switch themes across the whole stack: `omarchy-theme-set <name>`.
+Kitty repaints automatically (via `omarchy-restart-terminal`); nvim
+needs `:Lazy reload` in any open session, or just restart it.
+
 ## Neovim performance notes
 
 Three deliberate overrides of LazyVim defaults / vimtex defaults exist
@@ -88,7 +92,3 @@ before reverting.
   skip when no aerial window is visible, and skip when the cursor row
   didn't change. Preserves the synchronous-update behavior for the
   case it actually matters (aerial open + row change).
-
-To switch themes across the whole stack: `omarchy-theme-set <name>`.
-Kitty repaints automatically (via `omarchy-restart-terminal`); nvim
-needs `:Lazy reload` in any open session, or just restart it.
