@@ -1,0 +1,25 @@
+#!/bin/bash
+# Toggle the Music special workspace (special:music).
+#
+# - If the workspace already has at least one window, plain toggle.
+# - If empty, show the workspace and relaunch spotify-player + cmus. The
+#   silent windowrules in hypr/windows.conf route them onto special:music,
+#   and since we toggled the workspace into view first, they appear in place.
+#
+# Mirrors the detection pattern in scribbles.sh: `hyprctl clients` prints
+# `workspace: <id> (<name>)`, so we grep for `(special:music)`.
+
+if hyprctl clients | grep -q '(special:music)'; then
+    hyprctl dispatch togglespecialworkspace music
+else
+    hyprctl dispatch togglespecialworkspace music
+    uwsm-app -- kitty --class spotify-player -e spotify_player &
+    # Wait for spotify-player's window to register before launching cmus,
+    # so it claims the left half of the tile split. Without this the two
+    # kitty launches race and cmus sometimes wins the left slot.
+    for _ in $(seq 1 40); do
+        hyprctl clients -j | grep -q '"class": "spotify-player"' && break
+        sleep 0.05
+    done
+    uwsm-app -- kitty --class cmus -e cmus &
+fi
