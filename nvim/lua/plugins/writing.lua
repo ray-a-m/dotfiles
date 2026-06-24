@@ -20,6 +20,7 @@ return {
     cmd = "NoNeckPain",
     keys = {
       { "<leader>np", "<cmd>NoNeckPain<cr>", desc = "Toggle No Neck Pain (center buffer)" },
+      { "<leader>nf", "<cmd>Fix<cr>", desc = "Re-flow LaTeX prose (:Fix)" },
     },
     opts = {
       -- Machine-specific: centered document width tuned for MacBook Air.
@@ -34,5 +35,31 @@ return {
       -- last word onto a display-only line, looking like orphan words.
       width = 100,
     },
+    init = function()
+      -- :Fix — re-flow LaTeX prose paragraphs back to width 95 after editing
+      -- decay. formatoptions=t only rewraps the current line as you type, so
+      -- paragraphs drift into ragged staircases after mid-paragraph edits.
+      -- :Fix pipes the buffer through `tex-rewrap` (dotfiles/bin/tex-rewrap,
+      -- installed to /usr/local/bin via install.sh). Atomic-command list,
+      -- pass-through rules, and width default are all documented in that
+      -- script's header — single source of truth.
+      vim.api.nvim_create_user_command("Fix", function(opts)
+        if vim.bo.filetype ~= "tex" then
+          vim.notify(":Fix only supports tex files", vim.log.levels.WARN)
+          return
+        end
+        if vim.fn.executable("tex-rewrap") == 0 then
+          vim.notify("tex-rewrap not on PATH (run install.sh from dotfiles)", vim.log.levels.ERROR)
+          return
+        end
+        local view = vim.fn.winsaveview()
+        local range = opts.range == 0 and "%" or (opts.line1 .. "," .. opts.line2)
+        vim.cmd("silent " .. range .. "!tex-rewrap")
+        vim.fn.winrestview(view)
+      end, {
+        desc = "Re-flow LaTeX prose (:Fix)",
+        range = true,
+      })
+    end,
   },
 }
