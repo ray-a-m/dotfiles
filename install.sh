@@ -11,8 +11,8 @@ install_macos_deps() {
         exit 1
     fi
 
-    brew install neovim texlab node tree-sitter-cli zoxide gh zsh-autosuggestions zsh-syntax-highlighting
-    brew install --cask skim kitty firefox
+    brew install neovim texlab node tree-sitter-cli zoxide gh zsh-autosuggestions zsh-syntax-highlighting bitwarden-cli
+    brew install --cask skim kitty firefox bitwarden
     brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font font-monaspace-nerd-font
 
     if ! command -v latexmk &>/dev/null; then
@@ -55,7 +55,8 @@ install_linux_deps() {
         pacman)
             sudo pacman -S --needed --noconfirm \
                 neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player cmus yazi jq quickshell \
-                zsh zsh-autosuggestions zsh-syntax-highlighting
+                zsh zsh-autosuggestions zsh-syntax-highlighting \
+                bitwarden bitwarden-cli
             ;;
         zypper)
             sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox zsh zsh-autosuggestions zsh-syntax-highlighting
@@ -386,6 +387,21 @@ if [ "$OS" = "Linux" ]; then
     if command -v firefoxpwa &>/dev/null && command -v pwa-setup &>/dev/null; then
         echo "==> Registering firefoxpwa profiles + PWAs"
         pwa-setup
+    fi
+    if command -v yay &>/dev/null && ! pacman -Q librewolf-bin &>/dev/null; then
+        echo "==> Installing LibreWolf from AUR"
+        yay -S --noconfirm librewolf-bin
+    fi
+    # Bitwarden auto-install policy for LibreWolf. The merge script reads
+    # LibreWolf's shipped /usr/lib/librewolf/distribution/policies.json
+    # (which carries its hardening defaults), overlays dotfiles/librewolf/
+    # policies-overlay.json (Bitwarden extension), and writes the union to
+    # /etc/librewolf/policies/policies.json. The pacman hook installed
+    # earlier re-runs this on every librewolf-bin upgrade.
+    if [ -f /usr/lib/librewolf/distribution/policies.json ] && \
+       [ -x "$DOTFILES_DIR/librewolf/merge-policies.sh" ]; then
+        echo "==> Merging LibreWolf policies (Bitwarden auto-install)"
+        "$DOTFILES_DIR/librewolf/merge-policies.sh"
     fi
 fi
 

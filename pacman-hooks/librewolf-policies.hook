@@ -1,0 +1,23 @@
+# /etc/pacman.d/hooks/librewolf-policies.hook
+#
+# LibreWolf ships its own hardening defaults inside
+# /usr/lib/librewolf/distribution/policies.json. The /etc/librewolf/ policy
+# file replaces that wholesale, so we keep our /etc/ copy as a merge of the
+# package defaults + dotfiles overlay (Bitwarden). This hook redoes the merge
+# after librewolf upgrades to pick up any new defaults the package added.
+#
+# Stable assumption: dotfiles live at /home/raymond/code/dotfiles. Pacman
+# hooks run as root with a minimal environment, so we can't expand $HOME or
+# look up the invoking user. If the dotfiles location ever changes, update
+# this file and dotfiles/librewolf/merge-policies.sh together.
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = librewolf-bin
+
+[Action]
+Description = Re-merge LibreWolf policies.json with dotfiles overlay
+When = PostTransaction
+Exec = /bin/sh -c "/home/raymond/code/dotfiles/librewolf/merge-policies.sh"
