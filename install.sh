@@ -97,6 +97,13 @@ if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
 fi
 ln -sfn "$DOTFILES_DIR/kitty" ~/.config/kitty
 
+echo "==> Symlinking zathura config"
+if [ -e ~/.config/zathura ] && [ ! -L ~/.config/zathura ]; then
+    echo "Backing up existing ~/.config/zathura to ~/.config/zathura.bak"
+    mv ~/.config/zathura ~/.config/zathura.bak
+fi
+ln -sfn "$DOTFILES_DIR/zathura" ~/.config/zathura
+
 # Quickshell uses a single top-level symlink (no machine-local override
 # needed, unlike hypr/). RICING.md §Quickshell.
 if [ -d "$DOTFILES_DIR/quickshell" ]; then

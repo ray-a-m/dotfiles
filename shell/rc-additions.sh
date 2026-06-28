@@ -61,6 +61,75 @@ publish() {
   )
 }
 
+# Clear stale latexmk build artifacts in the cwd. Use when builds fail with
+# stale-aux symptoms (runaway argument on a contentsline, biber's "malformed
+# bcf", latexmk's "Nothing to do" with a cached error). Keeps the PDF so any
+# open viewer doesn't lose its file; reruns latexmk to regenerate.
+texclear() {
+  if ! ls *.tex >/dev/null 2>&1; then
+    echo "texclear: no .tex files in $PWD"
+    return 1
+  fi
+  latexmk -c
+  latexmk -pdf -interaction=nonstopmode
+}
+
+# Build a double-spaced, narrower-margin copy of a paper for handoff. Runs
+# from the paper folder; output goes to ~/Downloads so the paper folder stays
+# clean. No wrapper file persists — overrides are passed inline via \def.
+# Usage: doublespace <file.tex> [output-name]
+#   doublespace paper.tex            → ~/Downloads/paper-doublespaced.pdf
+#   doublespace paper.tex foo        → ~/Downloads/foo.pdf
+#   doublespace paper.tex foo.pdf    → ~/Downloads/foo.pdf  (trailing .pdf optional)
+doublespace() {
+  local input="$1"
+  local out_name="$2"
+  if [[ -z "$input" ]]; then
+    echo "usage: doublespace <file.tex> [output-name]"
+    return 1
+  fi
+  [[ "$input" != *.tex ]] && input="${input}.tex"
+  if [[ ! -f "$input" ]]; then
+    echo "doublespace: file not found: $input"
+    return 1
+  fi
+  local jobname="${input%.tex}-doublespaced"
+  if [[ -n "$out_name" ]]; then
+    out_name="${out_name%.pdf}"
+    # Sanitize path separators: filenames with `/` would try to write into a
+    # nonexistent subdirectory. Replace with `-` so e.g. "draft-6/28" becomes
+    # "draft-6-28". Also strip leading dots so we don't create hidden files.
+    out_name="${out_name//\//-}"
+    out_name="${out_name#.}"
+  else
+    out_name="$jobname"
+  fi
+  local paper_slug
+  paper_slug=$(basename "$PWD")
+  local out_dir="$HOME/Downloads/$paper_slug"
+  local build_dir
+  build_dir=$(mktemp -d -t doublespace.XXXXXX)
+  mkdir -p "$out_dir"
+  latexmk -pdf -interaction=nonstopmode \
+    -outdir="$build_dir" -jobname="$jobname" \
+    -usepretex='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in}\def\paperrightmargin{1.25in}' \
+    "$input"
+  local rc=$?
+  if [[ $rc -eq 0 && -f "$build_dir/${jobname}.pdf" ]]; then
+    local dest="$out_dir/${out_name}.pdf"
+    if cp "$build_dir/${jobname}.pdf" "$dest"; then
+      echo "doublespace: wrote $dest"
+    else
+      echo "doublespace: build succeeded but copy to $dest failed"
+      rc=1
+    fi
+  else
+    echo "doublespace: build failed (rc=$rc)"
+  fi
+  rm -rf "$build_dir"
+  return $rc
+}
+
 # Split a PDF into 20-page chunks. Prompts for output directory each time.
 # Original file is never modified. Usage: pdfsplit foo.pdf
 pdfsplit() {

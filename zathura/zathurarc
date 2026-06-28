@@ -1,0 +1,4 @@
+set scroll-step 100
+
+map j navigate next
+map k navigate previous

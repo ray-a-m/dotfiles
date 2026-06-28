@@ -43,5 +43,21 @@ return {
 
     vim.keymap.set("n", "<leader>lc", "<cmd>Compile<cr>",
       { desc = "LaTeX: save + compile + view" })
+
+    -- `:texclear` — recovery for wedged latexmk state. Stops the current
+    -- continuous compile, runs `latexmk -c` to remove stale aux/fdb/bcf/etc
+    -- (PDF kept so the open viewer doesn't lose its file), then restarts
+    -- :Compile. Use when builds fail with stale-aux symptoms: runaway
+    -- argument on a contentsline, biber's "malformed bcf", or latexmk's
+    -- "Nothing to do" with a cached error.
+    vim.api.nvim_create_user_command("texclear", function()
+      if vim.bo.filetype ~= "tex" then
+        vim.notify(":texclear only runs from a tex buffer", vim.log.levels.WARN)
+        return
+      end
+      pcall(vim.cmd, "VimtexStop")
+      pcall(vim.cmd, "VimtexClean")
+      vim.defer_fn(function() pcall(vim.cmd, "Compile") end, 100)
+    end, { desc = "LaTeX: clear stale build artifacts and restart compile" })
   end,
 }

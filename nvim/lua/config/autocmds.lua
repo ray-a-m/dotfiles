@@ -60,6 +60,8 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = true
     vim.wo.linebreak = true
     vim.wo.breakindent = true
+    vim.wo.spell = true
+    vim.bo[buf].spelllang = "en_us"
     vim.wo.fillchars = "vert: ,eob: "
     vim.wo.winhighlight = "WinSeparator:Normal,Normal:ProseNormal,NormalNC:ProseNormal"
     vim.wo.statuscolumn = ""
@@ -83,6 +85,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.wrap = false
     vim.wo.linebreak = false
     vim.wo.breakindent = false
+    vim.wo.spell = false
     vim.wo.fillchars = ""
     vim.wo.winhighlight = ""
     vim.wo.statuscolumn = "%!v:lua.LazyVim.statuscolumn()"
@@ -121,6 +124,25 @@ vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
   group = vim.api.nvim_create_augroup("prose_mode", { clear = true }),
   callback = function(args)
     apply_prose_mode(args.buf, args.event)
+  end,
+})
+
+-- Vim auto-compiles spell/*.add → .add.spl only on `zg`/`zw` writes from inside
+-- vim. External edits (bulk-seeding from a script, syncing dotfiles across
+-- machines) leave the .spl stale or missing, and the wordlist silently has no
+-- effect. Recompile once at startup if .add is newer than .spl (or .spl absent).
+vim.api.nvim_create_autocmd("VimEnter", {
+  group = vim.api.nvim_create_augroup("spell_recompile", { clear = true }),
+  once = true,
+  callback = function()
+    local add = vim.fn.expand("~/.config/nvim/spell/en.utf-8.add")
+    if vim.fn.filereadable(add) == 0 then return end
+    local spl = add .. ".spl"
+    local add_mtime = vim.fn.getftime(add)
+    local spl_mtime = vim.fn.getftime(spl)
+    if add_mtime > spl_mtime then
+      vim.schedule(function() pcall(vim.cmd, "silent mkspell! " .. vim.fn.fnameescape(add)) end)
+    end
   end,
 })
 
