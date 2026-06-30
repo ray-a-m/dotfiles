@@ -3,6 +3,28 @@
 # covers the terminal-launch case.
 export MOZ_ENABLE_WAYLAND=1
 
+# Default browser for tools that consult $BROWSER (some CLIs, email/PWA
+# clients) instead of xdg-open. xdg-mime already routes http/https to
+# librewolf.desktop; this closes the env-var fallback path.
+export BROWSER=librewolf
+
+# Route omarchy-capture-screenshot output into a Screenshots/ subdir so
+# the parent ~/Pictures/ stays available for other images. The script
+# auto-creates the dir if missing.
+export OMARCHY_SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
+
+# Point TeX at the dotfiles-tracked texmf tree instead of the default
+# ~/texmf location. Keeps every package (currently maungstyle.sty) in
+# version control without a per-machine symlink-scaffolding step.
+# install.sh runs mktexlsr against this path on each install to refresh
+# the gitignored ls-R cache.
+export TEXMFHOME="$HOME/code/dotfiles/texmf"
+
+# Per-machine secrets (API keys, etc.) — never tracked in dotfiles. Create
+# ~/.config/secrets.env with `export FOO=bar` lines, chmod 600. Sourced
+# silently if present; absent on machines where it's not needed.
+[ -f "$HOME/.config/secrets.env" ] && source "$HOME/.config/secrets.env"
+
 # Scholarship shortcuts
 alias scholarship="cd ~/scholarship"
 alias wip="cd ~/scholarship/research-wip"

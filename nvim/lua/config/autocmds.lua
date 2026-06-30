@@ -497,3 +497,26 @@ vim.api.nvim_create_autocmd("VimResized", {
     end, 50)
   end,
 })
+
+-- `:Clipclear` — flush the system clipboard. Use when keystroke lag /
+-- slow `p` / slow `:reg` creep in after copying a long passage out to an
+-- AI or large yank inside nvim. With `clipboard=unnamedplus`, every nvim
+-- op re-shuffles the clipboard content via wl-copy, so a stale large
+-- selection compounds the cost. Clears at two layers:
+--   * nvim's `+` and `*` registers (windows into the system clipboard)
+--   * wl-clipboard's clipboard and primary selections (so clipboard
+--     managers like cliphist drop the entry too)
+-- Named registers (a-z), macros, numbered registers, search history,
+-- and the unnamed register `""` are deliberately left intact.
+--
+-- Capitalized first letter because nvim user commands MUST start with
+-- uppercase. cnoreabbrev below lets `:clipclear` typed lowercase still
+-- expand to `:Clipclear`, parallel to the `:Texclear` pattern.
+vim.api.nvim_create_user_command("Clipclear", function()
+  vim.fn.setreg("+", "")
+  vim.fn.setreg("*", "")
+  vim.fn.system({ "wl-copy", "--clear" })
+  vim.fn.system({ "wl-copy", "--primary", "--clear" })
+  vim.notify("clipboard cleared", vim.log.levels.INFO)
+end, { desc = "Flush system clipboard (recover from yank-induced sluggishness)" })
+vim.cmd("cnoreabbrev clipclear Clipclear")

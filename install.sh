@@ -429,19 +429,13 @@ for sub in hooks themes themed extensions; do
     done
 done
 
-echo "==> Installing LaTeX packages from latex/ into user TeX tree"
-case "$OS" in
-    Darwin) TEXMF_ROOT="$HOME/Library/texmf" ;;
-    *)      TEXMF_ROOT="$HOME/texmf" ;;
-esac
-if compgen -G "$DOTFILES_DIR/latex/*.sty" > /dev/null; then
-    for sty in "$DOTFILES_DIR"/latex/*.sty; do
-        name="$(basename "$sty" .sty)"
-        pkg_dir="$TEXMF_ROOT/tex/latex/$name"
-        mkdir -p "$pkg_dir"
-        ln -sfn "$sty" "$pkg_dir/$name.sty"
-        echo "Linked $name.sty -> $pkg_dir/"
-    done
+echo "==> Refreshing TeX ls-R cache for dotfiles texmf tree"
+# TEXMFHOME points directly at dotfiles/texmf/ via rc-additions.sh and the
+# Hyprland env block. The tree is committed as-is — no per-machine symlink
+# scaffolding needed. Only the regenerable ls-R cache is gitignored and
+# rebuilt here on each install.
+TEXMF_ROOT="$DOTFILES_DIR/texmf"
+if [ -d "$TEXMF_ROOT/tex" ]; then
     if command -v mktexlsr &>/dev/null; then
         mktexlsr "$TEXMF_ROOT"
     elif command -v texhash &>/dev/null; then
@@ -450,7 +444,7 @@ if compgen -G "$DOTFILES_DIR/latex/*.sty" > /dev/null; then
         echo "Neither mktexlsr nor texhash found; skipping ls-R refresh."
     fi
 else
-    echo "No .sty files in latex/; skipping."
+    echo "No texmf/tex/ tree; skipping ls-R refresh."
 fi
 
 echo "==> Wiring shell additions into ~/.zshrc and ~/.bashrc"
