@@ -54,7 +54,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player cmus yazi jq quickshell \
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player cmus yazi glow jq quickshell \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
             ;;
@@ -103,6 +103,17 @@ if [ -e ~/.config/zathura ] && [ ! -L ~/.config/zathura ]; then
     mv ~/.config/zathura ~/.config/zathura.bak
 fi
 ln -sfn "$DOTFILES_DIR/zathura" ~/.config/zathura
+
+echo "==> Symlinking yazi config"
+if [ -e ~/.config/yazi ] && [ ! -L ~/.config/yazi ]; then
+    echo "Backing up existing ~/.config/yazi to ~/.config/yazi.bak"
+    mv ~/.config/yazi ~/.config/yazi.bak
+fi
+ln -sfn "$DOTFILES_DIR/yazi" ~/.config/yazi
+if command -v ya &>/dev/null; then
+    echo "==> Installing yazi plugins from package.toml"
+    ya pkg install
+fi
 
 # Quickshell uses a single top-level symlink (no machine-local override
 # needed, unlike hypr/). RICING.md §Quickshell.
