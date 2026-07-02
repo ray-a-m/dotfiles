@@ -20,9 +20,9 @@ mime = "text/markdown"
 use = "mdview"
 
 [[open.prepend_rules]]
-name = "*.md"
+url = "*.md"
 use = "mdview"
 
 [[open.prepend_rules]]
-name = "*.markdown"
+url = "*.markdown"
 use = "mdview"
