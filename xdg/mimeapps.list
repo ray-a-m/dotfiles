@@ -11,6 +11,7 @@ text/x-moc=nvim.desktop
 text/x-pascal=nvim.desktop
 text/x-tcl=nvim.desktop
 text/x-tex=nvim.desktop
+text/markdown=mdview.desktop
 application/x-shellscript=nvim.desktop
 text/x-c=nvim.desktop
 text/x-c++=nvim.desktop

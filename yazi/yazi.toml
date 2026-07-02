@@ -9,3 +9,20 @@ run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=$t "$1"'
 [[plugin.prepend_previewers]]
 mime = "text/markdown"
 run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=$t "$1"'
+
+[opener]
+mdview = [
+    { run = 'mdview "$1"', desc = "Markdown Reader", orphan = true },
+]
+
+[[open.prepend_rules]]
+mime = "text/markdown"
+use = "mdview"
+
+[[open.prepend_rules]]
+name = "*.md"
+use = "mdview"
+
+[[open.prepend_rules]]
+name = "*.markdown"
+use = "mdview"
