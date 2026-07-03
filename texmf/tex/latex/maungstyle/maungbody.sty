@@ -1,0 +1,58 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{maungbody}[2026/07/03 v0.1 Raymond Maung body-facing vocabulary]
+
+% Everything paper/chapter *bodies* rely on to compile and mean the same
+% thing under any driver: standalone papers load this via maungstyle; the
+% dissertation preamble loads it directly (its look is the Ross accessible
+% template, not maungstyle's). Look-and-feel belongs in maungstyle.
+
+% ── Text ──────────────────────────────────────────────────────────────────────
+\RequirePackage{csquotes}
+
+% ── Math ──────────────────────────────────────────────────────────────────────
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{mathtools}
+\RequirePackage{esint}
+\RequirePackage{bm}
+\RequirePackage{nicefrac}
+\RequirePackage{physics2}
+\usephysicsmodule{braket}
+
+% ── Figures ───────────────────────────────────────────────────────────────────
+\RequirePackage{graphicx}
+\RequirePackage{float}
+\RequirePackage{caption}
+\RequirePackage{subcaption}
+
+\captionsetup{labelsep=period}
+
+% ── Tables ────────────────────────────────────────────────────────────────────
+\RequirePackage{array}
+\RequirePackage{booktabs}
+\RequirePackage{multirow}
+
+\renewcommand{\arraystretch}{1.1}
+
+% ── Commands ──────────────────────────────────────────────────────────────────
+
+% Latin abbreviations (\@ handles end-of-sentence period spacing)
+\def\cf{\emph{cf.}\@}
+\def\eg{\emph{e.g.}\@}
+\def\ie{\emph{i.e.}\@}
+\def\etc{\emph{etc.}\@}
+\def\etal{\emph{et al.}\@}
+\def\viz{\emph{viz.}\@}
+\def\sc{\emph{sc.}\@}
+
+% Auto-sizing paired delimiters (use e.g. \abs{x} fixed, \abs*{\frac{a}{b}} auto-sized)
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+% Math operators
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+
+\endinput

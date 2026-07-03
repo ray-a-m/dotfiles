@@ -1,9 +1,14 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{maungstyle}[2026/04/20 v0.1 Raymond Maung personal LaTeX style]
+\ProvidesPackage{maungstyle}[2026/07/03 v0.2 Raymond Maung personal LaTeX style]
 
 % Heavily adapted from François Rozet's sleek-template:
 %   https://github.com/francois-rozet/sleek-template
 % Credit for the overall look and feel goes to the original author.
+
+% Body-facing vocabulary (packages + macros that chapter/paper bodies depend
+% on) lives in maungbody.sty, so other drivers — the dissertation's Ross-style
+% preamble — can load it without this file's article-oriented look.
+\RequirePackage{maungbody}
 
 % ── Font ──────────────────────────────────────────────────────────────────────
 \RequirePackage[T1]{fontenc}
@@ -36,9 +41,6 @@
 \titleformat{\subsection}{\normalsize\itshape}{\thesubsection}{1em}{}
 \titlespacing*{\subsection}{0pt}{3ex plus .5ex minus .2ex}{1ex plus .1ex}
 
-% ── Text ──────────────────────────────────────────────────────────────────────
-\RequirePackage{csquotes}
-
 % ── Links ─────────────────────────────────────────────────────────────────────
 % hyperref has strict load-order constraints (must follow amsmath, biblatex,
 % footmisc, etc.), so defer it to end-of-preamble regardless of when the
@@ -48,51 +50,5 @@
   \RequirePackage[hidelinks, pdfusetitle]{hyperref}%
   \RequirePackage{bookmark}%
 }
-
-% ── Math ──────────────────────────────────────────────────────────────────────
-\RequirePackage{amsmath}
-\RequirePackage{amssymb}
-\RequirePackage{mathtools}
-\RequirePackage{esint}
-\RequirePackage{bm}
-\RequirePackage{nicefrac}
-\RequirePackage{physics2}
-\usephysicsmodule{braket}
-
-% ── Figures ───────────────────────────────────────────────────────────────────
-\RequirePackage{graphicx}
-\RequirePackage{float}
-\RequirePackage{caption}
-\RequirePackage{subcaption}
-
-\captionsetup{labelsep=period}
-
-% ── Tables ────────────────────────────────────────────────────────────────────
-\RequirePackage{array}
-\RequirePackage{booktabs}
-\RequirePackage{multirow}
-
-\renewcommand{\arraystretch}{1.1}
-
-% ── Commands ──────────────────────────────────────────────────────────────────
-
-% Latin abbreviations (\@ handles end-of-sentence period spacing)
-\def\cf{\emph{cf.}\@}
-\def\eg{\emph{e.g.}\@}
-\def\ie{\emph{i.e.}\@}
-\def\etc{\emph{etc.}\@}
-\def\etal{\emph{et al.}\@}
-\def\viz{\emph{viz.}\@}
-\def\sc{\emph{sc.}\@}
-
-% Auto-sizing paired delimiters (use e.g. \abs{x} fixed, \abs*{\frac{a}{b}} auto-sized)
-\DeclarePairedDelimiter\abs{\lvert}{\rvert}
-\DeclarePairedDelimiter\norm{\lVert}{\rVert}
-\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
-\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
-
-% Math operators
-\DeclareMathOperator{\tr}{tr}
-\DeclareMathOperator{\diag}{diag}
 
 \endinput
