@@ -56,3 +56,11 @@ vim.keymap.set("n", "<C-l>", nav_right, { desc = "Window right (skip NNP pad)" }
 -- ships `d` for delete-tab, `n` for new, `o` for close-others) with `c` so
 -- close-tab discovers via which-key alongside its siblings.
 vim.keymap.set("n", "<leader><tab>c", "<cmd>tabclose<cr>", { desc = "Close Tab" })
+
+-- <C-k> in insert mode: fix the nearest preceding spelling error without
+-- leaving the typing flow. [s jumps to the misspelling, 1z= takes the top
+-- suggestion, `] lands at the end of the corrected word, a resumes insert.
+-- The <C-g>u's split undo so a bad autocorrect is a single `u` away.
+-- blink.cmp's preset binding of <C-k> (signature toggle) is disabled in
+-- plugins/blink.lua so this map is reachable in insert mode.
+vim.keymap.set("i", "<C-k>", "<C-g>u<Esc>[s1z=`]a<C-g>u", { desc = "Fix last spelling error" })
