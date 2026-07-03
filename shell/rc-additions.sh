@@ -32,13 +32,14 @@ alias pub="cd ~/scholarship/research-public"
 alias dots="cd ~/code/dotfiles"
 
 # Restart the wallpaper (mpvpaper for video themes, swaybg otherwise) by
-# re-running the omarchy theme-set hook. Use when mpvpaper crashes and the
-# screen goes blank — no respawn watchdog is in place by design.
+# re-running the omarchy theme-set hook. Instant recovery when mpvpaper
+# crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.
 alias wallpaper="$HOME/.config/omarchy/hooks/theme-set"
 
-# One-shot: stage all, commit with "." message, and push
+# One-shot: stage all, commit, and push. Message optional; defaults to ".".
+# Usage: save [message]
 save() {
-  git add -A && git commit -m "." && git push
+  git add -A && git commit -m "${1:-.}" && git push
 }
 
 # Build a research-wip doc and publish its PDF to research-public.
