@@ -81,6 +81,14 @@ publish() {
     cd "$HOME/scholarship/research-public"
     git add "$dest_pdf"
     git diff --cached --quiet || { git commit -m "." && git push; }
+    # Provenance: tag the wip source this publish was built from, so every
+    # public PDF traces back to its exact source. Same-day republish moves
+    # the tag (last publish wins).
+    tag="${name}-$(date +%F)"
+    git -C "$HOME/scholarship/research-wip" diff --quiet HEAD ||
+      echo "publish: note — wip tree is dirty; $tag marks the last commit, not the exact built state"
+    git -C "$HOME/scholarship/research-wip" tag -f "$tag"
+    git -C "$HOME/scholarship/research-wip" push --force origin "refs/tags/$tag"
   )
 }
 
