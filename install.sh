@@ -4,24 +4,6 @@ set -e
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OS="$(uname -s)"
 
-install_macos_deps() {
-    echo "==> Installing dependencies via Homebrew"
-    if ! command -v brew &>/dev/null; then
-        echo "Homebrew not found. Install from https://brew.sh first."
-        exit 1
-    fi
-
-    brew install neovim texlab node tree-sitter-cli zoxide gh zsh-autosuggestions zsh-syntax-highlighting bitwarden-cli
-    brew install --cask skim kitty firefox bitwarden
-    brew install --cask font-jetbrains-mono-nerd-font font-blex-mono-nerd-font font-monaspace-nerd-font
-
-    if ! command -v latexmk &>/dev/null; then
-        echo "==> latexmk not found; installing MacTeX (this is ~5GB)"
-        brew install --cask mactex-no-gui
-        echo "==> MacTeX installed. Open a new terminal before continuing."
-    fi
-}
-
 detect_linux_pm() {
     if command -v apt-get &>/dev/null; then echo apt
     elif command -v dnf &>/dev/null; then echo dnf
@@ -44,22 +26,23 @@ install_linux_deps() {
     case "$pm" in
         apt)
             sudo apt-get update
-            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty firefox-esr zsh zsh-autosuggestions zsh-syntax-highlighting
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty zsh zsh-autosuggestions zsh-syntax-highlighting
             if ! command -v gh &>/dev/null; then
                 echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
             fi
             ;;
         dnf)
-            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty firefox zsh zsh-autosuggestions zsh-syntax-highlighting
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty zsh zsh-autosuggestions zsh-syntax-highlighting
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty firefox spotify-player cmus yazi glow jq quickshell \
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty spotify-player cmus yazi glow jq quickshell \
+                pandoc-cli qpdf obsidian ttf-jetbrains-mono-nerd \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty MozillaFirefox zsh zsh-autosuggestions zsh-syntax-highlighting
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty zsh zsh-autosuggestions zsh-syntax-highlighting
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
@@ -70,17 +53,26 @@ install_linux_deps() {
         sudo npm install -g tree-sitter-cli
     fi
 
-    echo "==> Nerd Fonts are not in standard Linux repos."
-    echo "    Install manually from https://github.com/ryanoasis/nerd-fonts/releases/latest:"
-    echo "      - JetBrainsMono.zip"
-    echo "      - IBMPlexMono.zip  (patched name: 'BlexMono Nerd Font' — used by kitty)"
+    if [ "$pm" != "pacman" ]; then
+        echo "==> JetBrainsMono Nerd Font (kitty/quickshell/swayosd) comes from pacman on Arch;"
+        echo "    on $pm install JetBrainsMono.zip manually from"
+        echo "    https://github.com/ryanoasis/nerd-fonts/releases/latest"
+    fi
 }
 
 case "$OS" in
-    Darwin) install_macos_deps ;;
     Linux)  install_linux_deps ;;
     *)      echo "Unsupported OS: $OS"; exit 1 ;;
 esac
+
+# Vendored fonts: DepartureMono isn't packaged by any distro. JetBrainsMono
+# Nerd Font comes from the package manager (ttf-jetbrains-mono-nerd) above.
+if [ -d "$DOTFILES_DIR/fonts" ]; then
+    echo "==> Installing vendored fonts"
+    mkdir -p ~/.local/share/fonts
+    cp -rf "$DOTFILES_DIR/fonts/"* ~/.local/share/fonts/
+    command -v fc-cache &>/dev/null && fc-cache -f &>/dev/null || true
+fi
 
 echo "==> Symlinking nvim config"
 mkdir -p ~/.config
@@ -151,6 +143,12 @@ if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
     mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak
 fi
 ln -sfn "$DOTFILES_DIR/claude/CLAUDE.md" ~/.claude/CLAUDE.md
+
+if [ -e ~/.claude/settings.json ] && [ ! -L ~/.claude/settings.json ]; then
+    echo "Backing up existing ~/.claude/settings.json to ~/.claude/settings.json.bak"
+    mv ~/.claude/settings.json ~/.claude/settings.json.bak
+fi
+ln -sfn "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
 
 if [ -d "$DOTFILES_DIR/claude/skills" ]; then
     echo "==> Symlinking Claude Code skills"
@@ -309,55 +307,11 @@ if [ -d "$DOTFILES_DIR/applications" ]; then
     fi
 fi
 
-# Firefox: symlink user.js + userChrome.css into the active profile.
-# Firefox creates a randomly-named profile dir on first run, so on a
-# fresh machine you must launch Firefox at least once before this works
-# — the script no-ops with a hint if no profile is found yet.
-if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/firefox" ]; then
-    # Locate the profile root. XDG-respecting Firefox builds put it
-    # under ~/.config/mozilla/firefox/; default builds use ~/.mozilla/.
-    FF_ROOT=""
-    for candidate in "$HOME/.config/mozilla/firefox" "$HOME/.mozilla/firefox"; do
-        [ -f "$candidate/profiles.ini" ] && FF_ROOT="$candidate" && break
-    done
-
-    if [ -n "$FF_ROOT" ]; then
-        # The active profile is named under [Install...] -> Default=<path>.
-        FF_PROFILE=$(awk -F= '/^\[Install/{ok=1; next} ok && /^Default=/{print $2; exit}' \
-            "$FF_ROOT/profiles.ini")
-        if [ -n "$FF_PROFILE" ] && [ -d "$FF_ROOT/$FF_PROFILE" ]; then
-            echo "==> Linking Firefox config into $FF_ROOT/$FF_PROFILE/"
-            mkdir -p "$FF_ROOT/$FF_PROFILE/chrome"
-            ln -sfn "$DOTFILES_DIR/firefox/user.js" \
-                "$FF_ROOT/$FF_PROFILE/user.js"
-            ln -sfn "$DOTFILES_DIR/firefox/userChrome.css" \
-                "$FF_ROOT/$FF_PROFILE/chrome/userChrome.css"
-        else
-            echo "==> Firefox profile not found in $FF_ROOT — launch Firefox once, then re-run install.sh"
-        fi
-    fi
-
-    # System-side Firefox autoconfig: copies the chrome-toggle bootstrap
-    # into /usr/lib/firefox/. Required for the Ctrl+; toggle bound
-    # in firefox.cfg. These files get wiped whenever pacman upgrades the
-    # firefox package; the hook below redeploys them automatically.
-    if [ -f "$DOTFILES_DIR/firefox/autoconfig.js" ] && \
-       [ -f "$DOTFILES_DIR/firefox/firefox.cfg" ] && \
-       [ -d /usr/lib/firefox ]; then
-        echo "==> Installing Firefox autoconfig (Ctrl+; chrome toggle)"
-        sudo install -Dm644 "$DOTFILES_DIR/firefox/autoconfig.js" \
-            /usr/lib/firefox/defaults/pref/autoconfig.js
-        sudo install -Dm644 "$DOTFILES_DIR/firefox/firefox.cfg" \
-            /usr/lib/firefox/firefox.cfg
-    fi
-fi
-
 # Pacman hooks: redeploy system-side artifacts that pacman wipes when
-# upstream packages upgrade. Currently used for the Firefox autoconfig
-# bootstrap (see firefox-userchrome.hook). The hook itself runs
-# /bin/sh -c "cp ..." with hardcoded dotfile paths — pacman runs hooks
-# as root with no usable environment, so $HOME / $DOTFILES_DIR cannot
-# be expanded inside the hook file.
+# upstream packages upgrade. Currently used for the LibreWolf policies
+# merge (librewolf-policies.hook). Hooks run /bin/sh -c with hardcoded
+# dotfile paths — pacman runs them as root with no usable environment,
+# so $HOME / $DOTFILES_DIR cannot be expanded inside the hook file.
 if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/pacman-hooks" ]; then
     echo "==> Installing pacman hooks"
     for src in "$DOTFILES_DIR"/pacman-hooks/*.hook; do
@@ -399,10 +353,25 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing mpvpaper from AUR"
         yay -S --noconfirm mpvpaper
     fi
+    # Daily-driver apps that live in the AUR: Zotero (research library),
+    # basilk (task board), rencal (calendar TUI).
+    if command -v yay &>/dev/null && ! pacman -Q zotero-bin &>/dev/null; then
+        echo "==> Installing Zotero from AUR"
+        yay -S --noconfirm zotero-bin
+    fi
+    if command -v yay &>/dev/null && ! pacman -Q basilk &>/dev/null; then
+        echo "==> Installing basilk from AUR"
+        yay -S --noconfirm basilk
+    fi
+    if command -v yay &>/dev/null && ! pacman -Q rencal-bin &>/dev/null; then
+        echo "==> Installing rencal from AUR"
+        yay -S --noconfirm rencal-bin
+    fi
     # firefox-pwa hosts the subset of omarchy-menu PWAs whose upstreams
     # publish a manifest and don't block non-Chromium browsers (currently
     # Claude, ChatGPT, GitHub, Fastmail) so external links open in the
-    # main Firefox instead of being trapped in a Chromium app window. The
+    # default browser (LibreWolf) instead of being trapped in a Chromium
+    # app window. The
     # rest (Gmail, Drive, WordPress, UIC services) stay on Chromium —
     # Google blocks firefoxpwa with a 400, the others have no manifest.
     # pwa-setup creates the Personal profile, drops userChrome+user.js,
@@ -479,8 +448,7 @@ for rc in ~/.zshrc ~/.bashrc; do
     fi
 done
 
-# Set zsh as login shell on Linux if it isn't already. macOS already defaults
-# to zsh since Catalina, so we skip the chsh there.
+# Set zsh as login shell if it isn't already.
 if [ "$OS" = "Linux" ] && command -v zsh >/dev/null; then
     ZSH_PATH="$(command -v zsh)"
     if [ "${SHELL:-}" != "$ZSH_PATH" ]; then
