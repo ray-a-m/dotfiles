@@ -152,6 +152,15 @@ if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
 fi
 ln -sfn "$DOTFILES_DIR/claude/CLAUDE.md" ~/.claude/CLAUDE.md
 
+if [ -d "$DOTFILES_DIR/claude/skills" ]; then
+    echo "==> Symlinking Claude Code skills"
+    mkdir -p ~/.claude/skills
+    for src in "$DOTFILES_DIR"/claude/skills/*/; do
+        [ -d "$src" ] || continue
+        ln -sfn "${src%/}" ~/.claude/skills/"$(basename "$src")"
+    done
+fi
+
 echo "==> Symlinking XDG default-application files"
 for f in xdg-terminals.list mimeapps.list; do
     src="$DOTFILES_DIR/xdg/$f"
