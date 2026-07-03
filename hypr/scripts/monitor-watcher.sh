@@ -29,6 +29,9 @@ log() { printf '[monitor-watcher] %s\n' "$*" >&2; }
 # burst of monitoradded/removed events). Heal by re-firing the theme-set
 # hook only if BOTH daemons are dead — normal events where mpvpaper
 # survives are no-ops, so this doesn't add churn.
+# This is only the fast path: crashes landing after the 1s check (seen
+# 2026-06-23) and login races with no monitor event are caught by
+# wallpaper-watchdog.timer within ~30s.
 heal_wallpaper() {
     sleep 1  # let output topology settle
     pgrep -x mpvpaper >/dev/null && return

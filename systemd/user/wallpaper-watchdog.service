@@ -1,0 +1,7 @@
+[Unit]
+Description=Respawn dead wallpaper daemon (mpvpaper/swaybg)
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/hypr/scripts/wallpaper-watchdog.sh

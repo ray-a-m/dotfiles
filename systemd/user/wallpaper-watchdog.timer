@@ -1,0 +1,11 @@
+[Unit]
+Description=Wallpaper daemon watchdog (30s)
+PartOf=graphical-session.target
+
+[Timer]
+OnActiveSec=15
+OnUnitActiveSec=30
+AccuracySec=5
+
+[Install]
+WantedBy=timers.target
