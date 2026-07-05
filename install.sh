@@ -26,23 +26,23 @@ install_linux_deps() {
     case "$pm" in
         apt)
             sudo apt-get update
-            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty zsh zsh-autosuggestions zsh-syntax-highlighting
+            sudo apt-get install -y neovim nodejs npm zoxide zathura texlive-full texlab kitty tmux jq zsh zsh-autosuggestions zsh-syntax-highlighting
             if ! command -v gh &>/dev/null; then
                 echo "==> gh not in default apt repos; see https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
             fi
             ;;
         dnf)
-            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty zsh zsh-autosuggestions zsh-syntax-highlighting
+            sudo dnf install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full texlab kitty tmux jq zsh zsh-autosuggestions zsh-syntax-highlighting
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty spotify-player cmus yazi glow jq quickshell \
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell \
                 pandoc-cli qpdf obsidian ttf-jetbrains-mono-nerd \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
             ;;
         zypper)
-            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty zsh zsh-autosuggestions zsh-syntax-highlighting
+            sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty tmux jq zsh zsh-autosuggestions zsh-syntax-highlighting
             command -v texlab &>/dev/null || \
                 echo "==> texlab not in zypper repos; install from https://github.com/latex-lsp/texlab/releases"
             ;;
@@ -95,6 +95,17 @@ if [ -e ~/.config/zathura ] && [ ! -L ~/.config/zathura ]; then
     mv ~/.config/zathura ~/.config/zathura.bak
 fi
 ln -sfn "$DOTFILES_DIR/zathura" ~/.config/zathura
+
+echo "==> Symlinking tmux config"
+if [ -e ~/.config/tmux ] && [ ! -L ~/.config/tmux ]; then
+    echo "Backing up existing ~/.config/tmux to ~/.config/tmux.bak"
+    mv ~/.config/tmux ~/.config/tmux.bak
+fi
+ln -sfn "$DOTFILES_DIR/tmux" ~/.config/tmux
+if [ ! -d ~/.tmux/plugins/tpm ]; then
+    echo "==> Cloning tmux plugin manager (tpm)"
+    git clone --depth 1 https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+fi
 
 echo "==> Symlinking yazi config"
 if [ -e ~/.config/yazi ] && [ ! -L ~/.config/yazi ]; then
