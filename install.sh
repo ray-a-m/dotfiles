@@ -36,7 +36,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell eza \
+                neovim nodejs-lts-jod npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell eza \
                 pandoc-cli qpdf obsidian ttf-jetbrains-mono-nerd \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
@@ -160,6 +160,10 @@ if [ -e ~/.claude/settings.json ] && [ ! -L ~/.claude/settings.json ]; then
     mv ~/.claude/settings.json ~/.claude/settings.json.bak
 fi
 ln -sfn "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
+# Claude Code rewrites "model" in settings.json on every /model default
+# change, so local churn is expected — don't track it. Toggle back with
+# --no-skip-worktree when committing an intentional settings change.
+git -C "$DOTFILES_DIR" update-index --skip-worktree claude/settings.json 2>/dev/null || true
 
 if [ -d "$DOTFILES_DIR/claude/skills" ]; then
     echo "==> Symlinking Claude Code skills"

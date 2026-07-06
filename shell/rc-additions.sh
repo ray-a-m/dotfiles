@@ -193,6 +193,18 @@ pdfsplit() {
   qpdf --split-pages=20 "$input" "$outdir/$(basename "$input")"
 }
 
+# fzf shell integration — Ctrl-T (file picker), Ctrl-R (history), Alt-C
+# (cd into subdir), plus fuzzy tab-completion. Arch ships the integration
+# scripts in /usr/share/fzf/; guarded so machines without fzf installed
+# fall through silently.
+if [ -n "${ZSH_VERSION:-}" ]; then
+    [ -f /usr/share/fzf/key-bindings.zsh ] && source /usr/share/fzf/key-bindings.zsh
+    [ -f /usr/share/fzf/completion.zsh ]   && source /usr/share/fzf/completion.zsh
+elif [ -n "${BASH_VERSION:-}" ]; then
+    [ -f /usr/share/fzf/key-bindings.bash ] && source /usr/share/fzf/key-bindings.bash
+    [ -f /usr/share/fzf/completion.bash ]   && source /usr/share/fzf/completion.bash
+fi
+
 # zoxide - smarter cd. Pick the init flavor matching the running shell so
 # this file works under bash too (the filename says zshrc for historical
 # reasons; ~/.bashrc also sources it). `zoxide init zsh` emits zsh-only
