@@ -36,7 +36,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell \
+                neovim nodejs npm zoxide github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell eza \
                 pandoc-cli qpdf obsidian ttf-jetbrains-mono-nerd \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
@@ -358,7 +358,7 @@ if [ "$OS" = "Linux" ]; then
         yay -S --noconfirm zoom
     fi
     # mpvpaper is required by omarchy/hooks/theme-set for any theme whose
-    # wallpaper is a video (e.g. blue-girl's mornye mp4). Without it the
+    # wallpaper is a video (e.g. mornye's mp4 wallpaper). Without it the
     # hook silently fails and the wallpaper layer goes blank.
     if command -v yay &>/dev/null && ! pacman -Q mpvpaper &>/dev/null; then
         echo "==> Installing mpvpaper from AUR"
@@ -413,19 +413,30 @@ if [ "$OS" = "Linux" ]; then
 fi
 
 echo "==> Symlinking custom Omarchy hooks, themes, themed, and extensions"
+# Full rm-then-recreate of each managed subdir's symlinks so themes/hooks
+# removed from the repo (e.g. blue-girl→mornye rename, philosophy deletion)
+# don't leave dangling symlinks that omarchy-theme-set enumerates as
+# valid options. Any regular file at the destination gets moved to
+# .bak.<epoch> first (defensive — should never happen but guards against
+# hand-created files in these managed dirs).
 for sub in hooks themes themed extensions; do
     src_dir="$DOTFILES_DIR/omarchy/$sub"
     dst_dir="$HOME/.config/omarchy/$sub"
     [ -d "$src_dir" ] || continue
     mkdir -p "$dst_dir"
+    # Move any non-symlink entries out of the way; then rm all symlinks.
+    for entry in "$dst_dir"/*; do
+        [ -e "$entry" ] || continue
+        if [ -L "$entry" ]; then
+            rm "$entry"
+        else
+            mv "$entry" "$entry.bak.$(date +%s)"
+        fi
+    done
+    # Recreate symlinks from the source dir.
     for src in "$src_dir"/*; do
         [ -e "$src" ] || continue
-        name="$(basename "$src")"
-        dst="$dst_dir/$name"
-        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-            mv "$dst" "$dst.bak.$(date +%s)"
-        fi
-        ln -sfn "$src" "$dst"
+        ln -sfn "$src" "$dst_dir/$(basename "$src")"
     done
 done
 

@@ -1,23 +1,13 @@
--- Companion to the tmux-side christoomey/vim-tmux-navigator plugin (loaded via
--- tpm from ~/code/dotfiles/tmux/tmux.conf). With both halves installed,
--- Ctrl-h/j/k/l crosses seamlessly between nvim splits and tmux panes.
---
--- lazy = false + explicit mapping overrides matter here: LazyVim ships default
--- <C-h/j/k/l> window-nav mappings, and if the plugin lazy-loads on keypress
--- LazyVim's defaults win. Loading at startup + setting the mappings in `keys`
--- guarantees ours are the last word.
+-- Loads the tmux-side christoomey/vim-tmux-navigator plugin (via tpm from
+-- ~/code/dotfiles/tmux/tmux.conf) so `:TmuxNavigateLeft/Down/Up/Right/Previous`
+-- commands are available. All keymap binding happens in config/keymaps.lua —
+-- registering here fought LazyVim's default `<C-h/j/k/l>` = `<C-w>_` in normal
+-- mode; keymaps.lua fires on VeryLazy AFTER LazyVim's defaults, so it wins
+-- cleanly.
 return {
   "christoomey/vim-tmux-navigator",
   lazy = false,
   init = function()
-    -- Disable the plugin's own default mappings; we set them explicitly below.
     vim.g.tmux_navigator_no_mappings = 1
   end,
-  keys = {
-    { "<C-h>", "<cmd>TmuxNavigateLeft<cr>",  desc = "Navigate left (tmux/nvim)" },
-    { "<C-j>", "<cmd>TmuxNavigateDown<cr>",  desc = "Navigate down (tmux/nvim)" },
-    { "<C-k>", "<cmd>TmuxNavigateUp<cr>",    desc = "Navigate up (tmux/nvim)" },
-    { "<C-l>", "<cmd>TmuxNavigateRight<cr>", desc = "Navigate right (tmux/nvim)" },
-    { [[<C-\>]], "<cmd>TmuxNavigatePrevious<cr>", desc = "Navigate previous (tmux/nvim)" },
-  },
 }

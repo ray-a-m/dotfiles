@@ -1,5 +1,5 @@
-// Quickshell entry point. ShellRoot owns every panel in the philosophy
-// shell. Each child is a self-contained PanelWindow with its own layer
+// Quickshell entry point. ShellRoot owns every panel in the top bar.
+// Each child is a self-contained PanelWindow with its own layer
 // namespace, palette loader, and (where appropriate) GlassPill chrome.
 //
 // Hyprland blur is applied via two layerrules in hypr/windows.conf,

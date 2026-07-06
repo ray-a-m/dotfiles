@@ -14,3 +14,10 @@ vim.g.vimtex_matchparen_enabled = 0
 vim.opt.timeoutlen = 300
 
 vim.opt.cmdheight = 1
+
+-- No highlighted current-line bar. Reads as an opaque strip against the
+-- translucent nvim window; navigation cues live in the cursor itself.
+-- `apply_prose_mode` (autocmds.lua) returns early on bare buffers (empty ft
+-- BufEnter), so a per-window override there wouldn't cover unnamed scratch
+-- buffers — set globally here instead.
+vim.opt.cursorline = false

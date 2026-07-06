@@ -1,7 +1,7 @@
 -- Autocmds are automatically loaded on the VeryLazy event
 -- Default autocmds that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
 
-local prose_filetypes = { tex = true, markdown = true }
+local prose_filetypes = require("config.prose").filetypes
 
 -- NoNeckPain assigns each side window a hl namespace and only writes its own
 -- background_group/text_group into it; Normal stays undefined and falls back
@@ -81,7 +81,7 @@ local function apply_prose_mode(buf, event)
     vim.wo.number = true
     vim.wo.relativenumber = true
     vim.wo.signcolumn = "yes"
-    vim.wo.cursorline = true
+    vim.wo.cursorline = false
     vim.wo.wrap = false
     vim.wo.linebreak = false
     vim.wo.breakindent = false
@@ -149,11 +149,11 @@ vim.api.nvim_create_autocmd("VimEnter", {
 -- Match nvim's Normal bg to the kitty bg (sourced from the active Omarchy
 -- theme's colors.toml). Kitty's 14px window_padding_width (kitty.conf) paints
 -- the theme's `background` color, while the colorscheme (catppuccin-latte for
--- blue-girl) ships a slightly different shade — Raymond brightened
--- colors.toml's background for legibility at ~80% window opacity, but didn't
--- shift the nvim colorscheme. The mismatch renders as a visible inner "frame"
--- between the Hyprland border and the buffer content. Reading colors.toml at
--- runtime keeps this theme-agnostic across `omarchy-theme-set` swaps.
+-- mornye) ships a slightly different shade — Raymond brightened colors.toml's
+-- background for legibility at ~80% window opacity, but didn't shift the nvim
+-- colorscheme. The mismatch renders as a visible inner "frame" between the
+-- Hyprland border and the buffer content. Reading colors.toml at runtime keeps
+-- this theme-agnostic across `omarchy-theme-set` swaps.
 local function read_theme_bg()
   local path = vim.fn.expand("~/.config/omarchy/current/theme/colors.toml")
   local f = io.open(path, "r")
@@ -174,7 +174,7 @@ end
 -- and goes translucent. Over dark wallpaper patches the catppuccin-latte
 -- text fg (#4c4f69) loses contrast. The ProseNormal group below carries the
 -- same bg (so nothing else changes) but a darker fg, and apply_prose_mode
--- maps Normal/NormalNC onto it via winhighlight for tex/markdown only.
+-- maps Normal/NormalNC onto it via winhighlight for tex only.
 local function define_prose_normal(bg)
   vim.api.nvim_set_hl(0, "ProseNormal", {
     bg = bg,

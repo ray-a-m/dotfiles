@@ -2,7 +2,7 @@ return {
   "stevearc/aerial.nvim",
   dependencies = { "nvim-treesitter/nvim-treesitter" },
   cmd = { "AerialToggle", "AerialOpen", "AerialClose" },
-  ft = { "tex", "markdown" },
+  ft = { "tex" },
   keys = {
     { "<leader>o", "<cmd>AerialToggle<cr>", desc = "Paper outline (Aerial)" },
   },
@@ -56,15 +56,13 @@ return {
     },
     attach_mode = "global",
     open_automatic = function(bufnr)
-      local ft = vim.bo[bufnr].filetype
-      return ft == "tex" or ft == "markdown"
+      return vim.bo[bufnr].filetype == "tex"
     end,
-    backends = { "treesitter", "lsp", "markdown", "man" },
+    backends = { "treesitter", "lsp", "man" },
     -- Structural symbols only. Aerial's latex query emits sections as "Method"
-    -- (\title/\author = "Field", environments = "Class"). Markdown's query
-    -- emits atx and setext headings as "Interface". Allow both kinds so each
-    -- filetype shows just its structural outline.
-    filter_kind = { "Method", "Interface" },
+    -- (\title/\author = "Field", environments = "Class"). Restrict to Method
+    -- so bibliography/label commands don't clutter the outline.
+    filter_kind = { "Method" },
     -- Aerial's latex query captures `(curly_group (text) @name)`, which grabs
     -- only the first `text` child and stops at inline math (`$…$`). Re-extract
     -- the full curly_group via the symbol node so titles with math survive.

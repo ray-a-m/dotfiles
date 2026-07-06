@@ -31,6 +31,19 @@ alias wip="cd ~/scholarship/research-wip"
 alias pub="cd ~/scholarship/research-public"
 alias dots="cd ~/code/dotfiles"
 
+# eza — modern ls. Dir-first sorting matches muscle memory; ll/la add
+# git-status columns so dirty subdirs surface while cd-hopping between
+# paper folders. `l` is a plain ls-lite for quick scans. Guarded so
+# fresh machines without eza fall through to coreutils ls until eza
+# is installed (install.sh's Arch pacman line pulls it in for Arch).
+if command -v eza >/dev/null 2>&1; then
+    alias ls='eza --group-directories-first'
+    alias l='eza'
+    alias ll='eza -l --git --group-directories-first'
+    alias la='eza -la --git --group-directories-first'
+    alias lt='eza --tree --level=2 --group-directories-first'
+fi
+
 # Restart the wallpaper (mpvpaper for video themes, swaybg otherwise) by
 # re-running the omarchy theme-set hook. Instant recovery when mpvpaper
 # crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.

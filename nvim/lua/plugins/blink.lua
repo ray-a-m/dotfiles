@@ -2,8 +2,8 @@ return {
   "saghen/blink.cmp",
   opts = {
     -- The presets bind insert-mode <C-k> to signature-help toggling, which
-    -- would shadow the spell-fix map in config/keymaps.lua. An empty table
-    -- unbinds a preset key, so blink never touches <C-k>.
+    -- would shadow the unified <C-hjkl> pane nav in config/keymaps.lua.
+    -- Spell-fix moved to <A-k>; the unbind still stands to protect nav.
     keymap = { ["<C-k>"] = {} },
     completion = {
       menu = {
