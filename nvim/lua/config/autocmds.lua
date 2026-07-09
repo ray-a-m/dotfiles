@@ -1,7 +1,9 @@
 -- Autocmds are automatically loaded on the VeryLazy event
 -- Default autocmds that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
 
-local prose_filetypes = require("config.prose").filetypes
+local prose = require("config.prose")
+local prose_filetypes = prose.filetypes
+local wrap_filetypes = prose.wrap_filetypes
 
 -- NoNeckPain assigns each side window a hl namespace and only writes its own
 -- background_group/text_group into it; Normal stays undefined and falls back
@@ -89,6 +91,17 @@ local function apply_prose_mode(buf, event)
     vim.wo.fillchars = ""
     vim.wo.winhighlight = ""
     vim.wo.statuscolumn = "%!v:lua.LazyVim.statuscolumn()"
+    -- Wrap-only filetypes (markdown): soft visual wrap that reflows to the
+    -- window (pane) width — a paragraph stays one logical line but folds on
+    -- screen at word boundaries, tracking the pane as it's resized. NO hard
+    -- wrap (textwidth stays 0, no `t` in formatoptions), so no real newlines
+    -- are inserted. None of the rest of prose mode (NoNeckPain, spell,
+    -- number-hiding, colors) applies.
+    if wrap_filetypes[ft] then
+      vim.wo.wrap = true
+      vim.wo.linebreak = true
+      vim.wo.breakindent = true
+    end
     vim.bo[buf].textwidth = 0
     if vim.b[buf].prose_prev_formatoptions ~= nil then
       vim.bo[buf].formatoptions = vim.b[buf].prose_prev_formatoptions
