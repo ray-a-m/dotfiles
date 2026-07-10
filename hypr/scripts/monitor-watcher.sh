@@ -22,21 +22,35 @@ source "$(dirname "$0")/mirror-helper.sh"
 
 LID_FILE="/proc/acpi/button/lid/LID/state"
 
+# Cooldown timestamps for the heals below (epoch seconds; 0 = never). A lid/dock
+# transition fires a BURST of monitor events; without a cooldown each one would
+# re-restart quickshell / re-fire the wallpaper hook before the fresh instance
+# can map its surface, so nothing ever comes back (the "monitor went dark" on a
+# lid-close, 2026-07-10). These persist across iterations of the socat while-loop.
+_last_qs_restart=0
+_last_wp_refire=0
+
 log() { printf '[monitor-watcher] %s\n' "$*" >&2; }
 
-# mpvpaper occasionally crashes during dock transitions when wl_outputs
-# churn (observed 2026-06-10: SIGABRT in libavcodec/libmpv ~1s after a
-# burst of monitoradded/removed events). Heal by re-firing the theme-set
-# hook only if BOTH daemons are dead — normal events where mpvpaper
-# survives are no-ops, so this doesn't add churn.
+# The wallpaper can vanish during a dock transition — mpvpaper either crashes
+# (SIGABRT in libavcodec/libmpv on wl_output churn, observed 2026-06-10) or
+# survives as a process while losing its output binding. Heal by re-firing the
+# theme-set hook whenever no wallpaper LAYER is present (see the check below).
 # This is only the fast path: crashes landing after the 1s check (seen
 # 2026-06-23) and login races with no monitor event are caught by
 # wallpaper-watchdog.timer within ~30s.
 heal_wallpaper() {
     sleep 1  # let output topology settle
-    pgrep -x mpvpaper >/dev/null && return
-    pgrep -x swaybg   >/dev/null && return
-    log "wallpaper daemons dead post-event; re-firing theme-set hook"
+    # Check for an actual wallpaper LAYER, not just a live process. mpvpaper
+    # (and swaybg) can survive a dock/lid transition as a running process while
+    # losing its output binding — pgrep still finds it, but the screen is black.
+    # The old both-dead pgrep check skipped exactly that case, which is what
+    # left the external dark on lid-close (2026-07-10). namespace = mpvpaper|swaybg.
+    hyprctl layers 2>/dev/null | grep -qE 'namespace: (mpvpaper|swaybg)' && return
+    local now; now=$(date +%s)
+    (( now - _last_wp_refire < 8 )) && return
+    _last_wp_refire=$now
+    log "no wallpaper layer post-event; re-firing theme-set hook"
     "$HOME/.config/omarchy/hooks/theme-set"
 }
 
@@ -46,10 +60,17 @@ heal_wallpaper() {
 # restart). Check for any quickshell-* layer surface; if none, restart.
 # Normal events where the surfaces survive are no-ops.
 heal_quickshell() {
-    # sleep already absorbed by heal_wallpaper above
-    if hyprctl layers 2>/dev/null | grep -q 'namespace: quickshell-'; then
-        return
-    fi
+    hyprctl layers 2>/dev/null | grep -q 'namespace: quickshell-' && return
+    # quickshell loses its layer surfaces when its output is reconfigured during
+    # a dock/lid transition and does NOT re-anchor on its own — it needs a
+    # restart to repaint. Do it promptly (a grace window just prolongs the dark
+    # screen), but debounce with a cooldown: the transition fires a burst of
+    # monitor events, and restarting on each one (4x in 5s observed 2026-07-10)
+    # kills quickshell before it can map its surfaces, so it never comes back.
+    # One restart per window; a fresh instance gets the whole window to come up.
+    local now; now=$(date +%s)
+    (( now - _last_qs_restart < 8 )) && return
+    _last_qs_restart=$now
     log "quickshell has no layer surfaces post-event; restarting"
     pkill -x quickshell 2>/dev/null
     for _ in $(seq 1 20); do
@@ -62,10 +83,13 @@ heal_quickshell() {
 
 reevaluate() {
     if grep -q closed "$LID_FILE"; then
-        if omarchy-hw-external-monitors; then
+        # external_present_stable (debounced) so a transient DRM disconnect
+        # during dock-transition churn doesn't suspend a docked machine — the
+        # burst of monitoradded/removed events fires reevaluate() repeatedly,
+        # and a single flake used to loop us through suspend. See mirror-helper.sh.
+        if external_present_stable; then
             log "lid closed + external → external standalone"
-            mirror_off
-            omarchy-hyprland-monitor-internal off
+            internal_off_atomic
         else
             log "lid closed + no external → suspending"
             systemctl suspend
