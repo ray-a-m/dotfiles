@@ -4,6 +4,19 @@
 # — cycling with <pfx> {/} moves through the same tmux window pool regardless
 # of which Hyprland workspace you're on.
 #
-# `tmux new -A` is the atomic attach-if-exists form.
+# The server is started in its OWN systemd scope (tmux-server.scope) rather than
+# inline. Under uwsm, this terminal lives in a transient kitty-*.scope; a tmux
+# server spawned directly inside it inherits that cgroup, and daemonizing
+# (double-fork) does NOT escape the cgroup. So closing THIS window with Super+W
+# (killactive) would tear down the scope and SIGTERM the server with it —
+# killing every session, not just this client. Placing the server in a
+# dedicated scope decouples its lifetime from any one window: closing a window
+# drops only the client, and the next Super+Return re-attaches.
 set -euo pipefail
-exec tmux new -A -s Work
+
+if ! tmux has-session -t Work 2>/dev/null; then
+  systemd-run --user --scope --collect --quiet --unit=tmux-server \
+    tmux new-session -d -s Work
+fi
+
+exec tmux attach -t Work
