@@ -302,6 +302,15 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
             systemctl --user enable --now "$name" 2>/dev/null || true
         done
     fi
+    # Keep the per-user systemd manager (user@UID.service) alive across full
+    # logout and running from boot. Without this, tmux's systemd-run scope
+    # (tmux-server.scope, under user@.service) — and the user units installed
+    # above — are torn down when the last session ends. Marker lives at
+    # /var/lib/systemd/linger/$USER, so it's machine-local state, not a dotfile.
+    if ! loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q 'Linger=yes'; then
+        echo "==> Enabling linger for $USER (tmux/user units survive logout)"
+        loginctl enable-linger "$USER" 2>/dev/null || true
+    fi
 fi
 
 if [ -d "$DOTFILES_DIR/applications" ]; then
