@@ -36,8 +36,8 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell eza \
-                pandoc-cli qpdf obsidian ttf-jetbrains-mono-nerd \
+                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell eza \
+                pandoc-cli qpdf obsidian aspell aspell-en ttf-jetbrains-mono-nerd \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
             ;;
@@ -81,6 +81,13 @@ if [ -e ~/.config/nvim ] && [ ! -L ~/.config/nvim ]; then
     mv ~/.config/nvim ~/.config/nvim.bak
 fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
+
+echo "==> Symlinking emacs config"
+if [ -e ~/.config/emacs ] && [ ! -L ~/.config/emacs ]; then
+    echo "Backing up existing ~/.config/emacs to ~/.config/emacs.bak"
+    mv ~/.config/emacs ~/.config/emacs.bak
+fi
+ln -sfn "$DOTFILES_DIR/emacs" ~/.config/emacs
 
 echo "==> Symlinking kitty config"
 if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then

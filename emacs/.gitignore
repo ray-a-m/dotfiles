@@ -1,0 +1,14 @@
+# Runtime state is redirected to ~/.local/share/emacs and ~/.cache/emacs
+# by early-init.el + no-littering, so it should never land here.  This is
+# a defensive net in case a package writes into user-emacs-directory
+# anyway.  Track only the source .el files.
+/elpa/
+/eln-cache/
+/var/
+/etc/
+/auto-save-list/
+/transient/
+/.cache/
+/url/
+*.elc
+custom.el
