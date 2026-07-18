@@ -76,6 +76,13 @@
 ;; no-littering, so those don't litter the vault.
 (setq create-lockfiles nil)
 
+;; In daemon mode, opening a file in a client frame doesn't always fontify the
+;; visible region until point moves over it -- so Org /italic/ renders upright
+;; (and hidden markers stay shown) until the cursor passes.  Stealth
+;; fontification fills the buffer in during idle time, so emphasis renders on
+;; its own shortly after the file opens.
+(setq jit-lock-stealth-time 1)
+
 (setq-default indent-tabs-mode nil
               fill-column 80)
 
