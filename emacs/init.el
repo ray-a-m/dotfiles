@@ -151,6 +151,19 @@
 (use-package cdlatex
   :defer t)
 
+;; --- Live math preview (xenops) -----------------------------------------
+;; Renders every math fragment ($...$, \(...\), \[...\], and equation
+;; environments) as an inline SVG, and re-renders as you type -- the "live
+;; preview" you wanted, in *both* LaTeX and Org.  Move point into a fragment
+;; and it reveals the source to edit; move out and it re-renders.  Needs
+;; dvisvgm (already on PATH).  If it ever feels heavy on a big .tex file,
+;; drop the LaTeX-mode hook and toggle it by hand with `M-x xenops-mode'.
+(use-package xenops
+  :hook ((LaTeX-mode . xenops-mode)
+         (org-mode   . xenops-mode))
+  :config
+  (setq xenops-math-image-scale-factor 1.4))   ; a touch larger than the text
+
 ;; --- Org: notes + TODO/agenda (:lang org, built into Emacs) -------------
 ;; Papers stay in LaTeX.  Org is for tasks/agenda and prose notes (the
 ;; folder-of-outlines style, not zettelkasten).  Everything here is
@@ -165,6 +178,9 @@
   (setq org-directory "~/org/"
         org-agenda-files '("~/org/")      ; scan every .org in here for the agenda
         org-startup-folded 'overview      ; files open collapsed to top headings
+        org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
+        org-image-actual-width '(500)     ; cap oversized inline images at 500px
+        org-hide-emphasis-markers t       ; show *bold* / italic rendered, hide the markers
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
         '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED")))
@@ -174,6 +190,71 @@
            "* TODO %?\n  %U\n" :empty-lines 1)
           ("n" "Note" entry (file+headline "~/org/inbox.org" "Notes")
            "* %?\n  %U\n" :empty-lines 1))))
+
+;; org-appear complements `org-hide-emphasis-markers' above: the markers are
+;; hidden for clean, rendered text, but re-appear around the span your cursor
+;; is on so you can still edit them -- Obsidian-style live preview.
+(use-package org-appear
+  :hook (org-mode . org-appear-mode)
+  :init (setq org-appear-autolinks t))    ; also reveal [[link]] syntax on entry
+
+;; --- Prose writing environment (variable-pitch + centered) --------------
+;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
+;;   * a proportional (variable-pitch) body font -- Noto Serif
+;;   * mixed-pitch keeps code, tables, verbatim and math monospaced so they
+;;     still align; only prose text goes proportional
+;;   * olivetti centers the text in a comfortable measure
+;; Line numbers are already off in these modes (only prog-mode turns them on).
+
+;; The proportional face used for prose.  Swap the :family to taste.
+(set-face-attribute 'variable-pitch nil :family "Noto Serif" :height 1.0)
+
+(use-package mixed-pitch
+  :hook ((org-mode      . mixed-pitch-mode)
+         (markdown-mode . mixed-pitch-mode)
+         (LaTeX-mode    . mixed-pitch-mode)))
+
+(use-package olivetti
+  :hook ((org-mode      . olivetti-mode)
+         (markdown-mode . olivetti-mode)
+         (LaTeX-mode    . olivetti-mode))
+  :init (setq olivetti-body-width 72))    ; text column width, in columns
+
+;; The "slight gray vertical bars" beside the text are the window fringes;
+;; blend them into the background so they disappear (indicators still work).
+(set-face-attribute 'fringe nil :background 'unspecified)
+
+;; --- Notes navigator (treemacs) -----------------------------------------
+;; A collapsible file-tree side pane, like Obsidian's explorer, for the
+;; ~/Dropbox/notes vault.  Rendered in the proportional font (not monospace),
+;; with pixel-based indentation so nesting stays aligned under a variable-
+;; width font.  C-c t opens the vault; <f8> is a plain toggle.
+(use-package treemacs
+  :defer t
+  :bind (("C-c t" . rm/notes-tree)
+         ("<f8>"  . treemacs))
+  :init
+  (defun rm/notes-tree ()
+    "Open the ~/Dropbox/notes vault in a Treemacs side pane."
+    (interactive)
+    (require 'treemacs)
+    (treemacs-select-window)              ; create the window + workspace if needed
+    (treemacs-do-add-project-to-workspace ; no-op if already added
+     (expand-file-name "~/Dropbox/notes") "notes"))
+  :config
+  (setq treemacs-width 34
+        treemacs-indentation '(6 px))     ; pixel indent: aligns under Noto Serif
+  (treemacs-follow-mode 1)                ; keep the tree on the file you're editing
+  ;; Proportional font inside the tree buffer.
+  (add-hook 'treemacs-mode-hook
+            (lambda () (buffer-face-set 'variable-pitch))))
+
+;; --- Markdown (any notes you keep as .md) -------------------------------
+;; The vault is Org now, but markdown-mode covers any stray .md.  It inherits
+;; the proportional font + centering from the hooks above.
+(use-package markdown-mode
+  :mode ("\\.md\\'" . markdown-mode)
+  :init (setq markdown-command "pandoc"))
 
 ;; --- Optional next steps (left off on purpose) --------------------------
 ;; When you want them:

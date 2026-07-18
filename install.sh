@@ -193,6 +193,13 @@ for f in xdg-terminals.list mimeapps.list; do
     ln -sfn "$src" "$dst"
 done
 
+echo "==> Registering custom MIME types (text/x-org)"
+mkdir -p ~/.local/share/mime/packages
+ln -sfn "$DOTFILES_DIR/xdg/mime/packages/org.xml" ~/.local/share/mime/packages/org.xml
+if command -v update-mime-database &>/dev/null; then
+    update-mime-database ~/.local/share/mime &>/dev/null || true
+fi
+
 # Per-file symlinks for Omarchy app configs. Per-file (rather than dir-level)
 # because we want machine-specific files like ~/.config/hypr/monitors.conf to
 # stay locally owned, and we want Omarchy to keep adding new files alongside ours.

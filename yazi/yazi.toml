@@ -10,19 +10,30 @@ run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=$t "$1"'
 mime = "text/markdown"
 run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=$t "$1"'
 
+# Open .org and markdown in Emacs on <Enter>.  emacsclient reuses a running
+# Emacs (or starts a daemon on first use via -a ""); -n returns immediately so
+# yazi doesn't block, and orphan detaches the frame from yazi's lifetime.
 [opener]
-mdview = [
-    { run = 'mdview "$1"', desc = "Markdown Reader", orphan = true },
+emacs = [
+    { run = 'emacsclient -c -n -a "" "$@"', desc = "Emacs", orphan = true },
 ]
 
 [[open.prepend_rules]]
+url = "*.org"
+use = "emacs"
+
+[[open.prepend_rules]]
 mime = "text/markdown"
-use = "mdview"
+use = "emacs"
 
 [[open.prepend_rules]]
 url = "*.md"
-use = "mdview"
+use = "emacs"
 
 [[open.prepend_rules]]
 url = "*.markdown"
-use = "mdview"
+use = "emacs"
+
+[[open.prepend_rules]]
+url = "*.tex"
+use = "emacs"

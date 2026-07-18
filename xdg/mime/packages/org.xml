@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Custom MIME type so *.org files get their own type instead of falling
+     back to text/plain.  That lets mimeapps.list route .org to Emacs without
+     hijacking every plain-text / source file (which stay on nvim).
+     Registered into ~/.local/share/mime by install.sh via update-mime-database. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-org">
+    <comment>Org-mode document</comment>
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.org" weight="60"/>
+  </mime-type>
+</mime-info>

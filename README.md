@@ -5,6 +5,7 @@ Personal configuration files for macOS and Linux.
 ## Contents
 
 - **`nvim/`** — Neovim config (LazyVim-based, with LaTeX workflow)
+- **`emacs/`** — hand-rolled vanilla Emacs config (not Doom; `use-package`, learning-first). LaTeX (AUCTeX/cdlatex/latexmk/zathura) + Org notes vault (`~/Dropbox/notes`, migrated from Obsidian) + live math (xenops) + prose look (variable-pitch/olivetti). See `emacs/README.md`.
 - **`kitty/`** — Kitty terminal config
 - **`hypr/`** — Hyprland window manager config (Omarchy; per-file symlinks, machine-specific `monitors.conf` and `local.conf` stay local). Includes `hypr/scripts/` for dock/lid policy.
 - **`walker/`**, **`swayosd/`** — Omarchy launcher/OSD configs. Waybar retired; Quickshell is the top bar (see `RICING.md`).
