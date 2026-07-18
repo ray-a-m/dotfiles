@@ -50,7 +50,15 @@
   ;; Send Customize's auto-written settings to var/ (untracked); we
   ;; configure everything here by hand instead.
   (setq custom-file (no-littering-expand-var-file-name "custom.el"))
-  (load custom-file 'noerror 'nomessage))
+  (load custom-file 'noerror 'nomessage)
+  ;; Force auto-save #files# and backup file~ files out of the (Dropbox-synced)
+  ;; working tree into var/, so they don't sync as phantom "duplicates".  (Lock
+  ;; files .#foo are disabled via `create-lockfiles' above.)  no-littering is
+  ;; supposed to set both, but in practice it wasn't winning, so pin them here.
+  (setq auto-save-file-name-transforms
+        `((".*" ,(no-littering-expand-var-file-name "auto-save/") t))
+        backup-directory-alist
+        `((".*" . ,(no-littering-expand-var-file-name "backup/")))))
 
 ;; --- Sensible built-in defaults -----------------------------------------
 ;; No packages here -- this is Emacs teaching you what Emacs is.
@@ -60,6 +68,13 @@
       ring-bell-function #'ignore         ; no beep
       use-short-answers t                 ; y/n instead of yes/no
       sentence-end-double-space nil)      ; prose: single space ends a sentence
+
+;; The notes vault lives in Dropbox, so Emacs lock files (.#file) sync as
+;; phantom "duplicate" files (and churn on every edit).  Disable them --
+;; single-user machine, so the "already open elsewhere" guard isn't needed.
+;; Auto-save (#file#) and backups are already redirected out of the tree by
+;; no-littering, so those don't litter the vault.
+(setq create-lockfiles nil)
 
 (setq-default indent-tabs-mode nil
               fill-column 80)
@@ -175,8 +190,17 @@
          ("C-c c" . org-capture)          ; jot a task/note from anywhere
          ("C-c l" . org-store-link))
   :init
-  (setq org-directory "~/org/"
-        org-agenda-files '("~/org/")      ; scan every .org in here for the agenda
+  (setq org-directory "~/Dropbox/org/"    ; agenda + capture home (synced, NOT the vault)
+        ;; Agenda scans the dedicated org dir *and* the whole notes vault, so a
+        ;; TODO jotted in any note surfaces.  Recursive (the vault is nested) and
+        ;; filtered to skip Emacs lock/temp files.  New note files need a restart
+        ;; (or re-eval) to join the agenda; the org dir itself rescans live.
+        org-agenda-files
+        (cons "~/Dropbox/org/"
+              (when (file-directory-p "~/Dropbox/notes/")
+                (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
+                            (directory-files-recursively
+                             (expand-file-name "~/Dropbox/notes/") "\\.org\\'"))))
         org-startup-folded 'overview      ; files open collapsed to top headings
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
         org-image-actual-width '(500)     ; cap oversized inline images at 500px
@@ -186,9 +210,9 @@
         '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED")))
   :config
   (setq org-capture-templates
-        '(("t" "Task" entry (file+headline "~/org/inbox.org" "Tasks")
+        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "Tasks")
            "* TODO %?\n  %U\n" :empty-lines 1)
-          ("n" "Note" entry (file+headline "~/org/inbox.org" "Notes")
+          ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
            "* %?\n  %U\n" :empty-lines 1))))
 
 ;; org-appear complements `org-hide-emphasis-markers' above: the markers are
@@ -206,8 +230,13 @@
 ;;   * olivetti centers the text in a comfortable measure
 ;; Line numbers are already off in these modes (only prog-mode turns them on).
 
-;; The proportional face used for prose.  Swap the :family to taste.
-(set-face-attribute 'variable-pitch nil :family "Noto Serif" :height 1.0)
+;; The proportional face used for prose.  Liberation Serif, *not* Noto Serif:
+;; Emacs can't select an italic face from Noto Serif's many-weight family, so
+;; /italic/ renders upright there; Liberation Serif has a clean static italic
+;; that renders correctly.  The `italic' face is left at its default (slant
+;; only, no family) so it inherits Liberation Serif in prose but keeps the
+;; monospace font in code buffers.  Swap the :family to taste.
+(set-face-attribute 'variable-pitch nil :family "Liberation Serif" :height 1.0)
 
 (use-package mixed-pitch
   :hook ((org-mode      . mixed-pitch-mode)

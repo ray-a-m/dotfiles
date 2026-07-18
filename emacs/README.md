@@ -42,7 +42,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Live math | `xenops` | inline-SVG preview in LaTeX **and** Org (see below) |
 | Org | built-in | notes + agenda + capture; `~/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
-| Prose look | `mixed-pitch`, `olivetti` | variable-pitch Noto Serif + centered column (see below) |
+| Prose look | `mixed-pitch`, `olivetti` | variable-pitch Liberation Serif + centered column (see below) |
 | Notes navigator | `treemacs` | collapsible, proportional-font side pane for the vault |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
@@ -50,8 +50,10 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 
 Org, Markdown and LaTeX are made to read like a page, not a terminal:
 
-- **Variable-pitch body font** — `Noto Serif` (set on the `variable-pitch`
-  face; swap the `:family` to taste). `mixed-pitch` keeps code, tables,
+- **Variable-pitch body font** — `Liberation Serif` (set on the `variable-pitch`
+  face; swap the `:family` to taste). Chosen over Noto Serif because Emacs
+  can't select an italic face from Noto Serif's many-weight family, so
+  `/italic/` rendered upright. `mixed-pitch` keeps code, tables,
   verbatim and math **monospaced** so they still align — only prose goes
   proportional.
 - **Centered column** — `olivetti-mode`, `olivetti-body-width 72`.
@@ -120,9 +122,9 @@ absolutely untouched** as the deep backup; the `.md` copies inside
 ## External dependencies
 
 Installed by `install.sh`: `emacs-wayland`, `texlive` (→ `latexmk`, `dvisvgm`),
-`aspell` + `aspell-en`, `zathura`, `pandoc-cli`. **Not** auto-installed: the
-`Noto Serif` font (present on the current machine; swap the `variable-pitch`
-family if absent on a new one).
+`aspell` + `aspell-en`, `zathura`, `pandoc-cli`, and `ttf-liberation` (the
+`Liberation Serif` prose font). Swap the `variable-pitch` family in `init.el`
+if you want a different face.
 
 ## Future (from init.el's "optional next steps")
 
