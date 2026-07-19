@@ -76,13 +76,6 @@
 ;; no-littering, so those don't litter the vault.
 (setq create-lockfiles nil)
 
-;; In daemon mode, opening a file in a client frame doesn't always fontify the
-;; visible region until point moves over it -- so Org /italic/ renders upright
-;; (and hidden markers stay shown) until the cursor passes.  Stealth
-;; fontification fills the buffer in during idle time, so emphasis renders on
-;; its own shortly after the file opens.
-(setq jit-lock-stealth-time 1)
-
 (setq-default indent-tabs-mode nil
               fill-column 80)
 
@@ -173,18 +166,14 @@
 (use-package cdlatex
   :defer t)
 
-;; --- Live math preview (xenops) -----------------------------------------
-;; Renders every math fragment ($...$, \(...\), \[...\], and equation
-;; environments) as an inline SVG, and re-renders as you type -- the "live
-;; preview" you wanted, in *both* LaTeX and Org.  Move point into a fragment
-;; and it reveals the source to edit; move out and it re-renders.  Needs
-;; dvisvgm (already on PATH).  If it ever feels heavy on a big .tex file,
-;; drop the LaTeX-mode hook and toggle it by hand with `M-x xenops-mode'.
-(use-package xenops
-  :hook ((LaTeX-mode . xenops-mode)
-         (org-mode   . xenops-mode))
-  :config
-  (setq xenops-math-image-scale-factor 1.4))   ; a touch larger than the text
+;; --- Inline math preview: built-in Org/AUCTeX + org-fragtog -------------
+;; In Org, `C-c C-x C-l' renders the LaTeX fragment at point to an image; in
+;; .tex, AUCTeX's `C-c C-p C-p' does the same (both use dvisvgm).  org-fragtog
+;; makes the Org side *automatic*: point on a fragment shows editable source,
+;; point away auto-renders it -- the "live" feel, without xenops' font-lock
+;; breakage.  Rendering options (dvisvgm process + scale) are in the Org block.
+(use-package org-fragtog
+  :hook (org-mode . org-fragtog-mode))
 
 ;; --- Org: notes + TODO/agenda (:lang org, built into Emacs) -------------
 ;; Papers stay in LaTeX.  Org is for tasks/agenda and prose notes (the
@@ -208,7 +197,7 @@
                 (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
                             (directory-files-recursively
                              (expand-file-name "~/Dropbox/notes/") "\\.org\\'"))))
-        org-startup-folded 'overview      ; files open collapsed to top headings
+        org-startup-folded 'showall       ; open fully expanded; S-TAB cycles all folding
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
         org-image-actual-width '(500)     ; cap oversized inline images at 500px
         org-hide-emphasis-markers t       ; show *bold* / italic rendered, hide the markers
@@ -220,7 +209,16 @@
         '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "Tasks")
            "* TODO %?\n  %U\n" :empty-lines 1)
           ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
-           "* %?\n  %U\n" :empty-lines 1))))
+           "* %?\n  %U\n" :empty-lines 1)))
+  ;; Headings render blue via the default org-level faces once font-lock runs;
+  ;; bump their size so they stand out more than the body.  Tune the :heights.
+  (set-face-attribute 'org-level-1 nil :height 1.3)
+  (set-face-attribute 'org-level-2 nil :height 1.15)
+  (set-face-attribute 'org-level-3 nil :height 1.05)
+  ;; Inline LaTeX preview (C-c C-x C-l): crisp SVG output, a bit larger than
+  ;; the tiny default so equations are readable next to the prose font.
+  (setq org-preview-latex-default-process 'dvisvgm)
+  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5)))
 
 ;; org-appear complements `org-hide-emphasis-markers' above: the markers are
 ;; hidden for clean, rendered text, but re-appear around the span your cursor
@@ -259,6 +257,17 @@
 ;; The "slight gray vertical bars" beside the text are the window fringes;
 ;; blend them into the background so they disappear (indicators still work).
 (set-face-attribute 'fringe nil :background 'unspecified)
+
+;; Emacs has no native top padding, so add breathing room above the first line
+;; with a blank header line blended into the background.  Bump the :height to
+;; taste (1.5 = about half a line extra; 2.0 = a full line).
+(defun rm/prose-top-padding ()
+  "Give prose buffers a little blank space above the first line."
+  (setq-local header-line-format " ")
+  (face-remap-add-relative 'header-line
+                           :inherit 'default :height 1.5 :box nil :underline nil))
+(dolist (hook '(org-mode-hook markdown-mode-hook LaTeX-mode-hook))
+  (add-hook hook #'rm/prose-top-padding))
 
 ;; --- Notes navigator (treemacs) -----------------------------------------
 ;; A collapsible file-tree side pane, like Obsidian's explorer, for the
