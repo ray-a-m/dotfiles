@@ -1,0 +1,31 @@
+
+
+                     [[file:welcome-logo.svg]]
+
+                        *GNU Emacs*  /for prose & proofs/
+
+
+*Quick help*
+
+  Emacs tutorial ............................ [[elisp:(help-with-tutorial)][start tutorial]]
+  Quick key cheat-sheet in the echo area ............. [M-p]
+  Help prefix  (M-h k = describe key) ................ [M-h]
+
+*Quick commands*                            /C = Ctrl · M = Alt · SPC = leader/
+
+  Save ................ [:w / C-x C-s]    Quit Emacs .......... [:q / C-x C-c]
+  Find file .................. [SPC o]    Close buffer ............. [SPC b d]
+  Reload config ............ [SPC q r]    Windows .......... [C-h C-j C-k C-l]
+  Undo / redo .............. [u / C-r]    Help prefix .................. [M-h]
+  Git status ................. [C-x g]    Agenda / capture ... [C-c a / C-c c]
+  Notes tree ................. [C-c t]    Compile LaTeX ............ [C-c C-c]
+  Fold section ............... [S-TAB]
+
+*Your work*
+
+  Open dissertation ....................... [[elisp:(find-file "~/scholarship/research-wip/documents/dissertation/dissertation.tex")][dissertation.tex]]
+  Open notes vault .............................. [[elisp:(treemacs)][notes tree]]
+  Edit this screen ............................. [[elisp:(find-file "~/.config/emacs/welcome.org")][welcome.org]]
+
+
+                              /press q to dismiss/

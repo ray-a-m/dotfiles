@@ -1,21 +1,22 @@
 ;;; init.el --- Raymond's Emacs configuration  -*- lexical-binding: t; -*-
 ;;
-;; A small, deliberately hand-written config.  The goal is to *learn*
-;; Emacs, not to hide it behind a framework -- so every block is here on
-;; purpose and commented.  Package management is `use-package' (built in
-;; since Emacs 29) over the standard package.el archives.
+;; A hand-written config layered on rougier/nano-emacs for the *look* only.
+;; nano supplies the visual base (elegant light theme, generous frame margins,
+;; a top header-line status bar, Roboto-Mono/ET-Book fonts); everything else --
+;; evil (nvim keybindings), the LaTeX/Org writing stack, prose centering -- is
+;; our own, so the config stays understandable and tuned to paper + notes work.
+;; Configure by friction: change things here as they annoy you.
 ;;
 ;; State layout (see early-init.el for the redirects):
 ;;   ~/.config/emacs/       this file -- symlink into dotfiles, git-tracked
+;;   ~/.config/emacs/nano/  vendored nano-emacs modules (the visual base)
 ;;   ~/.local/share/emacs/  installed packages + no-littering var/
 ;;   ~/.cache/emacs/        native-compilation cache
 ;;
-;; Modelled loosely on Doom's module choices, minus the framework:
-;;   :emacs    dired, undo, vc      :checkers  spell, syntax
-;;   :tools    magit                :lang      latex (+cdlatex), org
-;; evil (vim keybindings) was added once the built-ins were learned -- see the
-;; "Vim keybindings" section below.  Still omitted: the vertico/orderless/
-;; marginalia completion stack (living on the built-in *Completions* first).
+;;   :look   nano (layout / faces / theme / modeline)
+;;   :keys   evil + evil-collection + evil-org      :tools  magit
+;;   :lang   latex (auctex+cdlatex+reftex), org     :checkers spell, syntax
+;;   :prose  mixed-pitch + olivetti + ETBembo
 
 ;;; Code:
 
@@ -84,8 +85,29 @@
 ;; warnings buffer while you write.
 (setq native-comp-async-report-warnings-errors 'silent)
 
+;; Session persistence (the useful part of nano-session, minus its litter).
+;; savehist already persists the minibuffer history; here we persist *more*
+;; across runs so a restart feels continuous -- yanks, command/search history.
+;; Set before `savehist-mode' below so these are restored on load.  Unlike
+;; nano-session.el we do NOT touch savehist-file / recentf-save-file /
+;; backup-directory-alist -- no-littering already owns those, out of $HOME.
+(setq savehist-additional-variables
+      '(kill-ring                        ; yanks survive a restart
+        command-history                  ; M-: / M-! history
+        search-ring regexp-search-ring   ; / and ? search history
+        query-replace-history
+        read-expression-history)
+      history-length 250
+      kill-ring-max 25)
+;; Kill-ring entries can carry text properties (faces/overlays); strip them so
+;; the saved history stays small and plain.
+(add-hook 'kill-emacs-hook
+          (lambda ()
+            (setq kill-ring (mapcar #'substring-no-properties
+                                    (seq-filter #'stringp kill-ring)))))
+
 (electric-pair-mode 1)                    ; auto-close brackets and $...$
-(savehist-mode 1)                         ; persist minibuffer history
+(savehist-mode 1)                         ; persist minibuffer history (+ the above)
 (recentf-mode 1)                          ; M-x recentf-open-files
 (global-auto-revert-mode 1)               ; reload files changed on disk
 (column-number-mode 1)
@@ -98,35 +120,59 @@
 (use-package which-key
   :config (which-key-mode 1))
 
-;; --- Buffer tabs (centaur-tabs, "wave" style) ---------------------------
-;; Doom-style curvy tabs across the top; `H' / `L' (evil section) walk them.
-;; Close buttons and file icons off -- keyboard-only, matching your nvim
-;; bufferline (icons would need the nerd-icons package).  centaur-tabs renders
-;; into the header-line, which is why the prose top-padding was removed.
-(use-package centaur-tabs
-  :demand t
-  :config
-  (setq centaur-tabs-style "wave"
-        centaur-tabs-height 32
-        centaur-tabs-set-bar 'under          ; underline the active tab
-        centaur-tabs-set-icons nil
-        centaur-tabs-set-close-button nil)
-  ;; centaur-tabs ships dark (Doom-ish) colours; no theme is loaded (white frame
-  ;; bg).  A light-gray bar with a white active tab reads cleanly.  Set before
-  ;; enabling so the "wave" images draw right.  NOTE: live-reload reuses cached
-  ;; wave images -- a *full restart* regenerates them; centaur-tabs' wave edges
-  ;; are finicky, flagged to revisit.
-  (dolist (f '(centaur-tabs-default centaur-tabs-unselected centaur-tabs-unselected-modified))
-    (set-face-attribute f nil :background "gray90" :box nil))
-  (set-face-attribute 'centaur-tabs-default nil :foreground "gray90")
-  (set-face-attribute 'centaur-tabs-unselected nil :foreground "gray55")
-  (set-face-attribute 'centaur-tabs-unselected-modified nil :foreground "gray55")
-  (dolist (f '(centaur-tabs-selected centaur-tabs-selected-modified))
-    (set-face-attribute f nil :background "white" :box nil))
-  (set-face-attribute 'centaur-tabs-selected nil :foreground "black" :weight 'bold)
-  (set-face-attribute 'centaur-tabs-selected-modified nil :foreground "black")
-  (set-face-attribute 'centaur-tabs-active-bar-face nil :background "gray30")
-  (centaur-tabs-mode 1))
+;; --- NANO visual base (rougier/nano-emacs, vendored in ./nano) ----------
+;; The look: an elegant light theme, generous frame margins (internal-border),
+;; a top header-line status bar with the bottom mode-line hidden, and the
+;; Roboto-Mono + ET-Book typography.  We load only the *visual* modules, and
+;; deliberately NOT: nano-bindings (evil owns the keys), nano-defaults (our
+;; built-in defaults above stand), nano-session, nor the counsel/mu4e/agenda
+;; modules (packages we don't use).  Vendored under ./nano so it's editable and
+;; pinned; re-pull from github.com/rougier/nano-emacs to update.
+(add-to-list 'load-path
+             (expand-file-name "nano" (file-name-directory user-init-file)))
+
+;; Fonts must be set BEFORE nano-faces reads them.  Both are installed under
+;; ~/.local/share/fonts.  GOTCHA on ET Book: the family Emacs wants is
+;; "ETBembo", *not* "et-book" (that's only the CSS @font-face alias; the TTF's
+;; internal family is ETBembo -- verify with `fc-list | grep -i etbembo').
+;; Setting it as the proportional family routes it through `variable-pitch',
+;; which mixed-pitch swaps in for prose while code/tables stay Roboto Mono.
+(setq nano-font-family-monospaced "Roboto Mono"
+      nano-font-family-proportional "ETBembo"
+      nano-font-size 12)              ; whole-UI size knob; bump/drop by 1 to taste
+
+(require 'nano-layout)          ; frame margins, no chrome, pretty wrap/truncate glyphs
+(require 'nano-faces)           ; the semantic faces (default/strong/faded/salient/...)
+(require 'nano-theme)
+(require 'nano-theme-light)
+(nano-theme-set-light)          ; Material-design light palette (light only, no dark)
+(nano-refresh-theme)            ; = (nano-faces) + (nano-theme): actually apply it
+(require 'nano-modeline)        ; status -> top header-line; bottom mode-line hidden
+
+;; nano-help: `M-p' pops a one-line quick-help cheat-sheet in the echo area, and
+;; `M-x nano-help' opens the full quick-help.org screen.  NOTE it also does
+;; `(global-set-key "M-h" 'nano-help)', which would steal your help prefix --
+;; but evil's `:config' re-binds M-h -> help-command *after* this loads, so your
+;; prefix wins and you just gain M-p.  (quick-help.org is vendored alongside the
+;; .el files so the M-x nano-help screen resolves.)
+(require 'nano-help)
+
+;; nano-layout sets `default-frame-alist', which only affects frames created
+;; *after* it -- so the already-open initial frame won't show nano's margin
+;; (internal-border) until nudged.  Push it (and the thin fringes) onto every
+;; live frame now, reading the values back from the alist so there's no magic
+;; number to keep in sync.
+(modify-all-frames-parameters
+ (seq-filter (lambda (kv) (memq (car kv) '(internal-border-width
+                                           left-fringe right-fringe)))
+             default-frame-alist))
+
+;; nano-layout calls `(tool-bar-mode nil)' / `(scroll-bar-mode nil)', and for a
+;; minor mode a nil argument *toggles* -- since early-init already turned these
+;; off, nano toggled them back ON (a stray toolbar + scrollbar).  Force off.
+(tool-bar-mode -1)
+(scroll-bar-mode -1)
+(menu-bar-mode -1)
 
 ;; --- Undo (:emacs undo) -------------------------------------------------
 ;; Linear, predictable undo/redo instead of Emacs's undo-ring.
@@ -141,7 +187,8 @@
 ;; modes (dired, help, magit, treemacs, ...); evil-org handles Org.  A few
 ;; custom binds mirror the LazyVim habits.  Undo/redo is the undo-fu above
 ;; (`u' / `C-r' in normal state).  Help moves from C-h to M-h so C-h is free
-;; for window-left (no F1 on the Corne).
+;; for window-left (no F1 on the Corne).  (nano hides the bottom mode-line, so
+;; there's no evil-state text indicator -- the cursor shape shows the state.)
 
 ;; Reload init.el in place -- apply most config edits without a full restart.
 (defun rm/reload-init ()
@@ -166,11 +213,7 @@
     (kbd "C-j") #'windmove-down
     (kbd "C-k") #'windmove-up
     (kbd "C-l") #'windmove-right)
-  ;; H / L walk the centaur-tabs tab bar (mirrors LazyVim's S-h / S-l).
-  (evil-define-key '(normal motion) 'global
-    "H" #'centaur-tabs-backward
-    "L" #'centaur-tabs-forward)
-  ;; SPC leader -- just the two keys you actually use.
+  ;; SPC leader -- just the keys you actually use.
   (evil-define-key '(normal visual) 'global
     (kbd "SPC o")   #'treemacs               ; leader+o: file explorer
     (kbd "SPC b d") #'kill-current-buffer    ; leader+bd: close buffer
@@ -192,9 +235,28 @@
 
 (setq ispell-program-name (or (executable-find "aspell")
                               (executable-find "hunspell")))
+;; Personal word list kept in the dotfiles (tracked + synced), not aspell's
+;; default ~/.aspell.en.pws.  M-$ then `i' saves a word here.
+(setq ispell-personal-dictionary
+      (expand-file-name "aspell-personal.pws" (file-name-directory user-init-file)))
+;; Don't flag a word repeated across a line break as an error -- it fires on
+;; e.g. a `* Emacs' heading followed by a paragraph starting "Emacs ...".
+(setq flyspell-mark-duplications-flag nil)
 (add-hook 'text-mode-hook #'flyspell-mode)
 (add-hook 'prog-mode-hook #'flyspell-prog-mode)
 (add-hook 'prog-mode-hook #'flymake-mode)
+
+;; --- TODO / FIXME highlighting (hl-todo) --------------------------------
+;; Colour TODO, FIXME, NOTE, HACK ... keywords wherever they appear -- code and
+;; prose, including .tex.  Pure highlighting, no Org needed: drop a `TODO' in a
+;; paper and it stands out.  Jump with `hl-todo-next' / `hl-todo-previous';
+;; `M-x hl-todo-occur' lists them in the buffer.  (Org's TODO *workflow* -- state
+;; cycling, agenda -- is Org-only; for a TODO list across all papers ask about
+;; magit-todos / consult-todo, which scan any file type.)
+(use-package hl-todo
+  :hook ((prog-mode     . hl-todo-mode)
+         (LaTeX-mode    . hl-todo-mode)
+         (markdown-mode . hl-todo-mode)))
 
 ;; --- Git (:tools magit) -------------------------------------------------
 
@@ -206,9 +268,13 @@
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
 ;; existing nvim/latexmk/zathura flow.
 
-(use-package tex
+;; AUCTeX 14 defines `LaTeX-mode' / `LaTeX-mode-map' in the `latex' feature (not
+;; `tex'), so we `use-package latex' -- still installing the `auctex' package.
+;; Using `tex' here left `LaTeX-mode-map' void when the mode loaded, which errored
+;; and silently dropped every .tex to Fundamental mode (no font-lock, no hooks).
+(use-package latex
   :ensure auctex
-  :defer t                                ; loads on first .tex file
+  :mode ("\\.tex\\'" . LaTeX-mode)        ; route .tex -> AUCTeX's LaTeX-mode
   :hook ((LaTeX-mode . turn-on-cdlatex)   ; fast math input (impatient-scholar step 1)
          (LaTeX-mode . turn-on-reftex)    ; \ref / \cite from the .bib
          (LaTeX-mode . TeX-source-correlate-mode)  ; SyncTeX forward/inverse
@@ -221,6 +287,7 @@
   (setq TeX-auto-save t                   ; parse macros/labels on save
         TeX-parse-self t
         TeX-master nil                     ; prompt for the master file
+        TeX-save-query nil                 ; C-c C-c saves without asking -> 1-gesture compile
         reftex-plug-into-AUCTeX t
         ;; Shared dissertation bibliography (see CLAUDE.md conventions).
         reftex-default-bibliography
@@ -292,8 +359,8 @@
            "* TODO %?\n  %U\n" :empty-lines 1)
           ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
            "* %?\n  %U\n" :empty-lines 1)))
-  ;; Headings render blue via the default org-level faces once font-lock runs;
-  ;; bump their size so they stand out more than the body.  Tune the :heights.
+  ;; Headings render via the org-level faces once font-lock runs; bump their
+  ;; size so they stand out more than the body.  Tune the :heights.
   (set-face-attribute 'org-level-1 nil :height 1.3)
   (set-face-attribute 'org-level-2 nil :height 1.15)
   (set-face-attribute 'org-level-3 nil :height 1.05)
@@ -311,19 +378,13 @@
 
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
-;;   * a proportional (variable-pitch) body font -- Noto Serif
-;;   * mixed-pitch keeps code, tables, verbatim and math monospaced so they
-;;     still align; only prose text goes proportional
+;;   * the body font is ET Book (ETBembo), supplied via nano's proportional
+;;     family above; mixed-pitch swaps `variable-pitch' in for prose while
+;;     keeping code / tables / verbatim / math in Roboto Mono so they align
 ;;   * olivetti centers the text in a comfortable measure
 ;; Line numbers are already off in these modes (only prog-mode turns them on).
-
-;; The proportional face used for prose.  Liberation Serif, *not* Noto Serif:
-;; Emacs can't select an italic face from Noto Serif's many-weight family, so
-;; /italic/ renders upright there; Liberation Serif has a clean static italic
-;; that renders correctly.  The `italic' face is left at its default (slant
-;; only, no family) so it inherits Liberation Serif in prose but keeps the
-;; monospace font in code buffers.  Swap the :family to taste.
-(set-face-attribute 'variable-pitch nil :family "Liberation Serif" :height 1.0)
+;; (The old blank-header-line top-padding was removed -- nano-modeline now owns
+;; the header-line for its status bar, so the two can't coexist.)
 
 (use-package mixed-pitch
   :hook ((org-mode      . mixed-pitch-mode)
@@ -336,20 +397,98 @@
          (LaTeX-mode    . olivetti-mode))
   :init (setq olivetti-body-width 72))    ; text column width, in columns
 
-;; The "slight gray vertical bars" beside the text are the window fringes;
-;; blend them into the background so they disappear (indicators still work).
-(set-face-attribute 'fringe nil :background 'unspecified)
+;; Darker prose text.  Nano's body colour is a soft blue-grey (#37474F); this
+;; darkens the *prose* face for more contrast while writing, leaving code and
+;; the UI in nano's grey.  mixed-pitch renders prose in `variable-pitch', so
+;; that's the face to darken.  It runs after nano's theme, so it wins.  (ET Book
+;; only changes the letterforms, not the colour -- darkening is a separate knob.)
+;; Tune the hex to taste (#000 = pure black, nano's own "strong").
+(set-face-attribute 'variable-pitch nil :foreground "#1c1c1c")
 
-;; (The blank-header-line top-padding was removed: centaur-tabs uses the
-;; header-line for its tab bar, so the two can't coexist.  The tab bar now
-;; provides the top structure.  If more space above the text is wanted later,
-;; it'll need a non-header-line method.)
+;; Match the monospace bits to ET Book's apparent size.  In mixed-pitch, prose is
+;; ETBembo (variable-pitch) while LaTeX commands, math and code stay `fixed-pitch'
+;; (Roboto Mono) -- and Roboto Mono renders visibly larger than ET Book at the
+;; same point size.  Shrinking `fixed-pitch' sits the \commands level with the
+;; prose.  Tune the ratio to taste (1.0 = same nominal size; lower = smaller).
+(set-face-attribute 'fixed-pitch nil :height 0.75)
+
+;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
+;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
+;; (`welcome.org' beside this init) rendered read-only -- logo, quick help,
+;; a keybind cheat-sheet, and clickable actions.  Because it's Org, you edit
+;; the page by editing that file (there's an "Edit this screen" link on it).
+;; Shown on `window-setup-hook', skipped when Emacs opens a file.
+;;
+;; A few deliberate choices make it behave under our stack:
+;;   * we run `org-mode' with `org-mode-hook' let-bound to nil, so the prose
+;;     hooks (mixed-pitch, flyspell, org-fragtog, ...) do NOT fire -- the page
+;;     stays monospace so the cheat-sheet columns line up
+;;   * `olivetti-mode' centres it in a measure that re-flows on resize, so it
+;;     stays centred as you flip a Hyprland tile between small and full-screen
+;;   * [bracketed keys] are coloured with nano's salient face via a scoped
+;;     font-lock rule (the `[^][()]' class skips [[elisp:(...)]] link internals)
+;;   * cursor is hidden -- including evil's block cursor, via a buffer-local
+;;     `evil-normal-state-cursor'
+;;   * evil stays in normal state so SPC is still your leader; q / ESC dismiss
+
+(defun rm/welcome-kill ()
+  "Dismiss the welcome screen."
+  (interactive)
+  (when (get-buffer "*welcome*")
+    (kill-buffer "*welcome*")))
+
+(defun rm/welcome ()
+  "Show the welcome screen (welcome.org) unless a file was opened at launch."
+  (interactive)
+  (when (or (called-interactively-p 'interactive)   ; M-x always previews it
+            (and (not (member "-no-splash" command-line-args))
+                 ;; no file-visiting buffers yet -> a bare `emacs' launch
+                 (not (seq-some #'buffer-file-name (buffer-list)))))
+    (let* ((dir  (file-name-directory user-init-file))
+           (file (expand-file-name "welcome.org" dir))
+           (buf  (get-buffer-create "*welcome*")))
+      (when (file-exists-p file)
+        (require 'org)                             ; so `org-mode-hook' is special before
+        (with-current-buffer buf                   ; we let-bind it below (else, under
+          (let ((inhibit-read-only t))             ; lexical-binding, it errors)
+            (erase-buffer)
+            (insert-file-contents file))
+          (setq default-directory dir)             ; so [[file:welcome-logo.svg]] resolves
+          (let ((org-mode-hook nil)) (org-mode))   ; Org WITHOUT the prose hooks
+          (setq-local org-hide-emphasis-markers t)
+          ;; colour [bracketed keys] salient; the [^][()] class avoids matching
+          ;; inside [[elisp:(...)]] links (which contain parens)
+          (font-lock-add-keywords nil
+                                  '(("\\[[^][()]*\\]" 0 'nano-face-salient prepend)) t)
+          (font-lock-flush) (font-lock-ensure)
+          (setq-local mode-line-format nil         ; clean of nano's status bars
+                      header-line-format nil
+                      cursor-type nil)             ; no cursor...
+          (when (fboundp 'evil-normal-state)
+            (evil-normal-state)                    ; keep SPC as leader; make local keymap
+            (setq-local evil-normal-state-cursor '(nil))  ; ...including evil's box cursor
+            (when (fboundp 'evil-refresh-cursor) (evil-refresh-cursor))
+            (evil-local-set-key 'normal (kbd "q")        #'rm/welcome-kill)
+            (evil-local-set-key 'normal (kbd "<escape>") #'rm/welcome-kill))
+          (read-only-mode 1)
+          (goto-char (point-min)))
+        (switch-to-buffer buf)
+        ;; Window-dependent bits, now that the buffer is actually on screen:
+        ;; inline the logo image, and centre with olivetti (re-flows on resize).
+        (with-current-buffer buf
+          (org-display-inline-images)
+          (when (fboundp 'olivetti-mode)
+            (setq-local olivetti-body-width 78)    ; wide enough for the 2-col block
+            (olivetti-mode 1)))))))
+
+(add-hook 'window-setup-hook #'rm/welcome)
 
 ;; --- Notes navigator (treemacs) -----------------------------------------
 ;; A collapsible file-tree side pane, like Obsidian's explorer, for the
-;; ~/Dropbox/notes vault.  Rendered in the proportional font (not monospace),
-;; with pixel-based indentation so nesting stays aligned under a variable-
-;; width font.  C-c t opens the vault; <f8> is a plain toggle.
+;; ~/Dropbox/notes vault.  Rendered in a proportional sans font, with
+;; pixel-based indentation so nesting stays aligned.  C-c t opens the vault;
+;; <f8> is a plain toggle.  Opening a file (l / RET) shows it in its own
+;; buffer in the adjacent window.
 (use-package treemacs
   :defer t
   :bind (("C-c t" . rm/notes-tree)
@@ -390,13 +529,23 @@
 
 ;; --- Optional next steps (left off on purpose) --------------------------
 ;; When you want them:
+;;   * the elegant "Welcome" second page (quick-help + clickable commands),
+;;     ported from rougier/elegant-emacs's Welcome.org
 ;;   * citar      -- richer bibliography UI than RefTeX          (:tools biblio)
-;;   * pdf-tools  -- view/annotate PDFs in Emacs; compiles epdfinfo on
-;;                   first use, needs poppler-glib.  zathura already
-;;                   covers viewing, so this is optional.
-;;   * vertico + orderless + marginalia -- the completion stack, once
-;;     you've outgrown the built-in *Completions* buffer.
-;;   * a theme that follows Omarchy -- Emacs won't auto-track the omarchy
-;;     theme; wiring that up is its own small project.
+;;   * pdf-tools  -- view/annotate PDFs in Emacs (zathura already views)
+;;   * vertico + orderless + marginalia -- the completion stack
+;;   * a theme that follows Omarchy -- Emacs won't auto-track it; its own project
 
 ;;; init.el ends here
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages '(auctex no-littering)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

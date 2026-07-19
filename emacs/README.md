@@ -1,32 +1,53 @@
 # Emacs
 
-A small, deliberately hand-written config — the goal is to *learn* Emacs, not
-to hide it behind a framework. Package management is `use-package` (built into
-Emacs 29+) over the standard `package.el` archives; every block in `init.el` is
-there on purpose and commented. Loosely modelled on Doom's module choices,
-minus the framework.
+A config built on **[rougier/nano-emacs](https://github.com/rougier/nano-emacs)**
+for the *look*, with an **evil** (vim) keybinding layer and a LaTeX + Org writing
+stack layered on top. nano supplies the visual base — elegant light theme,
+generous frame margins, a top header-line status bar, Roboto Mono + ET Book
+typography. Everything else (evil, AUCTeX, Org, prose centering, the welcome
+screen) is hand-written in `init.el` and commented, so the config stays
+understandable and tuned to **paper + notes** work. Configure by friction: change
+things as they annoy you.
 
-Runs **alongside** Neovim, which stays primary for paper writing (vimtex +
-latexmk). Emacs is the learning trial and the home for **notes + Org**; as of
-the prose pass below it also styles `.tex` buffers, so it's a viable second
-LaTeX editor.
+Runs **alongside** Neovim (still used for some paper writing via vimtex +
+latexmk); Emacs is now a full second LaTeX editor and the home for **notes + Org**.
 
 ## Files
 
-| File            | Role |
-|-----------------|------|
-| `early-init.el` | Loaded before `package.el` and the first frame: startup GC / `file-name-handler-alist` tuning, UI-chrome suppression (no flash), and the `package-user-dir` / eln-cache redirects out of this git-tracked dir. |
-| `init.el`       | Everything else. |
+| File | Role |
+|------|------|
+| `early-init.el` | Loaded before `package.el` and the first frame: startup GC / `file-name-handler-alist` tuning, UI-chrome suppression (no flash), `package-user-dir` / eln-cache redirects out of this git-tracked dir. |
+| `init.el` | Everything else. |
+| `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
+| `welcome.org` | The startup screen content — an editable Org file (logo, quick help, keybind cheat-sheet, clickable actions). |
+| `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
+| `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
 
 Symlinked to `~/.config/emacs` by `install.sh` (`ln -sfn`, backing up any real
 dir to `~/.config/emacs.bak` first).
+
+## The nano base
+
+Vendored under `nano/`. `init.el` loads only the **visual** modules:
+`nano-layout`, `nano-faces`, `nano-theme` (+ `nano-theme-light`),
+`nano-modeline`, and `nano-help` (`M-p` echo-area quick help). Deliberately
+**not** loaded:
+
+- `nano-bindings` — evil owns the keys
+- `nano-defaults` — the hand-written "sensible defaults" block stands instead
+- `nano-session` — its history-persistence idea is adopted inline (see below), minus its `~/.nano-*` litter
+- `nano-counsel` / `nano-mu4e` / `nano-agenda` — packages not used
+
+Fonts are routed **through** nano: `Roboto Mono` (default / code), **ET Book**
+(prose) — note the family Emacs wants is `ETBembo`, *not* `et-book`. Size is one
+knob, `nano-font-size`.
 
 ## State layout
 
 Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 (`early-init.el` + `no-littering`; `.gitignore` is the defensive net):
 
-- `~/.config/emacs/` — this dir (symlink into dotfiles); only `.el` sources tracked
+- `~/.config/emacs/` — this dir (symlink into dotfiles); only sources tracked
 - `~/.local/share/emacs/` — installed packages (`elpa/`) + `no-littering` `var/`
 - `~/.cache/emacs/` — native-compilation (`eln-cache/`)
 
@@ -34,15 +55,18 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 
 | Area | Package(s) | Notes |
 |------|-----------|-------|
+| Look | `nano-*` (vendored) | light theme, frame margins, top header-line modeline, Roboto Mono + ET Book |
+| Keys | `evil`, `evil-collection`, `evil-org` | vim everywhere; help prefix moved to `M-h` so `C-h` is window-left |
 | Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `which-key`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
-| Undo | `undo-fu` | linear undo/redo on `C-z` / `C-S-z` |
+| Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
+| Undo | `undo-fu` | linear undo/redo on `C-z` / `C-S-z` (evil `u` / `C-r`) |
 | Git | `magit` | `C-x g` |
-| Spell / syntax | built-in | `flyspell` (aspell) + `flymake` |
-| LaTeX | `auctex`, `cdlatex`, `auctex-latexmk` | RefTeX wired to the shared dissertation `.bib`; `C-c C-c` → LatexMk; SyncTeX ↔ **zathura**; `S-TAB` folds the paper via `outline-minor-mode` |
-| Live math | `xenops` | inline-SVG preview in LaTeX **and** Org (see below) |
-| Org | built-in | notes + agenda + capture; `~/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
+| Spell / syntax | built-in + `hl-todo` | `flyspell` (aspell, personal dict in dotfiles, no duplicate-flagging) + `flymake`; `hl-todo` colours TODO/FIXME in code **and** prose |
+| LaTeX | `auctex` (14, via the `latex` feature), `cdlatex`, `auctex-latexmk` | RefTeX → shared dissertation `.bib`; `C-c C-c` → LatexMk (save-and-compile); SyncTeX ↔ **zathura**; `S-TAB` folds via `outline-minor-mode` |
+| Live math | built-in preview + `org-fragtog` | inline SVG via `dvisvgm` (`C-c C-x C-l` in Org, `C-c C-p C-p` in `.tex`); `org-fragtog` auto-renders Org fragments. **Not** xenops (dropped — broke font-lock). |
+| Org | built-in | notes + agenda + capture; `~/Dropbox/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
-| Prose look | `mixed-pitch`, `olivetti` | variable-pitch Liberation Serif + centered column (see below) |
+| Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
 | Notes navigator | `treemacs` | collapsible, proportional-font side pane for the vault |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
@@ -50,30 +74,27 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 
 Org, Markdown and LaTeX are made to read like a page, not a terminal:
 
-- **Variable-pitch body font** — `Liberation Serif` (set on the `variable-pitch`
-  face; swap the `:family` to taste). Chosen over Noto Serif because Emacs
-  can't select an italic face from Noto Serif's many-weight family, so
-  `/italic/` rendered upright. `mixed-pitch` keeps code, tables,
-  verbatim and math **monospaced** so they still align — only prose goes
-  proportional.
+- **Body font: ET Book** (`ETBembo`) on `variable-pitch`, via nano's proportional
+  family. `mixed-pitch` keeps code, tables, verbatim and math **monospaced**
+  (Roboto Mono) so they still align — only prose goes proportional.
+- **Darker prose** — nano's body colour is a soft blue-grey; the prose face is
+  darkened (`#1c1c1c`) for contrast while writing, leaving code/UI in nano's grey.
+- **Matched sizes** — Roboto Mono renders larger than ET Book at the same point
+  size, so `fixed-pitch` is shrunk (`:height 0.75`) to sit the `\commands`/math
+  level with the prose.
 - **Centered column** — `olivetti-mode`, `olivetti-body-width 72`.
-- **No line numbers** — already off in these modes (only `prog-mode` enables them).
-- **No gray fringe bars** — the `fringe` face background is blended into the
-  default background, so the vertical strips beside the text disappear while
-  fringe indicators still function.
-- **Rendered emphasis** — `org-hide-emphasis-markers` hides the `/ /`, `* *`,
-  `= =` markers so italic/bold/verbatim show styled; `org-appear` re-reveals the
-  raw markers (and `[[link]]` syntax) around point so they stay editable —
-  Obsidian-style live preview.
+- **Rendered emphasis** — `org-hide-emphasis-markers` + `org-appear` (Obsidian-style
+  live preview: markers hidden, revealed around point).
+- Fringes and UI chrome are handled by nano-layout.
 
-## Live math preview (xenops)
+## Welcome screen
 
-`xenops-mode` renders every math fragment (`$…$`, `\(…\)`, `\[…\]`, equation
-environments) as an inline SVG and re-renders as you type — the "live preview"
-feel, in both LaTeX and Org. Point *inside* a fragment reveals its source to
-edit; moving *out* re-renders. Needs `dvisvgm` (ships with texlive). Enabled via
-hooks on `LaTeX-mode` and `org-mode`; if it feels heavy on a large `.tex` file,
-drop the `LaTeX-mode` hook and toggle by hand with `M-x xenops-mode`.
+At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
+read-only: the Emacs logo, a *Quick help* section, a two-column keybind
+cheat-sheet, and clickable actions (open the dissertation, the notes tree, or the
+welcome file itself). It stays in evil **normal** state so `SPC` is still your
+leader; `q` / `ESC` dismiss; the cursor is hidden. Because it's Org, you customise
+the page by editing `welcome.org` (there's an "Edit this screen" link on it).
 
 ## The notes vault (Org, migrated 2026-07-18)
 
@@ -101,19 +122,26 @@ absolutely untouched** as the deep backup; the `.md` copies inside
 
 ## Keybindings
 
+evil provides vim motions/editing everywhere; the notable custom binds:
+
 | Key | Command |
 |-----|---------|
+| `M-h` | help prefix (moved from `C-h`; e.g. `M-h k` describe-key) |
+| `C-h` / `C-j` / `C-k` / `C-l` | move between windows |
+| `SPC o` | open the `~/Dropbox/notes` vault in Treemacs |
+| `SPC b d` | close buffer |
+| `SPC q r` | reload `init.el` |
+| `<f8>` | toggle Treemacs |
+| `M-p` | echo-area quick-help cheat-sheet (nano-help) |
+| `C-z` / `C-S-z` | undo / redo (`undo-fu`; evil `u` / `C-r`) |
 | `C-x g` | `magit-status` |
 | `C-c a` / `C-c c` / `C-c l` | Org agenda / capture / store-link |
-| `C-c t` | open the `~/Dropbox/notes` vault in Treemacs |
-| `<f8>` | toggle Treemacs |
-| `C-z` / `C-S-z` | undo / redo (`undo-fu`) |
 | `C-c C-c` | compile via LatexMk (in `.tex`) |
-| `S-TAB` | cycle the whole document's outline (in `.tex`) |
+| `S-TAB` | cycle the document outline (in `.tex`) |
+| `q` / `ESC` | dismiss the welcome screen |
 
 ## Deliberately omitted (and why)
 
-- **evil** — learning the built-in (non-modal) Emacs first.
 - **vertico / orderless / marginalia** — living on the built-in `*Completions*`
   buffer until it's outgrown.
 - **org-roam** — see the vault section; folder-of-outlines with hand-added
@@ -122,12 +150,14 @@ absolutely untouched** as the deep backup; the `.md` copies inside
 ## External dependencies
 
 Installed by `install.sh`: `emacs-wayland`, `texlive` (→ `latexmk`, `dvisvgm`),
-`aspell` + `aspell-en`, `zathura`, `pandoc-cli`, and `ttf-liberation` (the
-`Liberation Serif` prose font). Swap the `variable-pitch` family in `init.el`
-if you want a different face.
+`aspell` + `aspell-en`, `zathura`, `pandoc-cli`. Fonts live in
+`~/.local/share/fonts/`: **ET Book** (`ETBembo`, the prose face), **Roboto Mono**
+(default / code), and **Fira Code** (glyph fallback). Change the families via
+`nano-font-family-*` in `init.el`.
 
 ## Future (from init.el's "optional next steps")
 
 `citar` (richer bibliography UI than RefTeX), `pdf-tools` (in-Emacs PDF view —
-zathura already covers this), the vertico completion stack, and wiring the
-theme to track Omarchy (Emacs doesn't auto-follow `omarchy-theme-set`).
+zathura already covers this), the vertico completion stack, wiring the theme to
+track Omarchy, the elegant `Welcome.org` second (quick-commands) page, and a
+trial of `sidetabs` (left-side buffer tabs).
