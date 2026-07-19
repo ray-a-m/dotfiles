@@ -13,8 +13,9 @@
 ;; Modelled loosely on Doom's module choices, minus the framework:
 ;;   :emacs    dired, undo, vc      :checkers  spell, syntax
 ;;   :tools    magit                :lang      latex (+cdlatex), org
-;; Intentionally omitted for now: evil, and the vertico/orderless/
-;; marginalia completion stack -- learning the built-ins first.
+;; evil (vim keybindings) was added once the built-ins were learned -- see the
+;; "Vim keybindings" section below.  Still omitted: the vertico/orderless/
+;; marginalia completion stack (living on the built-in *Completions* first).
 
 ;;; Code:
 
@@ -97,6 +98,36 @@
 (use-package which-key
   :config (which-key-mode 1))
 
+;; --- Buffer tabs (centaur-tabs, "wave" style) ---------------------------
+;; Doom-style curvy tabs across the top; `H' / `L' (evil section) walk them.
+;; Close buttons and file icons off -- keyboard-only, matching your nvim
+;; bufferline (icons would need the nerd-icons package).  centaur-tabs renders
+;; into the header-line, which is why the prose top-padding was removed.
+(use-package centaur-tabs
+  :demand t
+  :config
+  (setq centaur-tabs-style "wave"
+        centaur-tabs-height 32
+        centaur-tabs-set-bar 'under          ; underline the active tab
+        centaur-tabs-set-icons nil
+        centaur-tabs-set-close-button nil)
+  ;; centaur-tabs ships dark (Doom-ish) colours; no theme is loaded (white frame
+  ;; bg).  A light-gray bar with a white active tab reads cleanly.  Set before
+  ;; enabling so the "wave" images draw right.  NOTE: live-reload reuses cached
+  ;; wave images -- a *full restart* regenerates them; centaur-tabs' wave edges
+  ;; are finicky, flagged to revisit.
+  (dolist (f '(centaur-tabs-default centaur-tabs-unselected centaur-tabs-unselected-modified))
+    (set-face-attribute f nil :background "gray90" :box nil))
+  (set-face-attribute 'centaur-tabs-default nil :foreground "gray90")
+  (set-face-attribute 'centaur-tabs-unselected nil :foreground "gray55")
+  (set-face-attribute 'centaur-tabs-unselected-modified nil :foreground "gray55")
+  (dolist (f '(centaur-tabs-selected centaur-tabs-selected-modified))
+    (set-face-attribute f nil :background "white" :box nil))
+  (set-face-attribute 'centaur-tabs-selected nil :foreground "black" :weight 'bold)
+  (set-face-attribute 'centaur-tabs-selected-modified nil :foreground "black")
+  (set-face-attribute 'centaur-tabs-active-bar-face nil :background "gray30")
+  (centaur-tabs-mode 1))
+
 ;; --- Undo (:emacs undo) -------------------------------------------------
 ;; Linear, predictable undo/redo instead of Emacs's undo-ring.
 
@@ -104,6 +135,57 @@
   :init (global-unset-key (kbd "C-z"))    ; was suspend-frame; reclaim it
   :bind (("C-z"   . undo-fu-only-undo)
          ("C-S-z" . undo-fu-only-redo)))
+
+;; --- Vim keybindings (evil) ---------------------------------------------
+;; Emacs with Neovim muscle memory.  evil-collection vimifies the built-in
+;; modes (dired, help, magit, treemacs, ...); evil-org handles Org.  A few
+;; custom binds mirror the LazyVim habits.  Undo/redo is the undo-fu above
+;; (`u' / `C-r' in normal state).  Help moves from C-h to M-h so C-h is free
+;; for window-left (no F1 on the Corne).
+
+;; Reload init.el in place -- apply most config edits without a full restart.
+(defun rm/reload-init ()
+  "Re-evaluate init.el so config changes take effect without restarting."
+  (interactive)
+  (load-file user-init-file)
+  (message "init.el reloaded."))
+
+(use-package evil
+  :init
+  (setq evil-want-integration t
+        evil-want-keybinding nil          ; must be set before load for evil-collection
+        evil-want-C-u-scroll t            ; C-u scrolls up a half-page, like vim
+        evil-want-C-i-jump nil            ; leave TAB alone (Org folding / indent)
+        evil-undo-system 'undo-fu)        ; reuse the undo-fu configured above
+  :config
+  (evil-mode 1)
+  (keymap-global-set "M-h" #'help-command)          ; help prefix -> M-h
+  ;; C-hjkl: move between windows, in every editing state (like nvim n/i/v).
+  (evil-define-key '(normal insert visual motion) 'global
+    (kbd "C-h") #'windmove-left
+    (kbd "C-j") #'windmove-down
+    (kbd "C-k") #'windmove-up
+    (kbd "C-l") #'windmove-right)
+  ;; H / L walk the centaur-tabs tab bar (mirrors LazyVim's S-h / S-l).
+  (evil-define-key '(normal motion) 'global
+    "H" #'centaur-tabs-backward
+    "L" #'centaur-tabs-forward)
+  ;; SPC leader -- just the two keys you actually use.
+  (evil-define-key '(normal visual) 'global
+    (kbd "SPC o")   #'treemacs               ; leader+o: file explorer
+    (kbd "SPC b d") #'kill-current-buffer    ; leader+bd: close buffer
+    (kbd "SPC q r") #'rm/reload-init))       ; reload config after edits
+
+(use-package evil-collection
+  :after evil
+  :config (evil-collection-init))
+
+(use-package evil-org
+  :after (evil org)
+  :hook (org-mode . evil-org-mode)
+  :config
+  (require 'evil-org-agenda)
+  (evil-org-agenda-set-keys))
 
 ;; --- Spell + syntax checking (:checkers spell / syntax) -----------------
 ;; Both are built in.  Flyspell needs `aspell' (+ a dictionary) on PATH.
@@ -258,16 +340,10 @@
 ;; blend them into the background so they disappear (indicators still work).
 (set-face-attribute 'fringe nil :background 'unspecified)
 
-;; Emacs has no native top padding, so add breathing room above the first line
-;; with a blank header line blended into the background.  Bump the :height to
-;; taste (1.5 = about half a line extra; 2.0 = a full line).
-(defun rm/prose-top-padding ()
-  "Give prose buffers a little blank space above the first line."
-  (setq-local header-line-format " ")
-  (face-remap-add-relative 'header-line
-                           :inherit 'default :height 1.5 :box nil :underline nil))
-(dolist (hook '(org-mode-hook markdown-mode-hook LaTeX-mode-hook))
-  (add-hook hook #'rm/prose-top-padding))
+;; (The blank-header-line top-padding was removed: centaur-tabs uses the
+;; header-line for its tab bar, so the two can't coexist.  The tab bar now
+;; provides the top structure.  If more space above the text is wanted later,
+;; it'll need a non-header-line method.)
 
 ;; --- Notes navigator (treemacs) -----------------------------------------
 ;; A collapsible file-tree side pane, like Obsidian's explorer, for the
@@ -288,11 +364,22 @@
      (expand-file-name "~/Dropbox/notes") "notes"))
   :config
   (setq treemacs-width 34
-        treemacs-indentation '(6 px))     ; pixel indent: aligns under Noto Serif
-  (treemacs-follow-mode 1)                ; keep the tree on the file you're editing
-  ;; Proportional font inside the tree buffer.
+        treemacs-indentation '(6 px))      ; pixel indent: aligns under a proportional font
+  (treemacs-follow-mode 1)                 ; keep the tree on the file you're editing
+  ;; h / l close and open folders, vim-style (evil-collection has no treemacs
+  ;; module, so bind them ourselves).  j/k already move line-by-line via evil.
+  (evil-define-key '(normal motion) treemacs-mode-map
+    (kbd "l") #'treemacs-RET-action              ; expand dir / open file
+    (kbd "h") #'treemacs-collapse-parent-node)   ; collapse
+  ;; Non-monospace tree.  A *sans* proportional font (not the serif body font)
+  ;; reads like Obsidian's sidebar.  buffer-face-set didn't stick on treemacs'
+  ;; own faces, so set the family on them directly.  Swap "Noto Sans" to taste.
+  (dolist (face '(treemacs-root-face treemacs-directory-face
+                  treemacs-directory-collapsed-face treemacs-file-face
+                  treemacs-tags-face))
+    (set-face-attribute face nil :family "Noto Sans"))
   (add-hook 'treemacs-mode-hook
-            (lambda () (buffer-face-set 'variable-pitch))))
+            (lambda () (setq-local line-spacing 3))))   ; airier rows
 
 ;; --- Markdown (any notes you keep as .md) -------------------------------
 ;; The vault is Org now, but markdown-mode covers any stray .md.  It inherits
