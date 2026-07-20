@@ -3,7 +3,7 @@
 # before its dispatch, so redefining show_*_menu functions here overrides the
 # stock ones. The stock script is left untouched (survives package upgrades).
 #
-# Top-level layout: Tasks / Mail / Notes / Research / Files / Portals / System.
+# Top-level layout: Mail / Emacs / Research / Files / Portals / System.
 # (File Explorer is on SUPER+E, so it's omitted here.)
 #
 # Note on back-nav: walker's `-c` flag only paints a visual mark, and walker
@@ -41,10 +41,9 @@ menu() {
 }
 
 show_main_menu() {
-  case $(menu "Go" "  Tasks\n󰇮  Mail\n󰏫  Notes\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
-    *Tasks*)    gtk-launch tasks ;;
+  case $(menu "Go" "󰇮  Mail\n  Emacs\n󰂺  Research\n󰉋  Files\n󰖟  Portals\n  System") in
     *Mail*)     show_mail_menu ;;
-    *Notes*)    gtk-launch obsidian ;;
+    *Emacs*)    gtk-launch emacsclient ;;
     *Research*) show_research_menu ;;
     *Files*)    show_files_menu ;;
     *Portals*)  show_portals_menu ;;
