@@ -86,6 +86,10 @@
 ;; no-littering, so those don't litter the vault.
 (setq create-lockfiles nil)
 
+;; The stock crash-recovery auto-save (#file# copies) stays on, but its
+;; "Auto-saving...done" echo is noise while writing.
+(setq auto-save-no-message t)
+
 (setq-default indent-tabs-mode nil
               fill-column 80)
 
@@ -161,13 +165,42 @@
 (nano-refresh-theme)            ; = (nano-faces) + (nano-theme): actually apply it
 (require 'nano-modeline)        ; status -> top header-line; bottom mode-line hidden
 
-;; nano-help: `M-p' pops a one-line quick-help cheat-sheet in the echo area, and
-;; `M-x nano-help' opens the full quick-help.org screen.  NOTE it also does
-;; `(global-set-key "M-h" 'nano-help)' -- but the Windows section below re-binds
-;; M-h -> windmove-left *after* this loads, so window-nav wins and you just gain
-;; M-p.  (quick-help.org is vendored alongside the .el files so the M-x
-;; nano-help screen resolves.)
+;; Prose modelines, quieter: "Musings.org (Org)" reads as just "Musings".
+;; In text-mode-derived buffers the .org/.md extension is hidden (sidebar
+;; parity) and the "(Mode)" segment is dropped -- the branch, when there is
+;; one, still shows.  Code buffers keep the stock "name (Mode, branch)".
+;; Redefines nano-modeline's dispatcher target; the vendored original is
+;; untouched.
+(defun nano-modeline-default-mode ()
+  (let* ((buffer-name (format-mode-line "%b"))
+         (prose       (derived-mode-p 'text-mode))
+         (buffer-name (if prose
+                          (replace-regexp-in-string "\\.\\(org\\|md\\)\\'" ""
+                                                    buffer-name)
+                        buffer-name))
+         (mode-name   (nano-mode-name))
+         (branch      (vc-branch))
+         (position    (format-mode-line "%l:%c")))
+    (nano-modeline-compose
+     (nano-modeline-status)
+     buffer-name
+     (cond ((and prose branch)
+            (concat "(" (propertize branch 'face 'italic) ")"))
+           (prose "")
+           (t (concat "(" mode-name
+                      (if branch
+                          (concat ", " (propertize branch 'face 'italic)))
+                      ")")))
+     position)))
+
+;; nano-help: an echo-area quick-help cheat-sheet plus a full quick-help.org
+;; screen (M-x nano-help; its M-h hard-bind loses to the vim motions below).
+;; It also hard-binds the cheat-sheet to M-p on load; move it to C-M-h
+;; (stock mark-defun, unused here) so M-p is free for paste.  (quick-help.org
+;; is vendored alongside the .el files so the nano-help screen resolves.)
 (require 'nano-help)
+(keymap-global-set "C-M-h" 'nano-quick-help)
+(keymap-global-unset "M-p")
 
 ;; nano-layout sets `default-frame-alist', which only affects frames created
 ;; *after* it -- so the already-open initial frame won't show nano's margin
@@ -327,6 +360,63 @@
 ;; org-meta-return).  Defined via the C-x path, so it lands in ctl-x-map;
 ;; typed as C-a k.
 (keymap-global-set "C-x k" #'kill-current-buffer)
+
+;; --- Vim motions on Meta (mirrors the nvim workflow) --------------------
+;; M-hjkl / M-w / M-b move (w is vim-exact: start of NEXT word, via misc.el's
+;; forward-to-word).  M-v toggles the highlight (the active region); motions
+;; then extend it, M-d cuts it, M-y copies it -- strict vim operators: with
+;; no highlight they just say so.  M-p pastes.  M-4 / M-6 = backward/forward
+;; paragraph (vim's { and } -- 4 and 6 sit under left/right on the Corne
+;; number row, and M-{ / M-} can't be chorded there).  pgtk syncs the
+;; kill-ring with the Wayland clipboard both ways, so M-y / M-p see the
+;; system clipboard for free.
+;; Stock keys knowingly replaced: M-h nano-help screen (still M-x nano-help),
+;; M-v scroll-down (C-v still pages down), M-w kill-ring-save (M-y now),
+;; M-d kill-word, M-y yank-pop, M-j indent-newline, M-k kill-sentence,
+;; M-l downcase-word, M-4/M-6 digit args (the other digits keep theirs).
+;; Vertico's minibuffer M-p (history) deliberately stays -- paste there
+;; is C-y.
+
+(autoload 'forward-to-word "misc")
+
+(defun rm/visual-toggle ()
+  "Start a highlight at point, or drop the active one (vim's v)."
+  (interactive)
+  (if (region-active-p)
+      (deactivate-mark)
+    (set-mark-command nil)))
+
+(defun rm/visual-cut ()
+  "Cut the highlight (vim's d).  No highlight, no cut."
+  (interactive)
+  (if (region-active-p)
+      (kill-region (region-beginning) (region-end))
+    (message "No selection")))
+
+(defun rm/visual-copy ()
+  "Copy the highlight (vim's y).  No highlight, no copy."
+  (interactive)
+  (if (region-active-p)
+      (kill-ring-save (region-beginning) (region-end))
+    (message "No selection")))
+
+(keymap-global-set "M-h" #'backward-char)
+(keymap-global-set "M-j" #'next-line)
+(keymap-global-set "M-k" #'previous-line)
+(keymap-global-set "M-l" #'forward-char)
+(keymap-global-set "M-w" #'forward-to-word)
+(keymap-global-set "M-b" #'backward-word)   ; stock already; kept explicit
+(keymap-global-set "M-v" #'rm/visual-toggle)
+(keymap-global-set "M-d" #'rm/visual-cut)
+(keymap-global-set "M-y" #'rm/visual-copy)
+(keymap-global-set "M-p" #'yank)
+(keymap-global-set "M-4" #'backward-paragraph)
+(keymap-global-set "M-6" #'forward-paragraph)
+
+;; org locally shadows M-h (org-mark-element) -- clear it so the motion
+;; wins.  Only shadow found across the org/LaTeX/markdown/dired maps.
+(with-eval-after-load 'org
+  (define-key org-mode-map (kbd "M-h") nil))
 
 ;; --- Completion (vertico + orderless + marginalia) ----------------------
 ;; Minibuffer-only upgrades -- no popups in buffers, no compat layer:
@@ -508,7 +598,9 @@
   :hook ((org-mode            . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda))  ; same look in C-c a
   :init
-  (setq org-modern-block-fringe nil       ; fringe markers sit wrong next to olivetti's margins
+  (setq org-modern-star 'replace          ; static glyphs, not fold-state triangles
+        org-modern-replace-stars "✦✧✱✳"   ; one per level; level 5+ reuses the last
+        org-modern-block-fringe nil       ; fringe markers sit wrong next to olivetti's margins
         ;; tag/keyword pills look best unaligned (no trailing-whitespace columns)
         org-auto-align-tags nil
         org-tags-column 0))
@@ -546,7 +638,14 @@
 (defun rm/apply-face-tweaks ()
   "Re-apply the post-nano face adjustments (prose colour, fixed-pitch size)."
   (set-face-attribute 'variable-pitch nil :foreground "#1c1c1c")
-  (set-face-attribute 'fixed-pitch nil :family "Roboto Mono" :height 0.75))
+  (set-face-attribute 'fixed-pitch nil :family "Roboto Mono" :height 0.75)
+  ;; nano maps `italic' to its faded grey (Rougier considers italics abused).
+  ;; For prose that's wrong: /emphasis/ should slant, in an Obsidian-style
+  ;; soft blue that reads as emphasis without going faint (ET Book's italic
+  ;; strokes are thinner than the roman, so same-colour italics look faded).
+  ;; Break the inherit nano sets and restore the slant it wiped.
+  (set-face-attribute 'italic nil :inherit 'unspecified :slant 'italic
+                      :foreground "#4a6fa5"))
 (rm/apply-face-tweaks)
 
 ;; Daemon hardening: when Emacs starts as a daemon there is no graphical
