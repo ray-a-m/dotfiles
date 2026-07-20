@@ -133,8 +133,11 @@ read-only: the Emacs logo (pixel-centered via `org-image-align`), then two
 alphabetical sections — a two-column *Commands* cheat-sheet and *Help*.
 `q` / `ESC` dismiss; it also auto-dismisses the first time a real file is
 visited, so it never lingers in the buffer list or gets split around by later
-windows. Daemon client frames (`emacsclient -c`, the launcher's "Emacs
-(Client)") show it too until it's dismissed. Its lines truncate rather than
+windows. Daemon client frames (`emacsclient -c`, the launcher's "Emacs"
+entry): the *first* frame of a visit greets with the splash — closing the
+last frame (Super+Q) ends the visit, so the next open splashes again even
+though the daemon kept every buffer. A frame opened alongside a live one
+resumes your last file instead. Its lines truncate rather than
 wrap, so the cheat-sheet columns stay aligned at any window width. The cursor
 is hidden. Because it's Org, you customise the page by editing `welcome.org`.
 

@@ -662,23 +662,30 @@ very window the file is about to land in."
 
 (add-hook 'window-setup-hook #'rm/welcome)
 
-;; Client frames (app-launcher "Emacs (Client)", emacsclient -c) open on the
-;; daemon, where window-setup-hook already ran frameless -- so without this
-;; they'd show *scratch* instead of the splash.  Show it while it still
-;; exists (i.e. until dismissed); frames opened on a file still win, because
-;; the server displays the file after this hook runs.
+;; No "When done with this frame, type C-a 5 0" echo in client frames --
+;; Hyprland's Super+Q closes the frame like any window; the hint is noise.
+(setq server-client-instructions nil)
+
+;; Client frames (the launcher's "Emacs" entry, emacsclient -c) open on the
+;; daemon, where window-setup-hook already ran frameless -- without this
+;; they'd show *scratch*.  The visit logic lives in the docstring below.
 (when (daemonp)
   (defun rm/welcome-on-new-frame ()
-    "Show the splash in new daemon frames until it's dismissed."
-    (when-let ((buf (get-buffer "*welcome*")))
-      (switch-to-buffer buf)
-      ;; The daemon rendered the buffer on its frameless startup display,
-      ;; where `org-display-inline-images' is a silent no-op -- so the logo
-      ;; is still a raw link.  Inline it now that we're on a real frame
-      ;; (idempotent: org skips links that already carry image overlays).
-      (when (display-graphic-p)
-        (with-current-buffer buf
-          (org-display-inline-images)))))
+    "First frame of a visit: the splash.  Additional frames: your last file.
+Closing the last frame (Super+Q) ends the \"visit\" -- the daemon keeps
+every buffer, but the next frame greets with a fresh splash.  A second
+frame opened alongside a live one resumes the last file instead (stock
+emacsclient would show *scratch*).  Frames opened ON a file still win:
+the server displays the file after this hook, and its find-file-hook
+dismisses the splash."
+    (if (cdr (seq-filter #'display-graphic-p (frame-list)))
+        ;; another GUI frame is already up -> resume
+        (when-let ((last-file (seq-find #'buffer-file-name (buffer-list))))
+          (switch-to-buffer last-file))
+      ;; only frame -> (re)render the splash; the interactive path skips
+      ;; rm/welcome's bare-launch guards, and rendering happens on THIS
+      ;; graphic frame, so the logo inlines and auto-dismiss re-arms
+      (funcall-interactively #'rm/welcome)))
   (add-hook 'server-after-make-frame-hook #'rm/welcome-on-new-frame))
 
 ;; --- Notes + papers sidebar (dired-sidebar) ------------------------------
