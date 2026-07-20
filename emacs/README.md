@@ -1,16 +1,23 @@
 # Emacs
 
 A config built on **[rougier/nano-emacs](https://github.com/rougier/nano-emacs)**
-for the *look*, with an **evil** (vim) keybinding layer and a LaTeX + Org writing
+for the *look*, with **native Emacs keybindings** and a LaTeX + Org writing
 stack layered on top. nano supplies the visual base — elegant light theme,
 generous frame margins, a top header-line status bar, Roboto Mono + ET Book
-typography. Everything else (evil, AUCTeX, Org, prose centering, the welcome
-screen) is hand-written in `init.el` and commented, so the config stays
-understandable and tuned to **paper + notes** work. Configure by friction: change
-things as they annoy you.
+typography. Everything else (window management, AUCTeX, Org, prose centering,
+the welcome screen) is hand-written in `init.el` and commented, so the config
+stays understandable and tuned to **paper + notes** work. Configure by
+friction: change things as they annoy you.
+
+**evil was dropped on 2026-07-19**: new packages kept lagging evil-collection
+support, and a compat layer wasn't worth it for a prose-only Emacs. The custom
+key layer is scoped to what the defaults do badly — window focus/resize/swap
+and the notes sidebar — everything else is stock. CapsLock is mapped to Ctrl
+at the Hyprland level (`hypr/input.conf`), so the chords sit on the home row.
 
 Runs **alongside** Neovim (still used for some paper writing via vimtex +
-latexmk); Emacs is now a full second LaTeX editor and the home for **notes + Org**.
+latexmk, and for all coding); Emacs is a full second LaTeX editor and the home
+for **notes + Org**.
 
 ## Files
 
@@ -33,8 +40,10 @@ Vendored under `nano/`. `init.el` loads only the **visual** modules:
 `nano-modeline`, and `nano-help` (`M-p` echo-area quick help). Deliberately
 **not** loaded:
 
-- `nano-bindings` — evil owns the keys
+- `nano-bindings` — its `M-RET` frame-maximize would clobber `org-meta-return`;
+  the one good bit (`C-x k` → kill-current-buffer) is cherry-picked inline
 - `nano-defaults` — the hand-written "sensible defaults" block stands instead
+  (and its `completion-styles` would fight orderless)
 - `nano-session` — its history-persistence idea is adopted inline (see below), minus its `~/.nano-*` litter
 - `nano-counsel` / `nano-mu4e` / `nano-agenda` — packages not used
 
@@ -56,10 +65,12 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Area | Package(s) | Notes |
 |------|-----------|-------|
 | Look | `nano-*` (vendored) | light theme, frame margins, top header-line modeline, Roboto Mono + ET Book |
-| Keys | `evil`, `evil-collection`, `evil-org` | vim everywhere; help prefix moved to `M-h` so `C-h` is window-left |
-| Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `which-key`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
+| Keys | — (native) | stock bindings + a scoped window/sidebar layer; `C-h` is the help prefix again |
+| Windows | built-in `windmove`/`winner`/`repeat` + `ace-window` | `M-h/j/k/l` focus, `M-o` jump/swap, `C-c w` menu with repeatable resize (see below) |
+| Completion | `vertico`, `orderless`, `marginalia` | live minibuffer lists; out-of-order fragment matching; annotated candidates (M-x shows each command's keybinding) |
+| Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `which-key`, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
 | Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
-| Undo | `undo-fu` | linear undo/redo on `C-z` / `C-S-z` (evil `u` / `C-r`) |
+| Undo | built-in | linear undo/redo on `C-z` / `C-S-z` (`undo` / `undo-redo`) |
 | Git | `magit` | `C-x g` |
 | Spell / syntax | built-in + `hl-todo` | `flyspell` (aspell, personal dict in dotfiles, no duplicate-flagging) + `flymake`; `hl-todo` colours TODO/FIXME in code **and** prose |
 | LaTeX | `auctex` (14, via the `latex` feature), `cdlatex`, `auctex-latexmk` | RefTeX → shared dissertation `.bib`; `C-c C-c` → LatexMk (save-and-compile); SyncTeX ↔ **zathura**; `S-TAB` folds via `outline-minor-mode` |
@@ -67,8 +78,26 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Org | built-in | notes + agenda + capture; `~/Dropbox/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Notes navigator | `treemacs` | collapsible, proportional-font side pane for the vault |
+| Notes sidebar | `dired-sidebar` | dired in a side pane, Obsidian-styled: Noto Sans, no icons, TAB expands folders (replaced treemacs 2026-07-19) |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
+
+## Window management
+
+The daily layout is paper (main window) + notes (top right) + agenda or an AI
+shell (bottom right), rearranged on the fly:
+
+- **`M-h/j/k/l`** — focus the window left/down/up/right (windmove; the vim
+  spatial habit). Org's own `M-h` is cleared so this wins everywhere.
+- **`M-o`** — ace-window: with ≤2 windows it hops immediately; with 3+ each
+  window gets a home-row letter. Dispatch keys ride along: `M-o m <letter>`
+  **swaps buffers** with that window (the "put the agenda in the big window"
+  move), `M-o x <letter>` deletes it.
+- **`C-c w`** — the window menu (which-key pops the key list): `s`/`v` split
+  below/right (`:sp`/`:vs` mnemonic), `h/j/k/l` resize — and these **repeat**,
+  so `C-c w l l l h …` keeps resizing until any other key — `w` swap, `=`
+  balance, `d` delete, `m` maximize, `u`/`r` winner undo/redo (also repeat).
+- **winner-mode** — every layout change is undoable (`C-c w u`), so
+  "maximize, then bring it all back" is `C-c w m` … `C-c w u`.
 
 ## Prose writing environment
 
@@ -91,10 +120,10 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
 
 At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
 read-only: the Emacs logo, a *Quick help* section, a two-column keybind
-cheat-sheet, and clickable actions (open the dissertation, the notes tree, or the
-welcome file itself). It stays in evil **normal** state so `SPC` is still your
-leader; `q` / `ESC` dismiss; the cursor is hidden. Because it's Org, you customise
-the page by editing `welcome.org` (there's an "Edit this screen" link on it).
+cheat-sheet, and clickable actions (open the dissertation, the notes sidebar, or
+the welcome file itself). `q` / `ESC` dismiss; the cursor is hidden. Because
+it's Org, you customise the page by editing `welcome.org` (there's an "Edit
+this screen" link on it).
 
 ## The notes vault (Org, migrated 2026-07-18)
 
@@ -104,11 +133,10 @@ one-off `pandoc` + Python pass, not a stored tool):
 
 - `[[wikilinks]]` → real Org file links; `![[embeds]]` → inline image / PDF links
 - a static `:BACKLINKS:` drawer at the **top** of each linked-to note (folded,
-  and invisible to Treemacs since it's a drawer, not a heading) — every
-  one-way link gets a return route
+  since it's a drawer, not a heading) — every one-way link gets a return route
 - Markdown `$math$` → Org `\(…\)` / `\[…\]`; dangling links kept as Org
   unresolved links
-- headings (`#`) → Org outline (`*`), giving folding + Treemacs navigation
+- headings (`#`) → Org outline (`*`), giving folding + outline navigation
 
 **Deliberate choices:** plain Org file links, **no org-roam** (folder-of-
 outlines, not zettelkasten). The backlinks are therefore a **point-in-time
@@ -122,28 +150,36 @@ absolutely untouched** as the deep backup; the `.md` copies inside
 
 ## Keybindings
 
-evil provides vim motions/editing everywhere; the notable custom binds:
+Stock Emacs everywhere (`C-x C-s` save, `C-x b` switch buffer, `C-h k`
+describe-key, …); the custom layer:
 
 | Key | Command |
 |-----|---------|
-| `M-h` | help prefix (moved from `C-h`; e.g. `M-h k` describe-key) |
-| `C-h` / `C-j` / `C-k` / `C-l` | move between windows |
-| `SPC o` | open the `~/Dropbox/notes` vault in Treemacs |
-| `SPC b d` | close buffer |
-| `SPC q r` | reload `init.el` |
-| `<f8>` | toggle Treemacs |
+| `M-h` / `M-j` / `M-k` / `M-l` | focus window left / down / up / right |
+| `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
+| `C-c w` | window menu: split / swap / repeatable resize / winner undo |
+| `C-c t` | notes sidebar on the `~/Dropbox/notes` vault |
+| `<f8>` | toggle a sidebar at the current directory |
+| `C-x k` | kill current buffer, no prompt |
+| `C-z` / `C-S-z` | undo / redo (built-in `undo` / `undo-redo`) |
 | `M-p` | echo-area quick-help cheat-sheet (nano-help) |
-| `C-z` / `C-S-z` | undo / redo (`undo-fu`; evil `u` / `C-r`) |
 | `C-x g` | `magit-status` |
 | `C-c a` / `C-c c` / `C-c l` | Org agenda / capture / store-link |
 | `C-c C-c` | compile via LatexMk (in `.tex`) |
 | `S-TAB` | cycle the document outline (in `.tex`) |
 | `q` / `ESC` | dismiss the welcome screen |
 
+Config reload after edits is `M-x rm/reload-init` (unbound — orderless makes
+`M-x rel in` find it instantly).
+
 ## Deliberately omitted (and why)
 
-- **vertico / orderless / marginalia** — living on the built-in `*Completions*`
-  buffer until it's outgrown.
+- **evil / evil-collection** — dropped 2026-07-19 after a day of use: new
+  packages kept lagging evil-collection support, and maintaining a compat
+  layer wasn't worth it for a prose-only Emacs (coding stays in nvim).
+- **citar** — RefTeX already inserts citations from the shared `.bib`; citar
+  (fuzzy author/title search over the bib, riding on vertico) is the upgrade
+  path when RefTeX's prompt chafes.
 - **org-roam** — see the vault section; folder-of-outlines with hand-added
   static backlinks instead of a zettelkasten database.
 
@@ -157,7 +193,6 @@ Installed by `install.sh`: `emacs-wayland`, `texlive` (→ `latexmk`, `dvisvgm`)
 
 ## Future (from init.el's "optional next steps")
 
-`citar` (richer bibliography UI than RefTeX), `pdf-tools` (in-Emacs PDF view —
-zathura already covers this), the vertico completion stack, wiring the theme to
-track Omarchy, the elegant `Welcome.org` second (quick-commands) page, and a
-trial of `sidetabs` (left-side buffer tabs).
+`citar` (see above), `pdf-tools` (in-Emacs PDF view — zathura already covers
+this), wiring the theme to track Omarchy, and the elegant `Welcome.org` second
+(quick-commands) page.

@@ -8,23 +8,23 @@
 *Quick help*
 
   Emacs tutorial ............................ [[elisp:(help-with-tutorial)][start tutorial]]
-  Quick key cheat-sheet in the echo area ............. [M-p]
-  Help prefix  (M-h k = describe key) ................ [M-h]
+  Quick key cheat-sheet in the echo area ........ [M-p]
+  Help prefix  (C-h k = describe key) ........... [C-h]
 
-*Quick commands*                            /C = Ctrl · M = Alt · SPC = leader/
+*Quick commands*                              /C = Ctrl (CapsLock too) · M = Alt/
 
-  Save ................ [:w / C-x C-s]    Quit Emacs .......... [:q / C-x C-c]
-  Find file .................. [SPC o]    Close buffer ............. [SPC b d]
-  Reload config ............ [SPC q r]    Windows .......... [C-h C-j C-k C-l]
-  Undo / redo .............. [u / C-r]    Help prefix .................. [M-h]
+  Save ..................... [C-x C-s]    Quit Emacs ............... [C-x C-c]
+  Switch buffer .............. [C-x b]    Close buffer ............... [C-x k]
+  Move to window ......... [M-h j k l]    Jump / swap .................. [M-o]
+  Window menu ................ [C-c w]    Notes sidebar .............. [C-c t]
+  Undo / redo .......... [C-z / C-S-z]    Commands ..................... [M-x]
   Git status ................. [C-x g]    Agenda / capture ... [C-c a / C-c c]
-  Notes tree ................. [C-c t]    Compile LaTeX ............ [C-c C-c]
-  Fold section ............... [S-TAB]
+  Compile LaTeX ............ [C-c C-c]    Fold section ............... [S-TAB]
 
 *Your work*
 
   Open dissertation ....................... [[elisp:(find-file "~/scholarship/research-wip/documents/dissertation/dissertation.tex")][dissertation.tex]]
-  Open notes vault .............................. [[elisp:(treemacs)][notes tree]]
+  Open notes vault .............................. [[elisp:(rm/notes-sidebar)][notes tree]]
   Edit this screen ............................. [[elisp:(find-file "~/.config/emacs/welcome.org")][welcome.org]]
 
 

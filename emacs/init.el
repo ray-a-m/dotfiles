@@ -3,9 +3,16 @@
 ;; A hand-written config layered on rougier/nano-emacs for the *look* only.
 ;; nano supplies the visual base (elegant light theme, generous frame margins,
 ;; a top header-line status bar, Roboto-Mono/ET-Book fonts); everything else --
-;; evil (nvim keybindings), the LaTeX/Org writing stack, prose centering -- is
-;; our own, so the config stays understandable and tuned to paper + notes work.
+;; the LaTeX/Org writing stack, window management, prose centering -- is our
+;; own, so the config stays understandable and tuned to paper + notes work.
 ;; Configure by friction: change things here as they annoy you.
+;;
+;; Keybindings are NATIVE Emacs (evil was dropped 2026-07-19: new packages
+;; kept lagging evil-collection support, and the compat layer wasn't worth
+;; it for a prose-only Emacs).  The custom layer is scoped to what the
+;; defaults do badly: M-h/j/k/l window focus, M-o ace-window, a C-c w window
+;; menu with repeatable resize, C-c t notes sidebar.  CapsLock is Ctrl at the
+;; Hyprland level (hypr/input.conf), so the chords sit on the home row.
 ;;
 ;; State layout (see early-init.el for the redirects):
 ;;   ~/.config/emacs/       this file -- symlink into dotfiles, git-tracked
@@ -14,9 +21,9 @@
 ;;   ~/.cache/emacs/        native-compilation cache
 ;;
 ;;   :look   nano (layout / faces / theme / modeline)
-;;   :keys   evil + evil-collection + evil-org      :tools  magit
-;;   :lang   latex (auctex+cdlatex+reftex), org     :checkers spell, syntax
-;;   :prose  mixed-pitch + olivetti + ETBembo
+;;   :keys   native + windmove/ace-window/C-c w     :tools  magit
+;;   :completion vertico + orderless + marginalia   :checkers spell, syntax
+;;   :lang   latex (auctex+cdlatex+reftex), org     :prose  mixed-pitch + olivetti
 
 ;;; Code:
 
@@ -111,6 +118,8 @@
 (recentf-mode 1)                          ; M-x recentf-open-files
 (global-auto-revert-mode 1)               ; reload files changed on disk
 (column-number-mode 1)
+(repeat-mode 1)                           ; C-x o o o..., C-x { { {... -- and the
+                                          ; C-c w resize keys below repeat too
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'visual-line-mode)   ; soft-wrap prose
 
@@ -124,9 +133,11 @@
 ;; The look: an elegant light theme, generous frame margins (internal-border),
 ;; a top header-line status bar with the bottom mode-line hidden, and the
 ;; Roboto-Mono + ET-Book typography.  We load only the *visual* modules, and
-;; deliberately NOT: nano-bindings (evil owns the keys), nano-defaults (our
-;; built-in defaults above stand), nano-session, nor the counsel/mu4e/agenda
-;; modules (packages we don't use).  Vendored under ./nano so it's editable and
+;; deliberately NOT: nano-bindings (its M-RET frame-maximize would clobber
+;; org-meta-return; the one good bit, C-x k, is cherry-picked in the Windows
+;; section), nano-defaults (our built-in defaults above stand, and its
+;; completion-styles would fight orderless), nano-session, nor the
+;; counsel/mu4e/agenda modules (packages we don't use).  Vendored under ./nano so it's editable and
 ;; pinned; re-pull from github.com/rougier/nano-emacs to update.
 (add-to-list 'load-path
              (expand-file-name "nano" (file-name-directory user-init-file)))
@@ -151,10 +162,10 @@
 
 ;; nano-help: `M-p' pops a one-line quick-help cheat-sheet in the echo area, and
 ;; `M-x nano-help' opens the full quick-help.org screen.  NOTE it also does
-;; `(global-set-key "M-h" 'nano-help)', which would steal your help prefix --
-;; but evil's `:config' re-binds M-h -> help-command *after* this loads, so your
-;; prefix wins and you just gain M-p.  (quick-help.org is vendored alongside the
-;; .el files so the M-x nano-help screen resolves.)
+;; `(global-set-key "M-h" 'nano-help)' -- but the Windows section below re-binds
+;; M-h -> windmove-left *after* this loads, so window-nav wins and you just gain
+;; M-p.  (quick-help.org is vendored alongside the .el files so the M-x
+;; nano-help screen resolves.)
 (require 'nano-help)
 
 ;; nano-layout sets `default-frame-alist', which only affects frames created
@@ -175,60 +186,115 @@
 (menu-bar-mode -1)
 
 ;; --- Undo (:emacs undo) -------------------------------------------------
-;; Linear, predictable undo/redo instead of Emacs's undo-ring.
+;; Built-in linear undo/redo (Emacs 28+): as long as you only use these two
+;; commands, it behaves exactly like nvim's u / C-r -- no undo-ring surprises.
 
-(use-package undo-fu
-  :init (global-unset-key (kbd "C-z"))    ; was suspend-frame; reclaim it
-  :bind (("C-z"   . undo-fu-only-undo)
-         ("C-S-z" . undo-fu-only-redo)))
-
-;; --- Vim keybindings (evil) ---------------------------------------------
-;; Emacs with Neovim muscle memory.  evil-collection vimifies the built-in
-;; modes (dired, help, magit, treemacs, ...); evil-org handles Org.  A few
-;; custom binds mirror the LazyVim habits.  Undo/redo is the undo-fu above
-;; (`u' / `C-r' in normal state).  Help moves from C-h to M-h so C-h is free
-;; for window-left (no F1 on the Corne).  (nano hides the bottom mode-line, so
-;; there's no evil-state text indicator -- the cursor shape shows the state.)
+(global-unset-key (kbd "C-z"))            ; was suspend-frame; reclaim it
+(keymap-global-set "C-z"   #'undo)
+(keymap-global-set "C-S-z" #'undo-redo)
 
 ;; Reload init.el in place -- apply most config edits without a full restart.
+;; No keybind: `M-x rm/reload-init' (orderless makes "M-x rel in" find it).
 (defun rm/reload-init ()
   "Re-evaluate init.el so config changes take effect without restarting."
   (interactive)
   (load-file user-init-file)
   (message "init.el reloaded."))
 
-(use-package evil
+;; --- Windows (:ui window-management) ------------------------------------
+;; The daily layout is paper (main window) + notes (top right) + agenda or an
+;; AI shell (bottom right), rearranged on the fly.  Everything here serves
+;; that: instant focus moves, swap-any-two-buffers, directional splits, and
+;; repeatable resize.  evil was dropped 2026-07-19 (new packages kept lagging
+;; evil-collection), so C-h is the help prefix again (C-h k = describe key)
+;; and these are plain global binds.
+;;
+;;   M-h/j/k/l  focus window left/down/up/right (windmove; vim spatial habit)
+;;   M-o        ace-window: <=2 windows hops immediately; 3+ shows a letter
+;;              per window -- also `M-o m <letter>' swaps buffers with that
+;;              window (agenda -> main window move), `M-o x <letter>' deletes
+;;   C-c w      window menu (which-key shows it): s/v split below/right
+;;              (:sp/:vs mnemonic), h/j/k/l resize -- these REPEAT, so
+;;              `C-c w l l l h ...' keeps resizing -- w swap, = balance,
+;;              d delete, m maximize (u un-maximizes), u/r winner undo/redo
+;;
+;; M-h/j/k/l shadow mark-paragraph / indent-new-comment-line / kill-sentence /
+;; downcase-word -- none earn their home-row spot here.
+
+(keymap-global-set "M-h" #'windmove-left)
+(keymap-global-set "M-j" #'windmove-down)
+(keymap-global-set "M-k" #'windmove-up)
+(keymap-global-set "M-l" #'windmove-right)
+;; Org binds M-h itself (org-mark-element); clear it so window-left wins.
+(with-eval-after-load 'org
+  (define-key org-mode-map (kbd "M-h") nil))
+
+(winner-mode 1)                           ; layout history: C-c w u / r
+
+(use-package ace-window
+  :bind ("M-o" . ace-window)
+  :init (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)  ; home-row window labels
+              aw-scope 'frame))
+
+;; The C-c w menu.  :repeat t puts the resize + winner commands in a
+;; repeat-map, so after the first press the bare key keeps going (repeat-mode
+;; is on above); any other key exits the repeat.  which-key pops the full
+;; menu after C-c w.
+(defvar-keymap rm/window-repeat-map
+  :doc "Repeatable window ops: bare h/j/k/l keep resizing after C-c w."
+  :repeat t
+  "h" #'shrink-window-horizontally
+  "l" #'enlarge-window-horizontally
+  "j" #'enlarge-window
+  "k" #'shrink-window
+  "u" #'winner-undo
+  "r" #'winner-redo)
+
+(defvar-keymap rm/window-map
+  :doc "Window menu: splits, swap, resize, balance, layout undo."
+  "s" #'split-window-below                ; like :sp
+  "v" #'split-window-right                ; like :vs
+  "h" #'shrink-window-horizontally        ; resize: narrower
+  "l" #'enlarge-window-horizontally       ; resize: wider
+  "j" #'enlarge-window                    ; resize: taller
+  "k" #'shrink-window                     ; resize: shorter
+  "w" #'ace-swap-window                   ; swap 2 windows' buffers (asks if 3+)
+  "=" #'balance-windows
+  "d" #'delete-window
+  "m" #'delete-other-windows              ; maximize; C-c w u brings the rest back
+  "u" #'winner-undo
+  "r" #'winner-redo)
+(keymap-global-set "C-c w" rm/window-map)
+
+;; Kill the current buffer without the which-buffer prompt (from nano-bindings,
+;; which we don't load wholesale -- its M-RET frame-maximize would clobber
+;; org-meta-return).
+(keymap-global-set "C-x k" #'kill-current-buffer)
+
+;; --- Completion (vertico + orderless + marginalia) ----------------------
+;; Minibuffer-only upgrades -- no popups in buffers, no compat layer:
+;;   vertico     every prompt (C-x b, M-x, find-file, refile, ispell) shows a
+;;               live vertical list you can C-n/C-p through
+;;   orderless   type space-separated fragments in any order: "C-x b hig not"
+;;               matches notes-on-higgs.org -- the 111-file-vault feature
+;;   marginalia  annotations: M-x shows each command's keybinding + docstring
+;;               (it teaches the native bindings as you go), buffers show paths
+;; savehist (on above) feeds vertico's most-recent-first sorting.
+
+(use-package vertico
   :init
-  (setq evil-want-integration t
-        evil-want-keybinding nil          ; must be set before load for evil-collection
-        evil-want-C-u-scroll t            ; C-u scrolls up a half-page, like vim
-        evil-want-C-i-jump nil            ; leave TAB alone (Org folding / indent)
-        evil-undo-system 'undo-fu)        ; reuse the undo-fu configured above
-  :config
-  (evil-mode 1)
-  (keymap-global-set "M-h" #'help-command)          ; help prefix -> M-h
-  ;; C-hjkl: move between windows, in every editing state (like nvim n/i/v).
-  (evil-define-key '(normal insert visual motion) 'global
-    (kbd "C-h") #'windmove-left
-    (kbd "C-j") #'windmove-down
-    (kbd "C-k") #'windmove-up
-    (kbd "C-l") #'windmove-right)
-  ;; SPC leader -- just the keys you actually use.
-  (evil-define-key '(normal visual) 'global
-    (kbd "SPC o")   #'treemacs               ; leader+o: file explorer
-    (kbd "SPC b d") #'kill-current-buffer    ; leader+bd: close buffer
-    (kbd "SPC q r") #'rm/reload-init))       ; reload config after edits
+  (setq vertico-cycle t)                  ; C-n past the bottom wraps to the top
+  (vertico-mode 1))
 
-(use-package evil-collection
-  :after evil
-  :config (evil-collection-init))
+(use-package orderless
+  :init
+  (setq completion-styles '(orderless basic)   ; basic = fallback (e.g. TAB paths)
+        completion-category-defaults nil
+        ;; find-file: keep /u/l/s -> /usr/local/share -style expansion working
+        completion-category-overrides '((file (styles partial-completion)))))
 
-(use-package evil-org
-  :after (evil org)
-  :hook (org-mode . evil-org-mode)
-  :config
-  (require 'evil-org-agenda)
-  (evil-org-agenda-set-keys))
+(use-package marginalia
+  :init (marginalia-mode 1))
 
 ;; --- Spell + syntax checking (:checkers spell / syntax) -----------------
 ;; Both are built in.  Flyspell needs `aspell' (+ a dictionary) on PATH.
@@ -427,9 +493,8 @@
 ;;     stays centred as you flip a Hyprland tile between small and full-screen
 ;;   * [bracketed keys] are coloured with nano's salient face via a scoped
 ;;     font-lock rule (the `[^][()]' class skips [[elisp:(...)]] link internals)
-;;   * cursor is hidden -- including evil's block cursor, via a buffer-local
-;;     `evil-normal-state-cursor'
-;;   * evil stays in normal state so SPC is still your leader; q / ESC dismiss
+;;   * cursor is hidden (`cursor-type' nil); q / ESC dismiss via a local keymap
+;;     layered over org-mode-map (RET still follows the links)
 
 (defun rm/welcome-kill ()
   "Dismiss the welcome screen."
@@ -463,13 +528,13 @@
           (font-lock-flush) (font-lock-ensure)
           (setq-local mode-line-format nil         ; clean of nano's status bars
                       header-line-format nil
-                      cursor-type nil)             ; no cursor...
-          (when (fboundp 'evil-normal-state)
-            (evil-normal-state)                    ; keep SPC as leader; make local keymap
-            (setq-local evil-normal-state-cursor '(nil))  ; ...including evil's box cursor
-            (when (fboundp 'evil-refresh-cursor) (evil-refresh-cursor))
-            (evil-local-set-key 'normal (kbd "q")        #'rm/welcome-kill)
-            (evil-local-set-key 'normal (kbd "<escape>") #'rm/welcome-kill))
+                      cursor-type nil)             ; no cursor
+          ;; q / ESC dismiss; parenting org-mode-map keeps RET-on-links working.
+          (let ((map (make-sparse-keymap)))
+            (set-keymap-parent map org-mode-map)
+            (define-key map (kbd "q")        #'rm/welcome-kill)
+            (define-key map (kbd "<escape>") #'rm/welcome-kill)
+            (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))
         (switch-to-buffer buf)
@@ -483,41 +548,31 @@
 
 (add-hook 'window-setup-hook #'rm/welcome)
 
-;; --- Notes navigator (treemacs) -----------------------------------------
-;; A collapsible file-tree side pane, like Obsidian's explorer, for the
-;; ~/Dropbox/notes vault.  Rendered in a proportional sans font, with
-;; pixel-based indentation so nesting stays aligned.  C-c t opens the vault;
-;; <f8> is a plain toggle.  Opening a file (l / RET) shows it in its own
-;; buffer in the adjacent window.
-(use-package treemacs
+;; --- Notes sidebar (dired-sidebar) --------------------------------------
+;; A file-tree side pane, like Obsidian's explorer, for the ~/Dropbox/notes
+;; vault.  It's just dired in a side window (native machinery, no workspace
+;; model -- replaced treemacs 2026-07-19), styled Obsidian-like: proportional
+;; sans font, no icons, airy rows, details hidden.  TAB expands a folder
+;; in-place (dired-subtree); RET opens the file into the main window.
+;; C-c t opens the vault; <f8> toggles a sidebar at the current directory.
+(use-package dired-sidebar
   :defer t
-  :bind (("C-c t" . rm/notes-tree)
-         ("<f8>"  . treemacs))
+  :bind (("C-c t" . rm/notes-sidebar)
+         ("<f8>"  . dired-sidebar-toggle-sidebar))
   :init
-  (defun rm/notes-tree ()
-    "Open the ~/Dropbox/notes vault in a Treemacs side pane."
+  (defun rm/notes-sidebar ()
+    "Toggle a dired sidebar rooted at the ~/Dropbox/notes vault."
     (interactive)
-    (require 'treemacs)
-    (treemacs-select-window)              ; create the window + workspace if needed
-    (treemacs-do-add-project-to-workspace ; no-op if already added
-     (expand-file-name "~/Dropbox/notes") "notes"))
+    (let ((default-directory (expand-file-name "~/Dropbox/notes/")))
+      (dired-sidebar-toggle-sidebar)))
   :config
-  (setq treemacs-width 34
-        treemacs-indentation '(6 px))      ; pixel indent: aligns under a proportional font
-  (treemacs-follow-mode 1)                 ; keep the tree on the file you're editing
-  ;; h / l close and open folders, vim-style (evil-collection has no treemacs
-  ;; module, so bind them ourselves).  j/k already move line-by-line via evil.
-  (evil-define-key '(normal motion) treemacs-mode-map
-    (kbd "l") #'treemacs-RET-action              ; expand dir / open file
-    (kbd "h") #'treemacs-collapse-parent-node)   ; collapse
-  ;; Non-monospace tree.  A *sans* proportional font (not the serif body font)
-  ;; reads like Obsidian's sidebar.  buffer-face-set didn't stick on treemacs'
-  ;; own faces, so set the family on them directly.  Swap "Noto Sans" to taste.
-  (dolist (face '(treemacs-root-face treemacs-directory-face
-                  treemacs-directory-collapsed-face treemacs-file-face
-                  treemacs-tags-face))
-    (set-face-attribute face nil :family "Noto Sans"))
-  (add-hook 'treemacs-mode-hook
+  (setq dired-sidebar-theme 'none          ; no icons -- plain names, Obsidian-like
+        dired-sidebar-width 32
+        dired-sidebar-use-custom-font t    ; render the pane in the face spec below
+        ;; Sans (not the serif body font), like the old treemacs styling.
+        dired-sidebar-face '(:family "Noto Sans")
+        dired-sidebar-should-follow-file t) ; keep the tree on the file you're editing
+  (add-hook 'dired-sidebar-mode-hook
             (lambda () (setq-local line-spacing 3))))   ; airier rows
 
 ;; --- Markdown (any notes you keep as .md) -------------------------------
@@ -531,21 +586,9 @@
 ;; When you want them:
 ;;   * the elegant "Welcome" second page (quick-help + clickable commands),
 ;;     ported from rougier/elegant-emacs's Welcome.org
-;;   * citar      -- richer bibliography UI than RefTeX          (:tools biblio)
+;;   * citar      -- \cite by fuzzy author/title search over references.bib,
+;;                   riding on vertico; deferred while RefTeX (C-c [) suffices
 ;;   * pdf-tools  -- view/annotate PDFs in Emacs (zathura already views)
-;;   * vertico + orderless + marginalia -- the completion stack
 ;;   * a theme that follows Omarchy -- Emacs won't auto-track it; its own project
 
 ;;; init.el ends here
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages '(auctex no-littering)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
