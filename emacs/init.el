@@ -202,6 +202,25 @@
   (load-file user-init-file)
   (message "init.el reloaded."))
 
+;; Echo-area errors vanish on the next keypress, but they all land in
+;; *Messages* (C-h e pops it).  C-c e copies the last one straight to the
+;; clipboard -- for pasting an error into a chat/search without spelunking.
+(defun rm/copy-last-message ()
+  "Copy the last *Messages* line (usually the last error) to the clipboard."
+  (interactive)
+  (with-current-buffer (messages-buffer)
+    (save-excursion
+      (goto-char (point-max))
+      (skip-chars-backward "\n")
+      (let ((end (point)))
+        (forward-line 0)
+        (let ((msg (buffer-substring-no-properties (point) end)))
+          (if (string-empty-p msg)
+              (user-error "No messages")
+            (kill-new msg)
+            (message "Copied: %s" msg)))))))
+(keymap-global-set "C-c e" #'rm/copy-last-message)
+
 ;; --- Command prefix: C-a (swapped with C-x) ------------------------------
 ;; C-x is an awkward stretch; with CapsLock as Ctrl, C-a sits entirely on the
 ;; home row -- so C-a *is* the command prefix here.  Bound DIRECTLY to
@@ -668,6 +687,18 @@ very window the file is about to land in."
 ;; Global on purpose: plain dired benefits too.
 (setq dired-listing-switches "-al --group-directories-first")
 
+;; File operations in plain dired: R renames/moves the file at point (same
+;; prompt -- type a new name, or a path to move), + makes a directory, `a'
+;; makes an empty file (was dired-find-alternate-file, a disabled command).
+;; The sidebar layers yazi-style lowercase keys on top (see its section).
+;; C-a C-q = wdired: the listing becomes an editable buffer -- rename by
+;; editing names like text, C-c C-c commits, C-c C-k aborts.  (Free ride
+;; from the C-a swap: dired remaps read-only-mode to dired-toggle-read-only,
+;; which enters wdired.)
+(with-eval-after-load 'dired
+  (define-key dired-mode-map "a" #'dired-create-empty-file))
+(setq wdired-create-parent-directories t) ; editing in a new subdir = move + mkdir
+
 (use-package dired-sidebar
   :defer t
   :bind (("C-c t" . rm/notes-sidebar)
@@ -695,6 +726,8 @@ one `l' away instead."
         ;; look (ET Book was tried 2026-07-20 and reverted the same day).
         dired-sidebar-use-custom-font nil
         dired-sidebar-should-follow-file t) ; keep the tree on the file you're editing
+  ;; `a' (new file) should refresh the tree like R / + / D already do.
+  (add-to-list 'dired-sidebar-special-refresh-commands 'dired-create-empty-file)
   ;; Hide dired's banner line (absolute path + free space); the header line
   ;; shows the root directory's name instead.
   (defun rm/sidebar-hide-heading ()
@@ -726,14 +759,35 @@ one `l' away instead."
                         (overlay-put o 'evaporate t))))))))
           (forward-line 1)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-extensions)
+  ;; dired-omit-mode does NOT reach dired-subtree's inserted lines (its
+  ;; own filter hook needs the dired-filter package), so expanded folders
+  ;; would show README.md & co.  Expunge them ourselves with the same
+  ;; regexp dired-omit uses (files + extensions).
+  (defun rm/sidebar-omit-subtree ()
+    "Delete omitted entries from freshly inserted subtrees."
+    (when (and (derived-mode-p 'dired-sidebar-mode)
+               (bound-and-true-p dired-omit-mode))
+      (let ((regexp (dired-omit-regexp))
+            (inhibit-read-only t))
+        (unless (string-empty-p regexp)
+          (save-excursion
+            (goto-char (point-min))
+            (while (not (eobp))
+              (let ((fn (dired-get-filename 'no-dir t)))
+                (if (and fn (string-match-p regexp fn))
+                    (delete-region (line-beginning-position)
+                                   (line-beginning-position 2))
+                  (forward-line 1)))))))))
   (with-eval-after-load 'dired-subtree
-    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions))
+    ;; add-hook prepends: omit runs first, then extension hiding.
+    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions)
+    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-subtree))
   ;; Hide clutter -- sidebar only, plain dired still lists everything.
   ;; The regexp omits dotfiles (.git, .gitignore, and the . / .. self/parent
   ;; entries every Unix dir carries) plus README.md / TODO.md; on top of
   ;; that, dired-omit-mode's default `dired-omit-extensions' hides LaTeX
-  ;; build artifacts (.aux, .log, .bbl, ...).  dired-sidebar's omit
-  ;; integration (on by default) re-applies this after TAB expansions.
+  ;; build artifacts (.aux, .log, .bbl, ...).  Subtree expansions are out
+  ;; of dired-omit's reach -- rm/sidebar-omit-subtree (above) covers them.
   (setq dired-omit-verbose nil)
   (add-hook 'dired-sidebar-mode-hook
             (lambda ()
@@ -774,7 +828,82 @@ one `l' away instead."
   (define-key dired-sidebar-mode-map (kbd "j") #'dired-next-line)
   (define-key dired-sidebar-mode-map (kbd "k") #'dired-previous-line)
   (define-key dired-sidebar-mode-map (kbd "l") #'rm/sidebar-open)
-  (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close))
+  (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close)
+  ;; Yazi-style file ops, single lowercase keys (sidebar only -- plain
+  ;; dired keeps its stock commands).  "At point" targeting: on a folder
+  ;; line ops go INTO that folder; on a file line, beside it.
+  ;;   a  create (a trailing / makes a folder, parents included)
+  ;;   r  rename/move   d  delete   y  yank   p  paste
+  (defvar rm/sidebar-yanked nil
+    "Absolute path last yanked with `rm/sidebar-yank'.")
+  (defun rm/sidebar--dir-at-point ()
+    "Directory point is in: a folder line is itself, a file its parent."
+    (if-let ((file (dired-get-filename nil t)))
+        (if (file-directory-p file)
+            (file-name-as-directory file)
+          (file-name-directory file))
+      (dired-current-directory)))
+  (defun rm/sidebar-create ()
+    "Create a file at point's directory; a trailing / creates a folder."
+    (interactive)
+    (let* ((dir (rm/sidebar--dir-at-point))
+           (name (read-string (format "Create in %s: " (abbreviate-file-name dir)))))
+      (when (string-empty-p name) (user-error "No name given"))
+      (let ((target (expand-file-name name dir)))
+        (when (file-exists-p target)
+          (user-error "%s already exists" (abbreviate-file-name target)))
+        (if (string-suffix-p "/" name)
+            (make-directory target t)
+          (make-directory (file-name-directory target) t)
+          (write-region "" nil target nil 0))
+        (dired-sidebar-refresh-buffer))))
+  (defun rm/sidebar-rename ()
+    "Rename the file at point, editing its current name (yazi-style).
+Plain `read-string' on purpose: `dired-do-rename' completes over
+existing files, and vertico's RET submits the highlighted candidate --
+typing \"Musings\" selected \"Current Musings.org\" itself and errored
+with \"Cannot move to same file\".  A path as the new name still moves."
+    (interactive)
+    (let ((file (dired-get-filename nil t)))
+      (unless file (user-error "No file at point"))
+      (let* ((dir (file-name-directory (directory-file-name file)))
+             (old (file-name-nondirectory (directory-file-name file)))
+             (new (read-string "Rename to: " old)))
+        (when (or (string-empty-p new) (equal new old))
+          (user-error "Not renamed"))
+        (let ((target (expand-file-name new dir)))
+          (when (file-exists-p target)
+            (user-error "%s already exists" (abbreviate-file-name target)))
+          (make-directory (file-name-directory target) t)
+          (dired-rename-file file target nil)
+          (dired-sidebar-refresh-buffer)))))
+  (defun rm/sidebar-yank ()
+    "Yank (copy) the file at point for `rm/sidebar-paste'."
+    (interactive)
+    (let ((file (dired-get-filename nil t)))
+      (unless file (user-error "No file at point"))
+      (setq rm/sidebar-yanked file)
+      (message "Yanked %s" (abbreviate-file-name file))))
+  (defun rm/sidebar-paste ()
+    "Paste the yanked file into the directory at point."
+    (interactive)
+    (unless rm/sidebar-yanked (user-error "Nothing yanked (y first)"))
+    (let* ((dir (rm/sidebar--dir-at-point))
+           (target (expand-file-name (file-name-nondirectory
+                                      (directory-file-name rm/sidebar-yanked))
+                                     dir)))
+      (when (file-exists-p target)
+        (user-error "%s already exists" (abbreviate-file-name target)))
+      (if (file-directory-p rm/sidebar-yanked)
+          (copy-directory rm/sidebar-yanked target)
+        (copy-file rm/sidebar-yanked target))
+      (message "Pasted %s" (abbreviate-file-name target))
+      (dired-sidebar-refresh-buffer)))
+  (define-key dired-sidebar-mode-map "a" #'rm/sidebar-create)
+  (define-key dired-sidebar-mode-map "r" #'rm/sidebar-rename)
+  (define-key dired-sidebar-mode-map "d" #'dired-do-delete)
+  (define-key dired-sidebar-mode-map "y" #'rm/sidebar-yank)
+  (define-key dired-sidebar-mode-map "p" #'rm/sidebar-paste))
 
 ;; --- Markdown (any notes you keep as .md) -------------------------------
 ;; The vault is Org now, but markdown-mode covers any stray .md.  It inherits
