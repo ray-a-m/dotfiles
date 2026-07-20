@@ -26,5 +26,5 @@
 *Help*
 
   Help prefix  (C-c h k = describe key) ....... [C-c h]
-  Quick key cheat-sheet in the echo area ........ [M-p]
+  Quick key cheat-sheet in the echo area ...... [C-M-h]
 

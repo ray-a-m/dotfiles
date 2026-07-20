@@ -41,7 +41,8 @@ dir to `~/.config/emacs.bak` first).
 
 Vendored under `nano/`. `init.el` loads only the **visual** modules:
 `nano-layout`, `nano-faces`, `nano-theme` (+ `nano-theme-light`),
-`nano-modeline`, and `nano-help` (`M-p` echo-area quick help). Deliberately
+`nano-modeline`, and `nano-help` (`C-M-h` echo-area quick help; the full
+help screen via `M-x nano-help` — its `M-h` bind is taken by vim motions). Deliberately
 **not** loaded:
 
 - `nano-bindings` — its `M-RET` frame-maximize would clobber `org-meta-return`;
@@ -82,7 +83,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Live math | built-in preview + `org-fragtog` | inline SVG via `dvisvgm` (`C-c C-x C-l` in Org, `C-c C-p C-p` in `.tex`); `org-fragtog` auto-renders Org fragments. **Not** xenops (dropped — broke font-lock). |
 | Org | built-in | notes + agenda + capture; `~/Dropbox/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
-| Org typography | `org-modern` | stars → bullets, TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
+| Org typography | `org-modern` | heading stars → ✦ ✧ ✱ ✳ (static, per level), TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
 | Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); two roots — notes vault (`C-c n`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
 | Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
@@ -118,6 +119,12 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
   (Roboto Mono) so they still align — only prose goes proportional.
 - **Darker prose** — nano's body colour is a soft blue-grey; the prose face is
   darkened (`#1c1c1c`) for contrast while writing, leaving code/UI in nano's grey.
+- **Blue italics** — nano fades `italic` to grey; overridden to a soft
+  Obsidian-style blue (`#4a6fa5`), full slant (ET Book's thin italic strokes
+  read faded at the body colour).
+- **Quiet prose modeline** — text-mode buffers show just the name (`.org`/`.md`
+  hidden, no `(Mode)`; a git branch still shows); code buffers keep
+  `name (Mode, branch)`.
 - **Matched sizes** — Roboto Mono renders larger than ET Book at the same point
   size, so `fixed-pitch` is shrunk (`:height 0.75`) to sit the `\commands`/math
   level with the prose.
@@ -188,7 +195,10 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-a p p` / `C-a p f` | switch project / find file in project (project.el) |
 | `C-a k` | kill current buffer, no prompt |
 | `C-z` / `C-S-z` | undo / redo (built-in `undo` / `undo-redo`) |
-| `M-p` | echo-area quick-help cheat-sheet (nano-help) |
+| `M-h/j/k/l`, `M-w`/`M-b` | vim motions: char/line movement, word forward (vim-exact start-of-next-word) / word back |
+| `M-v` / `M-d` / `M-y` / `M-p` | highlight toggle / cut / copy / paste — strict vim operators (`d`/`y` need a highlight); kill-ring ↔ system clipboard |
+| `M-4` / `M-6` | paragraph back / forward (vim `{`/`}` — on Corne-reachable keys) |
+| `C-M-h` | echo-area quick-help cheat-sheet (nano-help) |
 | `C-a g` | `magit-status` |
 | `C-c a` / `C-c c` / `C-c l` | Org agenda / capture / store-link |
 | `C-c C-c` | compile via LatexMk (in `.tex`) |
