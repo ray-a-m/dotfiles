@@ -11,8 +11,9 @@
 ;; kept lagging evil-collection support, and the compat layer wasn't worth
 ;; it for a prose-only Emacs).  The custom layer is scoped to what the
 ;; defaults do badly: M-h/j/k/l window focus, M-o ace-window, a C-c w window
-;; menu with repeatable resize, C-c t notes sidebar.  CapsLock is Ctrl at the
-;; Hyprland level (hypr/input.conf), so the chords sit on the home row.
+;; menu with repeatable resize, C-c t / C-c p sidebars.  CapsLock is Ctrl at
+;; the Hyprland level (hypr/input.conf) and the command prefix is swapped
+;; C-x -> C-a, so the everything-prefix sits entirely on the home row.
 ;;
 ;; State layout (see early-init.el for the redirects):
 ;;   ~/.config/emacs/       this file -- symlink into dotfiles, git-tracked
@@ -201,6 +202,33 @@
   (load-file user-init-file)
   (message "init.el reloaded."))
 
+;; --- Command prefix: C-a (swapped with C-x) ------------------------------
+;; C-x is an awkward stretch; with CapsLock as Ctrl, C-a sits entirely on the
+;; home row -- so C-a *is* the command prefix here.  Bound DIRECTLY to
+;; `ctl-x-map' (not a key-translation-map rewrite, which made every echo and
+;; error report "C-x ..." for keys you typed as C-a): the sequence you type
+;; is the sequence Emacs sees, so echoes, describe-key and which-key all say
+;; C-a.  Only the *manuals* still print "C-x" -- mentally substitute.
+;; Beginning-of-line lands on the vacated C-x -- bound at the END of this
+;; file, because rebinding the C-x prefix to a command must come after every
+;; "C-x ..." key definition (later ones would error on a non-prefix key).
+;; (Modes that bind C-a locally -- comint/eshell's bol -- shadow the prefix
+;; there; not a mode you write in.)
+(define-key global-map (kbd "C-a") ctl-x-map)
+
+;; --- Projects (built-in project.el) --------------------------------------
+;; The "land on a file fast" path, next to the sidebar's browse-around path:
+;; C-a p p switches project, C-a p f finds a file in it -- with orderless,
+;; "hig pap" lands on higgs/paper.tex in a few keystrokes.  research-wip is
+;; a git repo so it's a project already; the notes vault is plain files, so
+;; an empty .project marker file makes it one too.  Both are pre-registered
+;; so C-a p p offers them from the very first session.
+(setq project-vc-extra-root-markers '(".project"))
+(with-eval-after-load 'project
+  (dolist (dir '("~/scholarship/research-wip/" "~/Dropbox/notes/"))
+    (when (file-directory-p dir)
+      (project-remember-projects-under (expand-file-name dir)))))
+
 ;; --- Windows (:ui window-management) ------------------------------------
 ;; The daily layout is paper (main window) + notes (top right) + agenda or an
 ;; AI shell (bottom right), rearranged on the fly.  Everything here serves
@@ -268,7 +296,8 @@
 
 ;; Kill the current buffer without the which-buffer prompt (from nano-bindings,
 ;; which we don't load wholesale -- its M-RET frame-maximize would clobber
-;; org-meta-return).
+;; org-meta-return).  Defined via the C-x path, so it lands in ctl-x-map;
+;; typed as C-a k.
 (keymap-global-set "C-x k" #'kill-current-buffer)
 
 ;; --- Completion (vertico + orderless + marginalia) ----------------------
@@ -442,6 +471,20 @@
   :hook (org-mode . org-appear-mode)
   :init (setq org-appear-autolinks t))    ; also reveal [[link]] syntax on entry
 
+;; org-modern (minad): renders Org's raw syntax as clean typography --
+;; heading stars as bullets, TODO keywords and :tags: as pills, timestamps
+;; as boxes, tidy list bullets and table lines.  Content styling only; it
+;; doesn't touch emphasis markers (org-appear's turf) or the header-line
+;; (nano-modeline's).  Same author as vertico/orderless/marginalia.
+(use-package org-modern
+  :hook ((org-mode            . org-modern-mode)
+         (org-agenda-finalize . org-modern-agenda))  ; same look in C-c a
+  :init
+  (setq org-modern-block-fringe nil       ; fringe markers sit wrong next to olivetti's margins
+        ;; tag/keyword pills look best unaligned (no trailing-whitespace columns)
+        org-auto-align-tags nil
+        org-tags-column 0))
+
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
 ;;   * the body font is ET Book (ETBembo), supplied via nano's proportional
@@ -463,20 +506,34 @@
          (LaTeX-mode    . olivetti-mode))
   :init (setq olivetti-body-width 72))    ; text column width, in columns
 
-;; Darker prose text.  Nano's body colour is a soft blue-grey (#37474F); this
-;; darkens the *prose* face for more contrast while writing, leaving code and
-;; the UI in nano's grey.  mixed-pitch renders prose in `variable-pitch', so
-;; that's the face to darken.  It runs after nano's theme, so it wins.  (ET Book
-;; only changes the letterforms, not the colour -- darkening is a separate knob.)
-;; Tune the hex to taste (#000 = pure black, nano's own "strong").
-(set-face-attribute 'variable-pitch nil :foreground "#1c1c1c")
+;; Face tweaks layered over nano's theme (must run after it, so they win):
+;;   * darker prose -- nano's body colour is a soft blue-grey (#37474F); the
+;;     `variable-pitch' face (what mixed-pitch renders prose in) is darkened
+;;     for contrast while writing; code and UI keep nano's grey.  Tune the
+;;     hex to taste (#000 = pure black, nano's own "strong").
+;;   * `fixed-pitch' pinned to Roboto Mono (its default is the generic
+;;     "Monospace", i.e. whatever fontconfig picks) and shrunk to 0.75 --
+;;     Roboto Mono renders visibly larger than ET Book at the same point
+;;     size, so this sits \commands and math level with the prose.
+(defun rm/apply-face-tweaks ()
+  "Re-apply the post-nano face adjustments (prose colour, fixed-pitch size)."
+  (set-face-attribute 'variable-pitch nil :foreground "#1c1c1c")
+  (set-face-attribute 'fixed-pitch nil :family "Roboto Mono" :height 0.75))
+(rm/apply-face-tweaks)
 
-;; Match the monospace bits to ET Book's apparent size.  In mixed-pitch, prose is
-;; ETBembo (variable-pitch) while LaTeX commands, math and code stay `fixed-pitch'
-;; (Roboto Mono) -- and Roboto Mono renders visibly larger than ET Book at the
-;; same point size.  Shrinking `fixed-pitch' sits the \commands level with the
-;; prose.  Tune the ratio to taste (1.0 = same nominal size; lower = smaller).
-(set-face-attribute 'fixed-pitch nil :height 0.75)
+;; Daemon hardening: when Emacs starts as a daemon there is no graphical
+;; frame yet, so nano-faces takes its TTY branches (bold weights, dummy
+;; heights).  Re-apply the whole theme -- and the tweaks above -- once the
+;; first GUI client frame exists, then unhook.
+(when (daemonp)
+  (defun rm/nano-refresh-on-first-frame ()
+    (when (display-graphic-p)
+      (nano-theme-set-light)
+      (nano-refresh-theme)
+      (rm/apply-face-tweaks)
+      (remove-hook 'server-after-make-frame-hook
+                   #'rm/nano-refresh-on-first-frame)))
+  (add-hook 'server-after-make-frame-hook #'rm/nano-refresh-on-first-frame))
 
 ;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
 ;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
@@ -548,16 +605,18 @@
 
 (add-hook 'window-setup-hook #'rm/welcome)
 
-;; --- Notes sidebar (dired-sidebar) --------------------------------------
-;; A file-tree side pane, like Obsidian's explorer, for the ~/Dropbox/notes
-;; vault.  It's just dired in a side window (native machinery, no workspace
-;; model -- replaced treemacs 2026-07-19), styled Obsidian-like: proportional
-;; sans font, no icons, airy rows, details hidden.  TAB expands a folder
-;; in-place (dired-subtree); RET opens the file into the main window.
-;; C-c t opens the vault; <f8> toggles a sidebar at the current directory.
+;; --- Notes + papers sidebar (dired-sidebar) ------------------------------
+;; A file-tree side pane, like Obsidian's explorer.  It's just dired in a
+;; side window (native machinery, no workspace model -- replaced treemacs
+;; 2026-07-19), styled Obsidian-like: the ET Book body serif, no icons, airy
+;; rows, details hidden.  TAB expands a folder in-place (dired-subtree); RET
+;; opens the file into the main window.  Two roots for the two corpora:
+;; C-c t = the notes vault, C-c p = papers/dissertation/CV; <f8> toggles a
+;; sidebar at the current directory.
 (use-package dired-sidebar
   :defer t
   :bind (("C-c t" . rm/notes-sidebar)
+         ("C-c p" . rm/papers-sidebar)
          ("<f8>"  . dired-sidebar-toggle-sidebar))
   :init
   (defun rm/notes-sidebar ()
@@ -565,12 +624,18 @@
     (interactive)
     (let ((default-directory (expand-file-name "~/Dropbox/notes/")))
       (dired-sidebar-toggle-sidebar)))
+  (defun rm/papers-sidebar ()
+    "Toggle a dired sidebar rooted at the research-wip documents tree."
+    (interactive)
+    (let ((default-directory
+           (expand-file-name "~/scholarship/research-wip/documents/")))
+      (dired-sidebar-toggle-sidebar)))
   :config
   (setq dired-sidebar-theme 'none          ; no icons -- plain names, Obsidian-like
         dired-sidebar-width 32
         dired-sidebar-use-custom-font t    ; render the pane in the face spec below
-        ;; Sans (not the serif body font), like the old treemacs styling.
-        dired-sidebar-face '(:family "Noto Sans")
+        ;; Same serif as the prose body -- the tree reads like the page.
+        dired-sidebar-face '(:family "ETBembo")
         dired-sidebar-should-follow-file t) ; keep the tree on the file you're editing
   (add-hook 'dired-sidebar-mode-hook
             (lambda () (setq-local line-spacing 3))))   ; airier rows
@@ -590,5 +655,12 @@
 ;;                   riding on vertico; deferred while RefTeX (C-c [) suffices
 ;;   * pdf-tools  -- view/annotate PDFs in Emacs (zathura already views)
 ;;   * a theme that follows Omarchy -- Emacs won't auto-track it; its own project
+
+;; --- C-x -> beginning-of-line (the other half of the C-a swap) -----------
+;; Deliberately LAST: every "C-x ..." definition above (C-x k, magit's C-x g,
+;; ...) must already be inside ctl-x-map before the C-x key itself stops
+;; being a prefix -- define-key errors if asked to extend through a
+;; non-prefix key.  ctl-x-map itself is untouched; C-a reaches all of it.
+(keymap-global-set "C-x" #'move-beginning-of-line)
 
 ;;; init.el ends here

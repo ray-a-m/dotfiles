@@ -12,8 +12,12 @@ friction: change things as they annoy you.
 **evil was dropped on 2026-07-19**: new packages kept lagging evil-collection
 support, and a compat layer wasn't worth it for a prose-only Emacs. The custom
 key layer is scoped to what the defaults do badly — window focus/resize/swap
-and the notes sidebar — everything else is stock. CapsLock is mapped to Ctrl
-at the Hyprland level (`hypr/input.conf`), so the chords sit on the home row.
+and the sidebars — everything else is stock. Two ergonomic moves make stock
+livable: CapsLock is Ctrl at the Hyprland level (`hypr/input.conf`), and the
+command prefix is **swapped `C-x` → `C-a`** (so saving is `C-a C-s`, all on
+the home row; beginning-of-line lands on the vacated `C-x`). `C-a` is bound
+directly to `ctl-x-map`, so echoes, `describe-key` and which-key all report
+`C-a` — only external manuals still write "C-x".
 
 Runs **alongside** Neovim (still used for some paper writing via vimtex +
 latexmk, and for all coding); Emacs is a full second LaTeX editor and the home
@@ -41,7 +45,8 @@ Vendored under `nano/`. `init.el` loads only the **visual** modules:
 **not** loaded:
 
 - `nano-bindings` — its `M-RET` frame-maximize would clobber `org-meta-return`;
-  the one good bit (`C-x k` → kill-current-buffer) is cherry-picked inline
+  the one good bit (kill-current-buffer on the prefix's `k`, typed `C-a k`)
+  is cherry-picked inline
 - `nano-defaults` — the hand-written "sensible defaults" block stands instead
   (and its `completion-styles` would fight orderless)
 - `nano-session` — its history-persistence idea is adopted inline (see below), minus its `~/.nano-*` litter
@@ -71,14 +76,16 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `which-key`, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
 | Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
 | Undo | built-in | linear undo/redo on `C-z` / `C-S-z` (`undo` / `undo-redo`) |
-| Git | `magit` | `C-x g` |
+| Git | `magit` | `C-a g` |
 | Spell / syntax | built-in + `hl-todo` | `flyspell` (aspell, personal dict in dotfiles, no duplicate-flagging) + `flymake`; `hl-todo` colours TODO/FIXME in code **and** prose |
 | LaTeX | `auctex` (14, via the `latex` feature), `cdlatex`, `auctex-latexmk` | RefTeX → shared dissertation `.bib`; `C-c C-c` → LatexMk (save-and-compile); SyncTeX ↔ **zathura**; `S-TAB` folds via `outline-minor-mode` |
 | Live math | built-in preview + `org-fragtog` | inline SVG via `dvisvgm` (`C-c C-x C-l` in Org, `C-c C-p C-p` in `.tex`); `org-fragtog` auto-renders Org fragments. **Not** xenops (dropped — broke font-lock). |
 | Org | built-in | notes + agenda + capture; `~/Dropbox/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
+| Org typography | `org-modern` | stars → bullets, TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Notes sidebar | `dired-sidebar` | dired in a side pane, Obsidian-styled: Noto Sans, no icons, TAB expands folders (replaced treemacs 2026-07-19) |
+| Sidebars | `dired-sidebar` | dired in a side pane, Obsidian-styled: ET Book, no icons, TAB expands folders; two roots — notes vault (`C-c t`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
+| Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
 ## Window management
@@ -150,8 +157,9 @@ absolutely untouched** as the deep backup; the `.md` copies inside
 
 ## Keybindings
 
-Stock Emacs everywhere (`C-x C-s` save, `C-x b` switch buffer, `C-h k`
-describe-key, …); the custom layer:
+Stock Emacs everywhere, with **`C-a` as the command prefix** (bound straight
+to `ctl-x-map`: type `C-a C-s` to save, `C-a b` to switch buffers, `C-a k`
+to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 
 | Key | Command |
 |-----|---------|
@@ -159,11 +167,13 @@ describe-key, …); the custom layer:
 | `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
 | `C-c w` | window menu: split / swap / repeatable resize / winner undo |
 | `C-c t` | notes sidebar on the `~/Dropbox/notes` vault |
+| `C-c p` | papers sidebar on `~/scholarship/research-wip/documents` |
 | `<f8>` | toggle a sidebar at the current directory |
-| `C-x k` | kill current buffer, no prompt |
+| `C-a p p` / `C-a p f` | switch project / find file in project (project.el) |
+| `C-a k` | kill current buffer, no prompt |
 | `C-z` / `C-S-z` | undo / redo (built-in `undo` / `undo-redo`) |
 | `M-p` | echo-area quick-help cheat-sheet (nano-help) |
-| `C-x g` | `magit-status` |
+| `C-a g` | `magit-status` |
 | `C-c a` / `C-c c` / `C-c l` | Org agenda / capture / store-link |
 | `C-c C-c` | compile via LatexMk (in `.tex`) |
 | `S-TAB` | cycle the document outline (in `.tex`) |
