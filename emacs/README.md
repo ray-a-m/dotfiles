@@ -30,7 +30,7 @@ for **notes + Org**.
 | `early-init.el` | Loaded before `package.el` and the first frame: startup GC / `file-name-handler-alist` tuning, UI-chrome suppression (no flash), `package-user-dir` / eln-cache redirects out of this git-tracked dir. |
 | `init.el` | Everything else. |
 | `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
-| `welcome.org` | The startup screen content — an editable Org file (logo, quick help, keybind cheat-sheet, clickable actions). |
+| `welcome.org` | The startup screen content — an editable Org file (logo + alphabetical Commands / Help cheat-sheet). |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
 
@@ -70,8 +70,8 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Area | Package(s) | Notes |
 |------|-----------|-------|
 | Look | `nano-*` (vendored) | light theme, frame margins, top header-line modeline, Roboto Mono + ET Book |
-| Keys | — (native) | stock bindings + a scoped window/sidebar layer; `C-h` is the help prefix again |
-| Windows | built-in `windmove`/`winner`/`repeat` + `ace-window` | `M-h/j/k/l` focus, `M-o` jump/swap, `C-c w` menu with repeatable resize (see below) |
+| Keys | — (native) | stock bindings + a scoped window/sidebar layer; the help prefix lives on `C-c h` (and `<f1>`) since `C-h` moves windows |
+| Windows | built-in `windmove`/`winner`/`repeat` + `ace-window` | `C-h/j/k/l` focus (tmux/nvim habit), `M-o` jump/swap, `C-c w` menu with repeatable resize (see below) |
 | Completion | `vertico`, `orderless`, `marginalia` | live minibuffer lists; out-of-order fragment matching; annotated candidates (M-x shows each command's keybinding) |
 | Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `which-key`, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
 | Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
@@ -84,7 +84,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Org typography | `org-modern` | stars → bullets, TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); two roots — notes vault (`C-c t`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
+| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); two roots — notes vault (`C-c n`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
 | Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
@@ -93,8 +93,11 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 The daily layout is paper (main window) + notes (top right) + agenda or an AI
 shell (bottom right), rearranged on the fly:
 
-- **`M-h/j/k/l`** — focus the window left/down/up/right (windmove; the vim
-  spatial habit). Org's own `M-h` is cleared so this wins everywhere.
+- **`C-h/j/k/l`** — focus the window left/down/up/right (windmove; the
+  tmux/nvim habit). Org's and AUCTeX's local `C-j` are cleared so this wins
+  everywhere. Displaced, deliberately: help prefix → `C-c h` (or `<f1>`;
+  prefix help like `C-a C-h` still works via `help-char`), kill-line →
+  `C-S-k`, recenter → `C-S-l`.
 - **`M-o`** — ace-window: with ≤2 windows it hops immediately; with 3+ each
   window gets a home-row letter. Dispatch keys ride along: `M-o m <letter>`
   **swaps buffers** with that window (the "put the agenda in the big window"
@@ -126,16 +129,14 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
 ## Welcome screen
 
 At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
-read-only: the Emacs logo, a *Quick help* section, a two-column keybind
-cheat-sheet, and clickable actions (open the dissertation, the notes sidebar, or
-the welcome file itself). `q` / `ESC` dismiss; it also auto-dismisses the
-first time a real file is visited, so it never lingers in the buffer list or
-gets split around by later windows. Daemon client frames (`emacsclient -c`,
-the launcher's "Emacs (Client)") show it too until it's dismissed. Its lines
-truncate rather than wrap, so the cheat-sheet columns stay aligned at any
-window width. The cursor is hidden. Because
-it's Org, you customise the page by editing `welcome.org` (there's an "Edit
-this screen" link on it).
+read-only: the Emacs logo (pixel-centered via `org-image-align`), then two
+alphabetical sections — a two-column *Commands* cheat-sheet and *Help*.
+`q` / `ESC` dismiss; it also auto-dismisses the first time a real file is
+visited, so it never lingers in the buffer list or gets split around by later
+windows. Daemon client frames (`emacsclient -c`, the launcher's "Emacs
+(Client)") show it too until it's dismissed. Its lines truncate rather than
+wrap, so the cheat-sheet columns stay aligned at any window width. The cursor
+is hidden. Because it's Org, you customise the page by editing `welcome.org`.
 
 ## The notes vault (Org, migrated 2026-07-18)
 
@@ -168,15 +169,17 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 
 | Key | Command |
 |-----|---------|
-| `M-h` / `M-j` / `M-k` / `M-l` | focus window left / down / up / right |
+| `C-h` / `C-j` / `C-k` / `C-l` | focus window left / down / up / right |
+| `C-c h` | help prefix (`C-c h k` = describe key); `<f1>` works too |
+| `C-S-k` / `C-S-l` | kill-line / recenter (displaced from `C-k` / `C-l`) |
 | `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
 | `C-c w` | window menu: split / swap / repeatable resize / winner undo |
-| `C-c t` | notes sidebar on the `~/Dropbox/notes` vault |
+| `C-c n` | notes sidebar on the `~/Dropbox/notes` vault |
 | `C-c p` | papers sidebar on `~/scholarship/research-wip` (dired-sidebar roots at the project; `documents/` is one `l` away) |
 | `<f8>` | toggle a sidebar at the current project |
 | `h` / `j` / `k` / `l` | *in the sidebar:* collapse/up · down · up · expand/visit (vim-style; sidebar-local — plain letters work because the pane is read-only, and they shadow dired's legacy single-key commands) |
 | `a` / `r` / `d` / `y` / `p` | *in the sidebar:* yazi-style file ops — create (trailing `/` = folder) / rename (pre-fills the current name; a path moves) / delete / yank / paste. On a folder line, create/paste go *into* it; on a file line, beside it |
-| `C-c e` | copy the last echo-area message (usually the last error) to the clipboard; `C-h e` pops the full \*Messages\* log |
+| `C-c e` | copy the last echo-area message (usually the last error) to the clipboard; `C-c h e` pops the full \*Messages\* log |
 | `R` / `+` / `a` / `D` | *in plain dired:* rename-or-move (type a name or a path) / new directory / new empty file / delete |
 | `C-a C-q` | *in dired:* wdired — edit filenames like buffer text; `C-c C-c` commits, `C-c C-k` aborts (dired remaps `read-only-mode` to the wdired toggle) |
 | `C-a p p` / `C-a p f` | switch project / find file in project (project.el) |

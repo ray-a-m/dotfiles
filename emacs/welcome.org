@@ -1,34 +1,30 @@
 
 
-                     [[file:welcome-logo.svg]]
-
-                        *GNU Emacs*  /for prose & proofs/
 
 
-*Quick help*
+[[file:welcome-logo.svg]]
 
-  Emacs tutorial ............................ [[elisp:(help-with-tutorial)][start tutorial]]
+                                   *GNU Emacs*
+
+
+
+
+
+
+
+
+*Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
+
+  Agenda / capture ... [C-c a / C-c c]    Papers ..................... [C-c p]
+  Close buffer ............... [C-a k]    Quit Emacs ............... [C-a C-c]
+  Compile LaTeX ............ [C-c C-c]    Save ..................... [C-a C-s]
+  File in project .......... [C-a p f]    Switch buffer .............. [C-a b]
+  Jump / swap .................. [M-o]    Undo / redo .......... [C-z / C-S-z]
+  Move to window ......... [C-h j k l]    Window menu ................ [C-c w]
+  Notes ...................... [C-c n]
+
+*Help*
+
+  Help prefix  (C-c h k = describe key) ....... [C-c h]
   Quick key cheat-sheet in the echo area ........ [M-p]
-  Help prefix  (C-h k = describe key) ........... [C-h]
 
-*Quick commands*               /C = Ctrl (CapsLock too) · M = Alt · C-a was C-x/
-
-  Save ..................... [C-a C-s]    Quit Emacs ............... [C-a C-c]
-  Switch buffer .............. [C-a b]    Close buffer ............... [C-a k]
-  Move to window ......... [M-h j k l]    Jump / swap .................. [M-o]
-  Window menu ................ [C-c w]    Start of line ................ [C-x]
-  Notes sidebar .............. [C-c t]    Papers sidebar ............. [C-c p]
-  File in project .......... [C-a p f]    Switch project ........... [C-a p p]
-  Undo / redo .......... [C-z / C-S-z]    Commands ..................... [M-x]
-  Git status ................. [C-a g]    Agenda / capture ... [C-c a / C-c c]
-  Compile LaTeX ............ [C-c C-c]    Fold section ............... [S-TAB]
-
-*Your work*
-
-  Open dissertation ....................... [[elisp:(find-file "~/scholarship/research-wip/documents/dissertation/dissertation.tex")][dissertation.tex]]
-  Browse papers ................................ [[elisp:(rm/papers-sidebar)][papers tree]]
-  Open notes vault .............................. [[elisp:(rm/notes-sidebar)][notes tree]]
-  Edit this screen ............................. [[elisp:(find-file "~/.config/emacs/welcome.org")][welcome.org]]
-
-
-                              /press q to dismiss/

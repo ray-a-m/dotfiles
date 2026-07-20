@@ -10,8 +10,8 @@
 ;; Keybindings are NATIVE Emacs (evil was dropped 2026-07-19: new packages
 ;; kept lagging evil-collection support, and the compat layer wasn't worth
 ;; it for a prose-only Emacs).  The custom layer is scoped to what the
-;; defaults do badly: M-h/j/k/l window focus, M-o ace-window, a C-c w window
-;; menu with repeatable resize, C-c t / C-c p sidebars.  CapsLock is Ctrl at
+;; defaults do badly: C-h/j/k/l window focus, M-o ace-window, a C-c w window
+;; menu with repeatable resize, C-c n / C-c p sidebars.  CapsLock is Ctrl at
 ;; the Hyprland level (hypr/input.conf) and the command prefix is swapped
 ;; C-x -> C-a, so the everything-prefix sits entirely on the home row.
 ;;
@@ -203,7 +203,7 @@
   (message "init.el reloaded."))
 
 ;; Echo-area errors vanish on the next keypress, but they all land in
-;; *Messages* (C-h e pops it).  C-c e copies the last one straight to the
+;; *Messages* (C-c h e pops it).  C-c e copies the last one straight to the
 ;; clipboard -- for pasting an error into a chat/search without spelunking.
 (defun rm/copy-last-message ()
   "Copy the last *Messages* line (usually the last error) to the clipboard."
@@ -252,11 +252,10 @@
 ;; The daily layout is paper (main window) + notes (top right) + agenda or an
 ;; AI shell (bottom right), rearranged on the fly.  Everything here serves
 ;; that: instant focus moves, swap-any-two-buffers, directional splits, and
-;; repeatable resize.  evil was dropped 2026-07-19 (new packages kept lagging
-;; evil-collection), so C-h is the help prefix again (C-h k = describe key)
-;; and these are plain global binds.
+;; repeatable resize.
 ;;
-;;   M-h/j/k/l  focus window left/down/up/right (windmove; vim spatial habit)
+;;   C-h/j/k/l  focus window left/down/up/right (windmove; the tmux/nvim
+;;              habit -- started on M-h/j/k/l, moved to Ctrl 2026-07-20)
 ;;   M-o        ace-window: <=2 windows hops immediately; 3+ shows a letter
 ;;              per window -- also `M-o m <letter>' swaps buffers with that
 ;;              window (agenda -> main window move), `M-o x <letter>' deletes
@@ -265,16 +264,26 @@
 ;;              `C-c w l l l h ...' keeps resizing -- w swap, = balance,
 ;;              d delete, m maximize (u un-maximizes), u/r winner undo/redo
 ;;
-;; M-h/j/k/l shadow mark-paragraph / indent-new-comment-line / kill-sentence /
-;; downcase-word -- none earn their home-row spot here.
+;; What C-h/j/k/l displace, all deliberate:
+;;   C-h  help prefix    -> C-c h (and <f1>, stock alias, on the laptop).
+;;        Prefix help survives: `C-a C-h' still lists ctl-x-map (help-char).
+;;   C-k  kill-line      -> C-S-k
+;;   C-l  recenter       -> C-S-l
+;;   C-j  newline        -> RET does the job in every mode we use
 
-(keymap-global-set "M-h" #'windmove-left)
-(keymap-global-set "M-j" #'windmove-down)
-(keymap-global-set "M-k" #'windmove-up)
-(keymap-global-set "M-l" #'windmove-right)
-;; Org binds M-h itself (org-mark-element); clear it so window-left wins.
+(keymap-global-set "C-h" #'windmove-left)
+(keymap-global-set "C-j" #'windmove-down)
+(keymap-global-set "C-k" #'windmove-up)
+(keymap-global-set "C-l" #'windmove-right)
+(keymap-global-set "C-c h" 'help-command)         ; the help prefix's new home
+(keymap-global-set "C-S-k" #'kill-line)
+(keymap-global-set "C-S-l" #'recenter-top-bottom)
+;; Org and AUCTeX bind C-j locally (newline variants) -- clear both so
+;; windmove-down wins in the buffers where it matters most.
 (with-eval-after-load 'org
-  (define-key org-mode-map (kbd "M-h") nil))
+  (define-key org-mode-map (kbd "C-j") nil))
+(with-eval-after-load 'latex
+  (define-key LaTeX-mode-map (kbd "C-j") nil))
 
 (winner-mode 1)                           ; layout history: C-c w u / r
 
@@ -556,10 +565,10 @@
 
 ;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
 ;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
-;; (`welcome.org' beside this init) rendered read-only -- logo, quick help,
-;; a keybind cheat-sheet, and clickable actions.  Because it's Org, you edit
-;; the page by editing that file (there's an "Edit this screen" link on it).
-;; Shown on `window-setup-hook', skipped when Emacs opens a file.
+;; (`welcome.org' beside this init) rendered read-only -- the pixel-centered
+;; logo (`org-image-align', org 9.7+), then alphabetical *Commands* and
+;; *Help* cheat-sheets.  Because it's Org, you edit the page by editing that
+;; file.  Shown on `window-setup-hook', skipped when Emacs opens a file.
 ;;
 ;; A few deliberate choices make it behave under our stack:
 ;;   * we run `org-mode' with `org-mode-hook' let-bound to nil, so the prose
@@ -568,9 +577,10 @@
 ;;   * `olivetti-mode' centres it in a measure that re-flows on resize, so it
 ;;     stays centred as you flip a Hyprland tile between small and full-screen
 ;;   * [bracketed keys] are coloured with nano's salient face via a scoped
-;;     font-lock rule (the `[^][()]' class skips [[elisp:(...)]] link internals)
+;;     font-lock rule (the `[^][()]' class would skip [[elisp:(...)]] link
+;;     internals, should links ever return to the page)
 ;;   * cursor is hidden (`cursor-type' nil); q / ESC dismiss via a local keymap
-;;     layered over org-mode-map (RET still follows the links)
+;;     layered over org-mode-map
 ;;   * it auto-dismisses on the first real file visit (one-shot find-file-hook),
 ;;     so the buffer never lingers in C-x b or gets split around by later
 ;;     windows.  Dired-only visits (incl. the sidebars) don't run
@@ -617,7 +627,8 @@ very window the file is about to land in."
             (insert-file-contents file))
           (setq default-directory dir)             ; so [[file:welcome-logo.svg]] resolves
           (let ((org-mode-hook nil)) (org-mode))   ; Org WITHOUT the prose hooks
-          (setq-local org-hide-emphasis-markers t)
+          (setq-local org-hide-emphasis-markers t
+                      org-image-align 'center)     ; logo pixel-centered (org 9.7+)
           ;; colour [bracketed keys] salient; the [^][()] class avoids matching
           ;; inside [[elisp:(...)]] links (which contain parens)
           (font-lock-add-keywords nil
@@ -680,7 +691,7 @@ very window the file is about to land in."
 ;; below).  Dotfiles, . / .., README/TODO, and LaTeX build artifacts are
 ;; omitted (dired-omit-mode); .org/.md extensions are hidden; directories
 ;; sort before files at every level.  Two roots for the two corpora:
-;; C-c t = the notes vault, C-c p = research-wip (papers/dissertation/CV
+;; C-c n = the notes vault, C-c p = research-wip (papers/dissertation/CV
 ;; under documents/); <f8> toggles a sidebar at the current project.
 ;; Directories before files, at every level -- dired-subtree's expansions
 ;; read with the same switches, so the whole tree groups consistently.
@@ -701,7 +712,7 @@ very window the file is about to land in."
 
 (use-package dired-sidebar
   :defer t
-  :bind (("C-c t" . rm/notes-sidebar)
+  :bind (("C-c n" . rm/notes-sidebar)
          ("C-c p" . rm/papers-sidebar)
          ("<f8>"  . dired-sidebar-toggle-sidebar))
   :init
