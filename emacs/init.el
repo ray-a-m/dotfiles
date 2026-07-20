@@ -641,7 +641,14 @@ very window the file is about to land in."
   (defun rm/welcome-on-new-frame ()
     "Show the splash in new daemon frames until it's dismissed."
     (when-let ((buf (get-buffer "*welcome*")))
-      (switch-to-buffer buf)))
+      (switch-to-buffer buf)
+      ;; The daemon rendered the buffer on its frameless startup display,
+      ;; where `org-display-inline-images' is a silent no-op -- so the logo
+      ;; is still a raw link.  Inline it now that we're on a real frame
+      ;; (idempotent: org skips links that already carry image overlays).
+      (when (display-graphic-p)
+        (with-current-buffer buf
+          (org-display-inline-images)))))
   (add-hook 'server-after-make-frame-hook #'rm/welcome-on-new-frame))
 
 ;; --- Notes + papers sidebar (dired-sidebar) ------------------------------
@@ -652,9 +659,15 @@ very window the file is about to land in."
 ;; root instead).  TAB expands a folder in-place (dired-subtree); RET
 ;; opens the file into the main window; hjkl navigate vim-style (see
 ;; below).  Dotfiles, . / .., README/TODO, and LaTeX build artifacts are
-;; omitted (dired-omit-mode).  Two roots for the two corpora:
+;; omitted (dired-omit-mode); .org/.md extensions are hidden; directories
+;; sort before files at every level.  Two roots for the two corpora:
 ;; C-c t = the notes vault, C-c p = research-wip (papers/dissertation/CV
 ;; under documents/); <f8> toggles a sidebar at the current project.
+;; Directories before files, at every level -- dired-subtree's expansions
+;; read with the same switches, so the whole tree groups consistently.
+;; Global on purpose: plain dired benefits too.
+(setq dired-listing-switches "-al --group-directories-first")
+
 (use-package dired-sidebar
   :defer t
   :bind (("C-c t" . rm/notes-sidebar)
@@ -693,6 +706,28 @@ one `l' away instead."
           (overlay-put o 'invisible t)
           (overlay-put o 'evaporate t)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-heading)
+  ;; Hide .org / .md extensions, Obsidian-style: an invisible overlay over
+  ;; the suffix.  Display-only -- the buffer text is intact, so dired still
+  ;; parses full filenames and RET opens the right file.
+  (defun rm/sidebar-hide-extensions (&rest _)
+    "Hide .org / .md extensions in the sidebar's file names."
+    (when (derived-mode-p 'dired-sidebar-mode)
+      (save-excursion
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((fn (dired-get-filename 'no-dir t)))
+            (when (and fn (string-match "\\.\\(org\\|md\\)\\'" fn))
+              (let ((ext-len (- (length fn) (match-beginning 0))))
+                (when-let ((end (dired-move-to-end-of-filename t)))
+                  (let ((beg (- end ext-len)))
+                    (unless (get-char-property beg 'invisible)
+                      (let ((o (make-overlay beg end)))
+                        (overlay-put o 'invisible t)
+                        (overlay-put o 'evaporate t))))))))
+          (forward-line 1)))))
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-extensions)
+  (with-eval-after-load 'dired-subtree
+    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions))
   ;; Hide clutter -- sidebar only, plain dired still lists everything.
   ;; The regexp omits dotfiles (.git, .gitignore, and the . / .. self/parent
   ;; entries every Unix dir carries) plus README.md / TODO.md; on top of
@@ -713,7 +748,9 @@ one `l' away instead."
                                       (expand-file-name default-directory)))
                                 "/"))
               (dired-omit-mode 1)
-              (rm/sidebar-hide-heading)))  ; initial readin predates the mode
+              ;; initial readin predates the mode, so run both once here
+              (rm/sidebar-hide-heading)
+              (rm/sidebar-hide-extensions)))
   ;; Vim-style tree navigation on plain hjkl -- the pane is read-only, so
   ;; the letters are free, and dired's single-letter legacy binds are traps
   ;; (j prompted "Goto file:", k killed lines).  l: expand a dir (again:

@@ -84,7 +84,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Org typography | `org-modern` | stars → bullets, TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; two roots — notes vault (`C-c t`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
+| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); two roots — notes vault (`C-c t`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
 | Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
