@@ -84,7 +84,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Org typography | `org-modern` | stars → bullets, TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Sidebars | `dired-sidebar` | dired in a side pane, Obsidian-styled: ET Book, no icons, TAB expands folders; two roots — notes vault (`C-c t`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
+| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; two roots — notes vault (`C-c t`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
 | Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
@@ -128,7 +128,12 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
 At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
 read-only: the Emacs logo, a *Quick help* section, a two-column keybind
 cheat-sheet, and clickable actions (open the dissertation, the notes sidebar, or
-the welcome file itself). `q` / `ESC` dismiss; the cursor is hidden. Because
+the welcome file itself). `q` / `ESC` dismiss; it also auto-dismisses the
+first time a real file is visited, so it never lingers in the buffer list or
+gets split around by later windows. Daemon client frames (`emacsclient -c`,
+the launcher's "Emacs (Client)") show it too until it's dismissed. Its lines
+truncate rather than wrap, so the cheat-sheet columns stay aligned at any
+window width. The cursor is hidden. Because
 it's Org, you customise the page by editing `welcome.org` (there's an "Edit
 this screen" link on it).
 
@@ -167,8 +172,9 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
 | `C-c w` | window menu: split / swap / repeatable resize / winner undo |
 | `C-c t` | notes sidebar on the `~/Dropbox/notes` vault |
-| `C-c p` | papers sidebar on `~/scholarship/research-wip/documents` |
-| `<f8>` | toggle a sidebar at the current directory |
+| `C-c p` | papers sidebar on `~/scholarship/research-wip` (dired-sidebar roots at the project; `documents/` is one `l` away) |
+| `<f8>` | toggle a sidebar at the current project |
+| `h` / `j` / `k` / `l` | *in the sidebar:* collapse/up · down · up · expand/visit (vim-style; sidebar-local — plain letters work because the pane is read-only, and they shadow dired's legacy single-key commands) |
 | `C-a p p` / `C-a p f` | switch project / find file in project (project.el) |
 | `C-a k` | kill current buffer, no prompt |
 | `C-z` / `C-S-z` | undo / redo (built-in `undo` / `undo-redo`) |

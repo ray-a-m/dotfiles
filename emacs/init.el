@@ -552,12 +552,33 @@
 ;;     font-lock rule (the `[^][()]' class skips [[elisp:(...)]] link internals)
 ;;   * cursor is hidden (`cursor-type' nil); q / ESC dismiss via a local keymap
 ;;     layered over org-mode-map (RET still follows the links)
+;;   * it auto-dismisses on the first real file visit (one-shot find-file-hook),
+;;     so the buffer never lingers in C-x b or gets split around by later
+;;     windows.  Dired-only visits (incl. the sidebars) don't run
+;;     `find-file-hook' -- accepted scope; q / winner-undo cover that.
 
 (defun rm/welcome-kill ()
   "Dismiss the welcome screen."
   (interactive)
+  (remove-hook 'find-file-hook #'rm/welcome--auto-dismiss)
   (when (get-buffer "*welcome*")
     (kill-buffer "*welcome*")))
+
+(defun rm/welcome--auto-dismiss ()
+  "One-shot: dismiss the welcome screen once a real file is visited.
+Runs on `find-file-hook', which fires before the new buffer is
+displayed -- so the teardown is deferred a tick, lest we delete the
+very window the file is about to land in."
+  (remove-hook 'find-file-hook #'rm/welcome--auto-dismiss)
+  (when (get-buffer "*welcome*")
+    (run-with-timer 0 nil
+                    (lambda ()
+                      (when-let ((buf (get-buffer "*welcome*")))
+                        (dolist (win (get-buffer-window-list buf nil t))
+                          ;; a sole window can't be deleted; killing the
+                          ;; buffer below makes it show something else
+                          (ignore-errors (delete-window win)))
+                        (kill-buffer buf))))))
 
 (defun rm/welcome ()
   "Show the welcome screen (welcome.org) unless a file was opened at launch."
@@ -595,24 +616,45 @@
           (read-only-mode 1)
           (goto-char (point-min)))
         (switch-to-buffer buf)
+        (add-hook 'find-file-hook #'rm/welcome--auto-dismiss)
         ;; Window-dependent bits, now that the buffer is actually on screen:
         ;; inline the logo image, and centre with olivetti (re-flows on resize).
         (with-current-buffer buf
           (org-display-inline-images)
           (when (fboundp 'olivetti-mode)
-            (setq-local olivetti-body-width 78)    ; wide enough for the 2-col block
-            (olivetti-mode 1)))))))
+            (setq-local olivetti-body-width 80)    ; 2 cols slack over the 78-col block
+            (olivetti-mode 1))
+          ;; olivetti turns on visual-line-mode; in a narrowed window (sidebar
+          ;; open) that word-wraps the aligned cheat-sheet by a hair.  Truncate
+          ;; instead -- the columns stay sane at any window width.
+          (visual-line-mode -1)
+          (setq-local truncate-lines t))))))
 
 (add-hook 'window-setup-hook #'rm/welcome)
+
+;; Client frames (app-launcher "Emacs (Client)", emacsclient -c) open on the
+;; daemon, where window-setup-hook already ran frameless -- so without this
+;; they'd show *scratch* instead of the splash.  Show it while it still
+;; exists (i.e. until dismissed); frames opened on a file still win, because
+;; the server displays the file after this hook runs.
+(when (daemonp)
+  (defun rm/welcome-on-new-frame ()
+    "Show the splash in new daemon frames until it's dismissed."
+    (when-let ((buf (get-buffer "*welcome*")))
+      (switch-to-buffer buf)))
+  (add-hook 'server-after-make-frame-hook #'rm/welcome-on-new-frame))
 
 ;; --- Notes + papers sidebar (dired-sidebar) ------------------------------
 ;; A file-tree side pane, like Obsidian's explorer.  It's just dired in a
 ;; side window (native machinery, no workspace model -- replaced treemacs
-;; 2026-07-19), styled Obsidian-like: the ET Book body serif, no icons, airy
-;; rows, details hidden.  TAB expands a folder in-place (dired-subtree); RET
-;; opens the file into the main window.  Two roots for the two corpora:
-;; C-c t = the notes vault, C-c p = papers/dissertation/CV; <f8> toggles a
-;; sidebar at the current directory.
+;; 2026-07-19), styled like rougier's nano dired: Roboto Mono, no icons,
+;; airy rows, details hidden, no banner line (the header line names the
+;; root instead).  TAB expands a folder in-place (dired-subtree); RET
+;; opens the file into the main window; hjkl navigate vim-style (see
+;; below).  Dotfiles, . / .., README/TODO, and LaTeX build artifacts are
+;; omitted (dired-omit-mode).  Two roots for the two corpora:
+;; C-c t = the notes vault, C-c p = research-wip (papers/dissertation/CV
+;; under documents/); <f8> toggles a sidebar at the current project.
 (use-package dired-sidebar
   :defer t
   :bind (("C-c t" . rm/notes-sidebar)
@@ -625,20 +667,77 @@
     (let ((default-directory (expand-file-name "~/Dropbox/notes/")))
       (dired-sidebar-toggle-sidebar)))
   (defun rm/papers-sidebar ()
-    "Toggle a dired sidebar rooted at the research-wip documents tree."
+    "Toggle a dired sidebar rooted at research-wip.
+dired-sidebar roots at the *project* root (and its follow-file
+re-rooting keeps it there), so documents/ can't be the root -- it's
+one `l' away instead."
     (interactive)
     (let ((default-directory
-           (expand-file-name "~/scholarship/research-wip/documents/")))
+           (expand-file-name "~/scholarship/research-wip/")))
       (dired-sidebar-toggle-sidebar)))
   :config
-  (setq dired-sidebar-theme 'none          ; no icons -- plain names, Obsidian-like
+  (setq dired-sidebar-theme 'none          ; no icons -- plain names
         dired-sidebar-width 32
-        dired-sidebar-use-custom-font t    ; render the pane in the face spec below
-        ;; Same serif as the prose body -- the tree reads like the page.
-        dired-sidebar-face '(:family "ETBembo")
+        ;; No custom font: the default face is Roboto Mono, rougier's nano
+        ;; look (ET Book was tried 2026-07-20 and reverted the same day).
+        dired-sidebar-use-custom-font nil
         dired-sidebar-should-follow-file t) ; keep the tree on the file you're editing
+  ;; Hide dired's banner line (absolute path + free space); the header line
+  ;; shows the root directory's name instead.
+  (defun rm/sidebar-hide-heading ()
+    "Make the sidebar's dired banner line invisible."
+    (when (derived-mode-p 'dired-sidebar-mode)
+      (save-excursion
+        (goto-char (point-min))
+        (let ((o (make-overlay (line-beginning-position) (line-beginning-position 2))))
+          (overlay-put o 'invisible t)
+          (overlay-put o 'evaporate t)))))
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-heading)
+  ;; Hide clutter -- sidebar only, plain dired still lists everything.
+  ;; The regexp omits dotfiles (.git, .gitignore, and the . / .. self/parent
+  ;; entries every Unix dir carries) plus README.md / TODO.md; on top of
+  ;; that, dired-omit-mode's default `dired-omit-extensions' hides LaTeX
+  ;; build artifacts (.aux, .log, .bbl, ...).  dired-sidebar's omit
+  ;; integration (on by default) re-applies this after TAB expansions.
+  (setq dired-omit-verbose nil)
   (add-hook 'dired-sidebar-mode-hook
-            (lambda () (setq-local line-spacing 3))))   ; airier rows
+            (lambda ()
+              (setq-local line-spacing 3   ; airier rows
+                          dired-omit-files
+                          "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'"
+                          ;; nano's header line would show the buffer name
+                          ;; (":~/full/path/..."); show just the root's name
+                          header-line-format
+                          (list " " (file-name-nondirectory
+                                     (directory-file-name
+                                      (expand-file-name default-directory)))
+                                "/"))
+              (dired-omit-mode 1)
+              (rm/sidebar-hide-heading)))  ; initial readin predates the mode
+  ;; Vim-style tree navigation on plain hjkl -- the pane is read-only, so
+  ;; the letters are free, and dired's single-letter legacy binds are traps
+  ;; (j prompted "Goto file:", k killed lines).  l: expand a dir (again:
+  ;; step into it) or visit a file; h: collapse an expanded dir, else jump
+  ;; to the parent line.
+  (defun rm/sidebar-open ()
+    "Expand the directory at point, or visit the file in the main window."
+    (interactive)
+    (if (dired-subtree--dired-line-is-directory-or-link-p)
+        (if (dired-subtree--is-expanded-p)
+            (dired-subtree-down)
+          (dired-subtree-toggle))
+      (dired-sidebar-find-file)))
+  (defun rm/sidebar-close ()
+    "Collapse the expanded directory at point, else jump to the parent."
+    (interactive)
+    (if (and (dired-subtree--dired-line-is-directory-or-link-p)
+             (dired-subtree--is-expanded-p))
+        (dired-subtree-toggle)
+      (dired-subtree-up)))
+  (define-key dired-sidebar-mode-map (kbd "j") #'dired-next-line)
+  (define-key dired-sidebar-mode-map (kbd "k") #'dired-previous-line)
+  (define-key dired-sidebar-mode-map (kbd "l") #'rm/sidebar-open)
+  (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close))
 
 ;; --- Markdown (any notes you keep as .md) -------------------------------
 ;; The vault is Org now, but markdown-mode covers any stray .md.  It inherits
