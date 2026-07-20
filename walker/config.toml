@@ -25,9 +25,10 @@ symbols = 1 # providers to be queried by default
 
 [providers]
 max_results = 256 # 256 should be enough for everyone
+# websearch removed from defaults (2026-07-20): it injected a "Google" row
+# into every search. Deliberate web searches still work via the @ prefix.
 default = [
   "desktopapplications",
-  "websearch",
 ]
 
 [[providers.prefixes]]
