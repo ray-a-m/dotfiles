@@ -32,6 +32,7 @@ for **notes + Org**.
 | `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
 | `welcome.org` | The startup screen content — an editable Org file (logo + alphabetical Commands / Help cheat-sheet). |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
+| `org-paper-export.el` | Body-only LaTeX export for papers-in-Org (the `paper-latex` backend; also loaded headless by the `publish` shell function). See "Papers in Org". |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
 
 Symlinked to `~/.config/emacs` by `install.sh` (`ln -sfn`, backing up any real
@@ -178,6 +179,29 @@ is exactly the database org-roam provides and was declined. No in-file
 The original Obsidian vault lives in a **separate location and is left
 absolutely untouched** as the deep backup; the `.md` copies inside
 `~/Dropbox/notes/` were deleted once the Org conversion was verified.
+
+## Papers in Org (migration started 2026-07-20)
+
+Papers under `research-wip/documents/papers/<slug>/` are authored as
+`paper.org` and export **body-only** to the `body.tex` their 8-line
+`paper.tex` driver `\input`s — the driver, `shared/preamble.tex`, the bibs,
+and the dissertation's `\inputpaperbody` never change, so the compiled PDF
+is byte-comparable with the hand-written original (verified per paper:
+empty `git diff` on the generated `body.tex`, `pdftotext` diff, and a
+pixel-level `pdftoppm`/`compare` pass). Machinery in `org-paper-export.el`:
+a `paper-latex` backend that keeps `$…$` inline math (stock ox-latex
+rewrites to `\(…\)`) and strips the auto-generated random
+`\label{sec:orgNNN}`. Shared export options live in
+`research-wip/documents/shared/org-paper.setup` (smart quotes and special
+strings off, `tasks:nil`, the TODO keywords for batch runs). Saving a
+`paper.org` regenerates `body.tex` (after-save hook); `C-c C-c` exports +
+latexmks, matching the AUCTeX binding; `publish` regenerates before
+building via `emacs -Q --batch`. A `** TODO …` jotted mid-paper reaches
+the global agenda (`org-agenda-files` includes
+`research-wip/documents/**/*.org`) and its whole subtree is dropped from
+export — so keep only task notes under TODO headlines, never prose.
+Citations stay raw LaTeX (`\cite`/`\textcite`/`\parencite`), passed
+through verbatim. Migrated so far: higgs. Still `.tex`: everything else.
 
 ## Keybindings
 

@@ -612,16 +612,23 @@ layout untouched -- no empty window to clean up."
          ("C-c l" . org-store-link))
   :init
   (setq org-directory "~/Dropbox/org/"    ; agenda + capture home (synced, NOT the vault)
-        ;; Agenda scans the dedicated org dir *and* the whole notes vault, so a
-        ;; TODO jotted in any note surfaces.  Recursive (the vault is nested) and
-        ;; filtered to skip Emacs lock/temp files.  New note files need a restart
+        ;; Agenda scans the dedicated org dir, the whole notes vault, *and* the
+        ;; research documents tree, so a TODO jotted in any note -- or mid-paper
+        ;; in a paper.org -- surfaces.  Recursive (the trees are nested) and
+        ;; filtered to skip Emacs lock/temp files.  New files need a restart
         ;; (or re-eval) to join the agenda; the org dir itself rescans live.
         org-agenda-files
-        (cons "~/Dropbox/org/"
-              (when (file-directory-p "~/Dropbox/notes/")
-                (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
-                            (directory-files-recursively
-                             (expand-file-name "~/Dropbox/notes/") "\\.org\\'"))))
+        (append
+         (cons "~/Dropbox/org/"
+               (when (file-directory-p "~/Dropbox/notes/")
+                 (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
+                             (directory-files-recursively
+                              (expand-file-name "~/Dropbox/notes/") "\\.org\\'"))))
+         (when (file-directory-p "~/scholarship/research-wip/documents/")
+           (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
+                       (directory-files-recursively
+                        (expand-file-name "~/scholarship/research-wip/documents/")
+                        "\\.org\\'"))))
         org-startup-folded 'showall       ; open fully expanded; S-TAB cycles all folding
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
         org-image-actual-width '(500)     ; cap oversized inline images at 500px
@@ -644,6 +651,39 @@ layout untouched -- no empty window to clean up."
   ;; the tiny default so equations are readable next to the prose font.
   (setq org-preview-latex-default-process 'dvisvgm)
   (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5)))
+
+;; --- Papers in Org: body-only LaTeX export --------------------------------
+;; paper.org files under research-wip/documents/papers/<slug>/ export to the
+;; body.tex their paper.tex driver \input's -- machinery and rationale live
+;; in org-paper-export.el (beside this init; also loaded by the publish
+;; shell function via emacs -Q --batch).  Wiring here: the paper-latex
+;; backend registers when ox-latex loads; every save of a paper.org
+;; regenerates body.tex (never stale in git); C-c C-c in a paper.org
+;; exports + latexmks, matching the AUCTeX muscle memory.  The path guard
+;; is inlined in the hooks so the module stays lazy-loaded.
+(with-eval-after-load 'ox-latex
+  (require 'org-paper-export
+           (expand-file-name "org-paper-export.el" user-emacs-directory)))
+(defun rm/org-paper--maybe-export-on-save ()
+  "Regenerate body.tex when the saved buffer is a paper.org."
+  (when (and buffer-file-name
+             (string-match-p "/documents/papers/[^/]+/paper\\.org\\'"
+                             buffer-file-name))
+    (require 'org-paper-export
+             (expand-file-name "org-paper-export.el" user-emacs-directory))
+    (rm/org-paper-export)))
+(add-hook 'after-save-hook #'rm/org-paper--maybe-export-on-save)
+(with-eval-after-load 'org
+  (add-hook 'org-ctrl-c-ctrl-c-final-hook
+            (lambda ()
+              (when (and buffer-file-name
+                         (string-match-p
+                          "/documents/papers/[^/]+/paper\\.org\\'"
+                          buffer-file-name))
+                (require 'org-paper-export
+                         (expand-file-name "org-paper-export.el"
+                                           user-emacs-directory))
+                (rm/org-paper-compile)))))
 
 ;; org-appear complements `org-hide-emphasis-markers' above: the markers are
 ;; hidden for clean, rendered text, but re-appear around the span your cursor

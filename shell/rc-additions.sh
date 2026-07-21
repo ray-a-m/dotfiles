@@ -55,6 +55,20 @@ save() {
   git add -A && git commit -m "${1:-.}" && git push
 }
 
+# Regenerate body.tex from paper.org where the org file exists (org is the
+# authoring surface for migrated papers; the generated body.tex stays
+# committed because the dissertation \inputpaperbody's it and provenance
+# tags need buildable trees).  emacs -Q on purpose: no daemon dependency,
+# no init.el -- the export module + the shared org-paper.setup carry
+# everything the batch path needs.
+_org_export_body() {
+  local org="$1"
+  [[ -f "$org" ]] || return 0
+  emacs -Q --batch \
+    -l "$HOME/.config/emacs/org-paper-export.el" \
+    --eval "(rm/org-paper-export-file \"$org\")"
+}
+
 # Build a research-wip doc and publish its PDF to research-public.
 # Usage: publish cv | publish dissertation | publish <paper-name>
 publish() {
@@ -88,6 +102,18 @@ publish() {
   (
     set -e
     cd "$src_dir"
+    if [[ "$name" == dissertation ]]; then
+      # Chapters \inputpaperbody the papers' body.tex -- refresh any that
+      # are authored in org before building.  find, not a glob: this file
+      # is sourced by both zsh and bash (no-match globs differ).
+      find "$HOME/scholarship/research-wip/documents/papers" \
+           -mindepth 2 -maxdepth 2 -name paper.org |
+        while IFS= read -r org; do
+          _org_export_body "$org" || exit 1
+        done
+    else
+      _org_export_body "$src_dir/paper.org"
+    fi
     latexmk -pdf -interaction=nonstopmode -halt-on-error "$tex_name"
     mkdir -p "$(dirname "$dest_pdf")"
     cp "${tex_name%.tex}.pdf" "$dest_pdf"
