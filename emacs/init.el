@@ -168,15 +168,19 @@
 ;; Prose modelines, quieter: "Musings.org (Org)" reads as just "Musings".
 ;; In text-mode-derived buffers the .org/.md extension is hidden (sidebar
 ;; parity) and the "(Mode)" segment is dropped -- the branch, when there is
-;; one, still shows.  Code buffers keep the stock "name (Mode, branch)".
-;; Redefines nano-modeline's dispatcher target; the vendored original is
-;; untouched.
+;; one, still shows.  When two same-named files are open, uniquify names
+;; the buffer "Musings.org<Hegel>" -- the <dir> tail is display noise here
+;; too, so the strip eats it along with the extension (C-a b still shows
+;; it, where telling the two apart actually matters).  Code buffers keep
+;; the stock "name (Mode, branch)".  Redefines nano-modeline's dispatcher
+;; target; the vendored original is untouched.
 (defun nano-modeline-default-mode ()
   (let* ((buffer-name (format-mode-line "%b"))
          (prose       (derived-mode-p 'text-mode))
          (buffer-name (if prose
-                          (replace-regexp-in-string "\\.\\(org\\|md\\)\\'" ""
-                                                    buffer-name)
+                          (replace-regexp-in-string
+                           "\\.\\(org\\|md\\)\\(<[^>]*>\\)?\\'" ""
+                           buffer-name)
                         buffer-name))
          (mode-name   (nano-mode-name))
          (branch      (vc-branch))

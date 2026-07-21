@@ -127,8 +127,8 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
   Obsidian-style blue (`#4a6fa5`), full slant (ET Book's thin italic strokes
   read faded at the body colour).
 - **Quiet prose modeline** — text-mode buffers show just the name (`.org`/`.md`
-  hidden, no `(Mode)`; a git branch still shows); code buffers keep
-  `name (Mode, branch)`.
+  and uniquify's `<dir>` tail hidden, no `(Mode)`; a git branch still shows);
+  code buffers keep `name (Mode, branch)`.
 - **Matched sizes** — Roboto Mono renders larger than ET Book at the same point
   size, so `fixed-pitch` is shrunk (`:height 0.75`) to sit the `\commands`/math
   level with the prose.
