@@ -1,9 +1,10 @@
 ;;; org-paper-export.el --- body-only LaTeX export for research papers -*- lexical-binding: t; -*-
 
 ;; Papers in research-wip are authored in Org (paper.org) and exported
-;; body-only to the body.tex their 8-line paper.tex driver \input's -- the
-;; driver, shared preamble, bibs, dissertation \inputpaperbody, and the
-;; publish pipeline never change.  The whole point is byte-comparable
+;; body-only to the body.tex their 8-line paper.tex driver \input's; the
+;; dissertation's frontmatter/introduction.org exports to introduction.tex
+;; the same way.  The driver, shared preamble, bibs, dissertation
+;; \inputpaperbody, and the publish pipeline never change.  The whole point is byte-comparable
 ;; output, so this backend undoes the two places stock ox-latex rewrites
 ;; what the hand-written bodies contain:
 ;;

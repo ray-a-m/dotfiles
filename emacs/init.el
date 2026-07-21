@@ -654,9 +654,10 @@ layout untouched -- no empty window to clean up."
 
 ;; --- Papers in Org: body-only LaTeX export --------------------------------
 ;; paper.org files under research-wip/documents/papers/<slug>/ export to the
-;; body.tex their paper.tex driver \input's -- machinery and rationale live
-;; in org-paper-export.el (beside this init; also loaded by the publish
-;; shell function via emacs -Q --batch).  Wiring here: the paper-latex
+;; body.tex their paper.tex driver \input's; the dissertation's
+;; frontmatter/introduction.org exports to introduction.tex the same way --
+;; machinery and rationale live in org-paper-export.el (beside this init;
+;; also loaded by the publish shell function via emacs -Q --batch).  Wiring here: the paper-latex
 ;; backend registers when ox-latex loads; every save of a paper.org
 ;; regenerates body.tex (never stale in git); C-c C-c in a paper.org
 ;; exports + latexmks, matching the AUCTeX muscle memory.  The path guard
