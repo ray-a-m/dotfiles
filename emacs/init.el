@@ -678,12 +678,39 @@
 ;;   * [bracketed keys] are coloured with nano's salient face via a scoped
 ;;     font-lock rule (the `[^][()]' class would skip [[elisp:(...)]] link
 ;;     internals, should links ever return to the page)
+;;   * the logo is sized to the window: the page below it is a fixed stack
+;;     of text lines, so the logo gets whatever height remains (capped at
+;;     500px wide, the full-monitor look).  Recomputed on window resize, so
+;;     the whole page fits docked and on the laptop panel alike
 ;;   * cursor is hidden (`cursor-type' nil); q / ESC dismiss via a local keymap
 ;;     layered over org-mode-map
 ;;   * it auto-dismisses on the first real file visit (one-shot find-file-hook),
 ;;     so the buffer never lingers in C-x b or gets split around by later
 ;;     windows.  Dired-only visits (incl. the sidebars) don't run
 ;;     `find-file-hook' -- accepted scope; q / winner-undo cover that.
+
+(defun rm/welcome--logo-width ()
+  "Logo pixel width that lets the whole page fit the selected window.
+Every line but the logo's is plain text at `default-line-height'; the
+logo gets the height left over (minus a one-line cushion), converted to
+a width via the SVG's 270:217 aspect.  Capped at 500px -- the size it
+has always rendered at on the external monitor -- and floored at 250px
+so a half-tile still shows a legible logo rather than a speck."
+  (let* ((text-px (* (count-lines (point-min) (point-max))
+                     (default-line-height)))
+         (budget  (- (window-pixel-height) text-px)))
+    (min 500 (max 250 (round (* budget (/ 270.0 217.0)))))))
+
+(defun rm/welcome--refit (window)
+  "Re-inline the logo at the size WINDOW now calls for.
+On `window-size-change-functions' (buffer-local, so WINDOW is the one
+showing the splash).  No-op unless the computed width actually changed."
+  (with-selected-window window
+    (let ((width (rm/welcome--logo-width)))
+      (unless (equal width org-image-actual-width)
+        (setq-local org-image-actual-width width)
+        (org-remove-inline-images)
+        (org-display-inline-images)))))
 
 (defun rm/welcome-kill ()
   "Dismiss the welcome screen."
@@ -749,7 +776,9 @@ very window the file is about to land in."
         ;; Window-dependent bits, now that the buffer is actually on screen:
         ;; inline the logo image, and centre with olivetti (re-flows on resize).
         (with-current-buffer buf
+          (setq-local org-image-actual-width (rm/welcome--logo-width))
           (org-display-inline-images)
+          (add-hook 'window-size-change-functions #'rm/welcome--refit nil t)
           (when (fboundp 'olivetti-mode)
             (setq-local olivetti-body-width 80)    ; 2 cols slack over the 78-col block
             (olivetti-mode 1))

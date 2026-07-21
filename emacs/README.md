@@ -145,7 +145,11 @@ entry): the *first* frame of a visit greets with the splash — closing the
 last frame (Super+Q) ends the visit, so the next open splashes again even
 though the daemon kept every buffer. A frame opened alongside a live one
 resumes your last file instead. Its lines truncate rather than
-wrap, so the cheat-sheet columns stay aligned at any window width. The cursor
+wrap, so the cheat-sheet columns stay aligned at any window width. The logo
+is sized to the window — the text below it is a fixed stack of lines, so the
+logo gets the height that remains (capped at 500px wide, the external-monitor
+look; refit on resize) — so the whole page fits docked and on the laptop
+panel alike. The cursor
 is hidden. Because it's Org, you customise the page by editing `welcome.org`.
 
 ## The notes vault (Org, migrated 2026-07-18)
