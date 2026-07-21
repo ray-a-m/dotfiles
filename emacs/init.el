@@ -418,9 +418,10 @@ layout untouched -- no empty window to clean up."
 
 ;; Kill the current buffer without the which-buffer prompt (from nano-bindings,
 ;; which we don't load wholesale -- its M-RET frame-maximize would clobber
-;; org-meta-return).  Defined via the C-x path, so it lands in ctl-x-map;
-;; typed as C-a k.
-(keymap-global-set "C-x k" #'kill-current-buffer)
+;; org-meta-return).  Bound into ctl-x-map DIRECTLY, not via the "C-x k"
+;; path: after the end-of-init C-a/C-x swap, "C-x" is no longer a prefix,
+;; so the path form would error on any rm/reload-init.  Typed as C-a k.
+(keymap-set ctl-x-map "k" #'kill-current-buffer)
 
 ;; --- Vim motions on Meta (mirrors the nvim workflow) --------------------
 ;; M-hjkl / M-w / M-b move (w is vim-exact: start of NEXT word, via misc.el's
@@ -633,7 +634,15 @@ layout untouched -- no empty window to clean up."
         org-hide-emphasis-markers t       ; show *bold* / italic rendered, hide the markers
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
-        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED")))
+        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
+        ;; Task MATTER tags (the TODO keyword is the form, the tag is the
+        ;; matter it concerns): C-c C-c on a heading pops fast-select -- one letter
+        ;; toggles the tag.  Orthogonal to location: C-c a m gathers a tag's
+        ;; TODOs from inbox.org, the technology hub, anywhere the agenda
+        ;; scans.  Distinct namespace from the vault's note-matter (that names research
+        ;; programs; these name the legs of the job).
+        org-tag-alist '(("technology" . ?t) ("teaching" . ?e)
+                        ("service" . ?s) ("research" . ?r)))
   :config
   (setq org-capture-templates
         '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "Tasks")
@@ -707,6 +716,77 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
         ;; tag/keyword pills look best unaligned (no trailing-whitespace columns)
         org-auto-align-tags nil
         org-tags-column 0))
+
+;; --- Denote: the thought vault (~/Dropbox/notes) --------------------------
+;; One flat naming grammar instead of folders: every note's filename is its
+;; address on three axes at once --
+;;   20260721T101530--topological-realism__paperidea_physics.org
+;;   `-- timestamp --'  `-- title --------'  `- form + matter -'
+;; The FIRST keyword is the FORM (what act of writing this is); the rest are
+;; MATTER (which research program it serves; none = miscellaneous, by
+;; design -- don't invent a "misc" keyword).  Two families of forms, no
+;; pipeline between them:
+;;   contemplative  musing poetry log talk meeting  -- finished when written
+;;   productive     idea -> paperidea -> wip        -- promote by RENAME
+;;                  (C-c d r; the ID never changes so links survive); a wip
+;;                  that goes live EXITS the vault to research-wip as a paper
+;;   reference      lit (reading notes)  hub (curated standing notes, e.g.
+;;                  the Technology hub; span markers like #important and
+;;                  #definition stay as grep-able ink in lit bodies)
+;; Retrieval: C-c d j jumps by name fragments (orderless); C-c d c renders a
+;; catalog in dired from a filename regexp (`_paperidea.*_physics'); grep
+;; covers bodies; C-c d b backlinks.  The map lives on the splash screen.
+;; The legacy folders coexist untouched; old notes adopt the scheme
+;; gradually via C-c d r (git-tracked since 2026-07-21 -- commit often).
+(use-package denote
+  :bind-keymap ("C-c d" . rm/denote-map)
+  :init
+  (defvar rm/denote-forms
+    '("musing" "poetry" "idea" "paperidea" "wip" "lit" "log" "talk" "meeting" "hub")
+    "Note forms: the first filename keyword, exactly one per note.")
+  (defvar rm/denote-matter
+    '("physics" "hegel" "kant" "math" "aesthetics")
+    "Matter keywords: the research programs.  Grow this list only when a
+new program is genuinely born; free-typing new matter still works.")
+  (setq denote-directory (expand-file-name "~/Dropbox/notes/")
+        denote-known-keywords rm/denote-matter
+        denote-sort-keywords nil          ; NEVER alphabetize: form stays first
+        denote-history-completion-in-prompts nil)  ; vertico noise otherwise
+  ;; One named command per form (rm/denote-idea, rm/denote-musing, ...):
+  ;; prompt for title, then matter -- completion offers ONLY the curated
+  ;; matter list (forms and inferred strays excluded), but new matter can
+  ;; still be typed through it.
+  (defun rm/denote-new (form)
+    "Create a denote note of FORM, prompting for title and matter."
+    (require 'denote)                     ; M-x rm/denote-idea before any C-c d
+    (let* ((title (denote-title-prompt nil (format "New %s. Title" form)))
+           (matter (let ((denote-known-keywords rm/denote-matter)
+                         (denote-infer-keywords nil))
+                     (denote-keywords-prompt "Matter (RET = none)"))))
+      (denote title (cons form matter))))
+  (dolist (form rm/denote-forms)
+    (defalias (intern (concat "rm/denote-" form))
+      (lambda () (interactive) (rm/denote-new form))
+      (format "Create a new %s note in the vault." form)))
+  (defvar-keymap rm/denote-map
+    :doc "Denote: create by form, jump, catalog, backlinks, rename."
+    "d" #'denote                          ; raw create: full keyword control
+    "j" #'denote-open-or-create           ; jump: fragments match filenames
+    "c" #'denote-sort-dired               ; catalog: regexp -> dired listing
+    "b" #'denote-backlinks                ; who links here?
+    "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
+    "k" #'denote-link                     ; insert a link to another note
+    "m" #'rm/denote-musing  "o" #'rm/denote-poetry    "i" #'rm/denote-idea
+    "p" #'rm/denote-paperidea  "w" #'rm/denote-wip    "l" #'rm/denote-lit
+    "s" #'rm/denote-log     "t" #'rm/denote-talk      "e" #'rm/denote-meeting
+    "h" #'rm/denote-hub)
+  :config
+  ;; Vault dired buffers fontify the filename grammar (ID / title / keywords
+  ;; each get a face) -- the catalog reads like a catalog, not a file dump.
+  (setq denote-dired-directories (list denote-directory))
+  (add-hook 'dired-mode-hook #'denote-dired-mode-in-directories)
+  ;; Buffer names show the note's TITLE, not the ID gibberish.
+  (denote-rename-buffer-mode 1))
 
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
@@ -911,6 +991,8 @@ very window the file is about to land in."
           (setq-local truncate-lines t))))))
 
 (add-hook 'window-setup-hook #'rm/welcome)
+;; Summon the splash on demand -- "go home" (interactive calls always show it).
+(keymap-global-set "C-c s" #'rm/welcome)
 
 ;; No "When done with this frame, type C-a 5 0" echo in client frames --
 ;; Hyprland's Super+Q closes the frame like any window; the hint is noise.
