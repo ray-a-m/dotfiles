@@ -674,6 +674,13 @@ layout untouched -- no empty window to clean up."
                        (directory-files-recursively
                         (expand-file-name "~/scholarship/research-wip/documents/")
                         "\\.org\\'"))))
+        ;; The default 'reorganize-frame DELETES the other windows on C-c a --
+        ;; the agenda hijacks the frame and there's nothing left to resize
+        ;; against.  'other-window keeps the buffer you launched from
+        ;; visible (agenda lands in another/new window -- 'current-window
+        ;; put the task list ON TOP of the file you were reading); the
+        ;; daily paper+notes+agenda layout survives and C-c w hjkl work.
+        org-agenda-window-setup 'other-window
         org-startup-folded 'showall       ; open fully expanded; S-TAB cycles all folding
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
         org-image-actual-width '(500)     ; cap oversized inline images at 500px
