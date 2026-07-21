@@ -103,14 +103,16 @@ publish() {
     set -e
     cd "$src_dir"
     if [[ "$name" == dissertation ]]; then
-      # Chapters \inputpaperbody the papers' body.tex -- refresh any that
-      # are authored in org before building.  find, not a glob: this file
-      # is sourced by both zsh and bash (no-match globs differ).
+      # Chapters \inputpaperbody the papers' body.tex, and the frontmatter
+      # introduction is org-authored too -- refresh all of them before
+      # building.  find, not a glob: this file is sourced by both zsh and
+      # bash (no-match globs differ).
       find "$HOME/scholarship/research-wip/documents/papers" \
            -mindepth 2 -maxdepth 2 -name paper.org |
         while IFS= read -r org; do
           _org_export_body "$org" || exit 1
         done
+      _org_export_body "$src_dir/frontmatter/introduction.org"
     else
       _org_export_body "$src_dir/paper.org"
     fi

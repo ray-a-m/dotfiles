@@ -665,21 +665,22 @@ layout untouched -- no empty window to clean up."
   (require 'org-paper-export
            (expand-file-name "org-paper-export.el" user-emacs-directory)))
 (defun rm/org-paper--maybe-export-on-save ()
-  "Regenerate body.tex when the saved buffer is a paper.org."
+  "Regenerate the generated .tex when the saved buffer is org-authored.
+Cheap outer guard (any research-wip .org) before loading the module;
+the precise pattern lives in `rm/org-paper-buffer-p' there."
   (when (and buffer-file-name
-             (string-match-p "/documents/papers/[^/]+/paper\\.org\\'"
-                             buffer-file-name))
+             (string-match-p "/research-wip/.*\\.org\\'" buffer-file-name))
     (require 'org-paper-export
              (expand-file-name "org-paper-export.el" user-emacs-directory))
-    (rm/org-paper-export)))
+    (when (rm/org-paper-buffer-p)
+      (rm/org-paper-export))))
 (add-hook 'after-save-hook #'rm/org-paper--maybe-export-on-save)
 (with-eval-after-load 'org
   (add-hook 'org-ctrl-c-ctrl-c-final-hook
             (lambda ()
               (when (and buffer-file-name
-                         (string-match-p
-                          "/documents/papers/[^/]+/paper\\.org\\'"
-                          buffer-file-name))
+                         (string-match-p "/research-wip/.*\\.org\\'"
+                                         buffer-file-name))
                 (require 'org-paper-export
                          (expand-file-name "org-paper-export.el"
                                            user-emacs-directory))

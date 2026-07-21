@@ -31,22 +31,41 @@
   "Drop the auto-generated \\label{sec:orgNNN} line from HEADLINE."
   (replace-regexp-in-string "\\\\label{sec:org[0-9a-f]+}\n" "" headline))
 
+(defun rm/org-paper--final-newlines (output _backend _info)
+  "End the generated body with exactly one blank line.
+The final paragraph must terminate INSIDE the generated file: ending
+flush at EOF leaves the paragraph open, and the driver's newline after
+\\input contributes a stray space token that can reflow the last line
+\(observed on friedman's Conclusion, 2026-07-20)."
+  (concat (string-trim-right output) "\n\n"))
+
 (org-export-define-derived-backend 'paper-latex 'latex
   :translate-alist '((latex-math-block . rm/org-paper--math-block))
-  :filters-alist '((:filter-headline . rm/org-paper--strip-section-labels)))
+  :filters-alist '((:filter-headline . rm/org-paper--strip-section-labels)
+                   (:filter-final-output . rm/org-paper--final-newlines)))
 
 (defun rm/org-paper-buffer-p ()
-  "Non-nil when the current buffer is a research-wip paper.org."
+  "Non-nil when the current buffer is an org-authored research document:
+a paper's paper.org, or the dissertation's frontmatter/introduction.org."
   (and buffer-file-name
-       (string-match-p "/documents/papers/[^/]+/paper\\.org\\'"
-                       buffer-file-name)))
+       (string-match-p
+        "/documents/\\(?:papers/[^/]+/paper\\|dissertation/frontmatter/introduction\\)\\.org\\'"
+        buffer-file-name)))
+
+(defun rm/org-paper--output-name ()
+  "The generated .tex this buffer exports to: papers write body.tex
+\(the name their paper.tex driver \\input's), anything else writes its
+own basename (introduction.org -> introduction.tex)."
+  (if (string= (file-name-nondirectory buffer-file-name) "paper.org")
+      "body.tex"
+    (concat (file-name-base buffer-file-name) ".tex")))
 
 (defun rm/org-paper-export ()
-  "Export the current paper.org to body.tex beside it, body only.
-The output name is hardcoded: it can never clobber the paper.tex
-driver, whatever EXPORT_FILE_NAME says."
+  "Export the current org document to its generated .tex, body only.
+The output name is derived, never from EXPORT_FILE_NAME: it can't
+clobber a driver."
   (interactive)
-  (org-export-to-file 'paper-latex "body.tex" nil nil nil t))
+  (org-export-to-file 'paper-latex (rm/org-paper--output-name) nil nil nil t))
 
 (defun rm/org-paper-export-file (file)
   "Batch entry point (used by the publish shell function): export FILE."
@@ -54,13 +73,22 @@ driver, whatever EXPORT_FILE_NAME says."
     (rm/org-paper-export)))
 
 (defun rm/org-paper-compile ()
-  "Export body.tex, then latexmk the paper.tex driver (C-c C-c parity
-with the AUCTeX latexmk binding).  For `org-ctrl-c-ctrl-c-final-hook':
-returns non-nil in paper buffers so the fallthrough stops here."
+  "Export the generated .tex, then latexmk its driver (C-c C-c parity
+with the AUCTeX latexmk binding).  Papers build paper.tex beside the
+org file; the introduction builds dissertation.tex one level up.  For
+`org-ctrl-c-ctrl-c-final-hook': returns non-nil in paper buffers so
+the fallthrough stops here."
   (when (rm/org-paper-buffer-p)
     (rm/org-paper-export)
-    (let ((default-directory (file-name-directory buffer-file-name)))
-      (compile "latexmk -pdf -interaction=nonstopmode -halt-on-error paper.tex"))
+    (let* ((dir (file-name-directory buffer-file-name))
+           (default-directory (if (file-exists-p (expand-file-name "paper.tex" dir))
+                                  dir
+                                (expand-file-name ".." dir)))
+           (driver (if (file-exists-p (expand-file-name "paper.tex" dir))
+                       "paper.tex"
+                     "dissertation.tex")))
+      (compile (format "latexmk -pdf -interaction=nonstopmode -halt-on-error %s"
+                       driver)))
     t))
 
 (provide 'org-paper-export)

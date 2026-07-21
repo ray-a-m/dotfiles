@@ -201,7 +201,12 @@ the global agenda (`org-agenda-files` includes
 `research-wip/documents/**/*.org`) and its whole subtree is dropped from
 export — so keep only task notes under TODO headlines, never prose.
 Citations stay raw LaTeX (`\cite`/`\textcite`/`\parencite`), passed
-through verbatim. Migrated so far: higgs. Still `.tex`: everything else.
+through verbatim. Migrated: all three papers (higgs,
+friedman-kuhn-hegel-kant, symmetry-reality) and the dissertation's
+`frontmatter/introduction.org` — each verified byte-identical at the
+generated-.tex level and pixel-identical (`pdftoppm` + `compare`,
+AE=0 every page) at the PDF level, dissertation included. Still
+`.tex`: drivers, preambles, dissertation + remaining frontmatter, CV.
 
 ## Keybindings
 
