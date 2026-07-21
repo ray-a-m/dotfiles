@@ -505,6 +505,46 @@ layout untouched -- no empty window to clean up."
 (use-package marginalia
   :init (marginalia-mode 1))
 
+;; --- consult + embark (retrieval layer over vertico) ---------------------
+;; Same philosophy as the stack above: minibuffer-only, no in-buffer popups.
+;;   consult   live-PREVIEWED prompts and searches:
+;;             C-a b    switch buffer -- now also recent files, previewed
+;;             M-s l    search this buffer's lines as you type
+;;             M-s r    ripgrep from the current project/directory
+;;             M-s o    jump to a heading (org buffers)
+;;             C-c d g  ripgrep the VAULT (defined in the denote block) --
+;;                      the splash's "text" find; type #important there
+;;                      for the "marks" find
+;;   embark    C-. acts on the thing at point (file, link, candidate...);
+;;             inside a minibuffer, C-. then E EXPORTS the live candidate
+;;             set to a real buffer (ripgrep results -> grep buffer, file
+;;             matches -> dired) for browsing or bulk edits.  Also takes
+;;             over prefix help: C-c d C-h (etc.) now opens a SEARCHABLE
+;;             list of the prefix's bindings -- the good half of the
+;;             retired which-key, on demand only.
+(use-package consult
+  :init
+  ;; Bound via ctl-x-map DIRECTLY, not a "C-x b" path bind, which would
+  ;; break rm/reload-init once C-x stops being a prefix (the C-a k lesson).
+  (keymap-set ctl-x-map "b" #'consult-buffer)
+  (keymap-global-set "M-s l" #'consult-line)
+  (keymap-global-set "M-s r" #'consult-ripgrep)
+  (with-eval-after-load 'org
+    (define-key org-mode-map (kbd "M-s o") #'consult-org-heading)))
+
+(use-package embark
+  :init
+  ;; flyspell's buffer-local C-. auto-correct loses the key; M-$ covers
+  ;; spelling.  Global C-. was free.
+  (with-eval-after-load 'flyspell
+    (define-key flyspell-mode-map (kbd "C-.") nil))
+  (keymap-global-set "C-." #'embark-act)
+  (setq prefix-help-command #'embark-prefix-help-command))
+
+;; Glue: previews inside embark-collect buffers (e.g. an exported grep set).
+(use-package embark-consult
+  :hook (embark-collect-mode . consult-preview-at-point-mode))
+
 ;; --- Spell + syntax checking (:checkers spell / syntax) -----------------
 ;; Both are built in.  Flyspell needs `aspell' (+ a dictionary) on PATH.
 
@@ -734,8 +774,8 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
 ;;                  the Technology hub; span markers like #important and
 ;;                  #definition stay as grep-able ink in lit bodies)
 ;; Retrieval: C-c d j jumps by name fragments (orderless); C-c d c renders a
-;; catalog in dired from a filename regexp (`_paperidea.*_physics'); grep
-;; covers bodies; C-c d b backlinks.  The map lives on the splash screen.
+;; catalog in dired from a filename regexp (`_paperidea.*_physics'); C-c d g
+;; ripgreps the bodies (consult); C-c d b backlinks.  Map on the splash.
 ;; The legacy folders coexist untouched; old notes adopt the scheme
 ;; gradually via C-c d r (git-tracked since 2026-07-21 -- commit often).
 (use-package denote
@@ -768,11 +808,16 @@ new program is genuinely born; free-typing new matter still works.")
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
+  (defun rm/denote-grep ()
+    "Live ripgrep across the vault's note bodies (consult-ripgrep)."
+    (interactive)
+    (consult-ripgrep denote-directory))
   (defvar-keymap rm/denote-map
-    :doc "Denote: create by form, jump, catalog, backlinks, rename."
+    :doc "Denote: create by form, jump, catalog, grep, backlinks, rename."
     "d" #'denote                          ; raw create: full keyword control
     "j" #'denote-open-or-create           ; jump: fragments match filenames
     "c" #'denote-sort-dired               ; catalog: regexp -> dired listing
+    "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
     "b" #'denote-backlinks                ; who links here?
     "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
     "k" #'denote-link                     ; insert a link to another note

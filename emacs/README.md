@@ -75,6 +75,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Keys | — (native) | stock bindings + a scoped window/sidebar layer; the help prefix lives on `C-c h` (and `<f1>`) since `C-h` moves windows |
 | Windows | built-in `windmove`/`winner`/`repeat` + `ace-window` | `C-h/j/k/l` focus (tmux/nvim habit), `M-o` jump/swap, `C-c w` menu with repeatable resize (see below) |
 | Completion | `vertico`, `orderless`, `marginalia` | live minibuffer lists; out-of-order fragment matching; annotated candidates (M-x shows each command's keybinding) |
+| Retrieval | `consult`, `embark` (+`embark-consult`) | previewed prompts/searches: `C-a b` buffers+recents, `M-s l` in-buffer lines, `M-s r` ripgrep here, `M-s o` org headings, `C-c d g` ripgrep the vault; `C-.` acts on thing at point, `C-. E` in a minibuffer exports the candidate set; prefix help (`C-c d C-h`) is a searchable list via `embark-prefix-help-command` |
 | Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
 | Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
 | Undo | built-in | linear undo/redo on `C-z` / `C-S-z` (`undo` / `undo-redo`) |

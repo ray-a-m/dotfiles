@@ -21,8 +21,8 @@
 
   Capture a task ........... [C-c c t]    one note, by name ........ [C-c d j]
   Progress the state ....... [C-c C-t]    notes: «_form.*_matter» .. [C-c d c]
-  Tag the heading .......... [C-c C-c]    marks: «#important» ........ [rgrep]
-  Todos, all ............... [C-c a t]    text, in any body .......... [rgrep]
+  Tag the heading .......... [C-c C-c]    marks: «#important» ...... [C-c d g]
+  Todos, all ............... [C-c a t]    text, in any body ........ [C-c d g]
   Todos, by tag ............ [C-c a m]
   tags: research · service ·
         teaching · technology
@@ -30,9 +30,10 @@
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
-  Agenda / capture ... [C-c a / C-c c]    Papers ..................... [C-c p]
-  Close buffer ............... [C-a k]    Resize windows ........ [C-c w hjkl]
-  Compile LaTeX ............ [C-c C-c]    Save ..................... [C-a C-s]
+  Act on thing at point ........ [C-.]    Papers ..................... [C-c p]
+  Agenda / capture ... [C-c a / C-c c]    Resize windows ........ [C-c w hjkl]
+  Close buffer ............... [C-a k]    Save ..................... [C-a C-s]
+  Compile LaTeX ............ [C-c C-c]    Search in buffer ........... [M-s l]
   File in project .......... [C-a p f]    Splash (this screen) ....... [C-c s]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
   Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
