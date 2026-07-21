@@ -314,6 +314,12 @@
 (keymap-global-set "C-k" #'windmove-up)
 (keymap-global-set "C-l" #'windmove-right)
 (keymap-global-set "C-c h" 'help-command)         ; the help prefix's new home
+;; ... minus `C-c h h' (view-hello-file): etc/HELLO is full of RTL/composed
+;; scripts that reliably SEGFAULT pgtk Emacs 30.2's ftcrfont on redisplay
+;; -- consult-buffer previewing a stray HELLO buffer core-dumped the daemon
+;; (diagnosed from the core, 2026-07-21).  One help-prefix double-tap opens
+;; it by accident; unbind until the upstream font bug is fixed.
+(keymap-set help-map "h" nil)
 (keymap-global-set "C-S-k" #'kill-line)
 (keymap-global-set "C-S-l" #'recenter-top-bottom)
 ;; Org and AUCTeX bind C-j locally (newline variants) -- clear both so
