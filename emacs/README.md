@@ -104,8 +104,12 @@ shell (bottom right), rearranged on the fly:
   **swaps buffers** with that window (the "put the agenda in the big window"
   move), `M-o x <letter>` deletes it.
 - **`C-c w`** — the window menu (which-key pops the key list): `s`/`v` split
-  below/right (`:sp`/`:vs` mnemonic), `h/j/k/l` resize — and these **repeat**,
-  so `C-c w l l l h …` keeps resizing until any other key — `w` swap, `=`
+  below/right (`:sp`/`:vs` mnemonic), `f`/`b` pick a file (vertico) straight
+  into a new right/below split — the prompt comes *before* the split, so
+  `C-g` leaves the layout untouched — `h/j/k/l` drag the window's divider
+  left/down/up/right (edge motion, Hyprland-style: the same key does the same
+  visual thing from either side of the divider) — and these **repeat**, so
+  `C-c w l l l h …` keeps dragging until any other key — `w` swap, `=`
   balance, `d` delete, `m` maximize, `u`/`r` winner undo/redo (also repeat).
 - **winner-mode** — every layout change is undoable (`C-c w u`), so
   "maximize, then bring it all back" is `C-c w m` … `C-c w u`.
@@ -187,11 +191,12 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-c h` | help prefix (`C-c h k` = describe key); `<f1>` works too |
 | `C-S-k` / `C-S-l` | kill-line / recenter (displaced from `C-k` / `C-l`) |
 | `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
-| `C-c w` | window menu: split / swap / repeatable resize / winner undo |
+| `C-c w` | window menu: split / pick-file-into-split (`f` right, `b` below) / swap / repeatable divider drag (`hjkl`) / winner undo |
 | `C-c n` | notes sidebar on the `~/Dropbox/notes` vault |
 | `C-c p` | papers sidebar on `~/scholarship/research-wip` (dired-sidebar roots at the project; `documents/` is one `l` away) |
 | `<f8>` | toggle a sidebar at the current project |
 | `h` / `j` / `k` / `l` | *in the sidebar:* collapse/up · down · up · expand/visit (vim-style; sidebar-local — plain letters work because the pane is read-only, and they shadow dired's legacy single-key commands) |
+| `f` / `b` | *in the sidebar:* open the file at point in a split right of / below the **main** window (same letters as `C-c w f`/`b`; shadows dired's find-file, sidebar-only) |
 | `a` / `r` / `d` / `y` / `p` | *in the sidebar:* yazi-style file ops — create (trailing `/` = folder) / rename (pre-fills the current name; a path moves) / delete / yank / paste. On a folder line, create/paste go *into* it; on a file line, beside it |
 | `C-c e` | copy the last echo-area message (usually the last error) to the clipboard; `C-c h e` pops the full \*Messages\* log |
 | `R` / `+` / `a` / `D` | *in plain dired:* rename-or-move (type a name or a path) / new directory / new empty file / delete |

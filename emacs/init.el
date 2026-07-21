@@ -293,8 +293,11 @@
 ;;              per window -- also `M-o m <letter>' swaps buffers with that
 ;;              window (agenda -> main window move), `M-o x <letter>' deletes
 ;;   C-c w      window menu (which-key shows it): s/v split below/right
-;;              (:sp/:vs mnemonic), h/j/k/l resize -- these REPEAT, so
-;;              `C-c w l l l h ...' keeps resizing -- w swap, = balance,
+;;              (:sp/:vs mnemonic), f/b pick a file (vertico) straight into
+;;              a new right/below split, h/j/k/l drag the shared divider
+;;              left/down/up/right (edge motion, same from either side of
+;;              the divider) -- these REPEAT, so
+;;              `C-c w l l l h ...' keeps dragging -- w swap, = balance,
 ;;              d delete, m maximize (u un-maximizes), u/r winner undo/redo
 ;;
 ;; What C-h/j/k/l displace, all deliberate:
@@ -330,23 +333,79 @@
 ;; is on above); any other key exits the repeat.  which-key pops the full
 ;; menu after C-c w.
 (defvar-keymap rm/window-repeat-map
-  :doc "Repeatable window ops: bare h/j/k/l keep resizing after C-c w."
+  :doc "Repeatable window ops: bare h/j/k/l keep dragging after C-c w."
   :repeat t
-  "h" #'shrink-window-horizontally
-  "l" #'enlarge-window-horizontally
-  "j" #'enlarge-window
-  "k" #'shrink-window
+  "h" #'rm/window-edge-left               ; defined just below
+  "l" #'rm/window-edge-right
+  "j" #'rm/window-edge-down
+  "k" #'rm/window-edge-up
   "u" #'winner-undo
   "r" #'winner-redo)
 
+;; Resize = drag the divider, not grow/shrink.  Emacs's enlarge/shrink
+;; commands invert visually depending on which side of a divider you sit
+;; (from the right-hand window, "wider" drags the divider LEFT) -- felt
+;; flipped in practice (2026-07-20).  These four instead move the shared
+;; edge in the arrow's direction from either side, Hyprland-style.  The
+;; edge acted on is the right/bottom one when a neighbour is there, else
+;; the left/top (so the rightmost window's h/l still work on its left
+;; divider, just from the other side).
+(defun rm/window-edge-left (arg)
+  "Drag this window's vertical divider ARG columns left."
+  (interactive "p")
+  (if (window-in-direction 'right)
+      (shrink-window-horizontally arg)
+    (enlarge-window-horizontally arg)))
+
+(defun rm/window-edge-right (arg)
+  "Drag this window's vertical divider ARG columns right."
+  (interactive "p")
+  (if (window-in-direction 'right)
+      (enlarge-window-horizontally arg)
+    (shrink-window-horizontally arg)))
+
+(defun rm/window-edge-down (arg)
+  "Drag this window's horizontal divider ARG lines down."
+  (interactive "p")
+  (if (window-in-direction 'below)
+      (enlarge-window arg)
+    (shrink-window arg)))
+
+(defun rm/window-edge-up (arg)
+  "Drag this window's horizontal divider ARG lines up."
+  (interactive "p")
+  (if (window-in-direction 'below)
+      (shrink-window arg)
+    (enlarge-window arg)))
+
+(defun rm/find-file-split (side)
+  "Prompt for a file, then visit it in a new SIDE split of this window.
+The prompt comes before the split, so quitting it (C-g) leaves the
+layout untouched -- no empty window to clean up."
+  (let ((file (read-file-name "Find file in split: ")))
+    (select-window (split-window nil nil side))
+    (find-file file)))
+
+(defun rm/find-file-right ()
+  "Pick a file and open it in a split to the right."
+  (interactive)
+  (rm/find-file-split 'right))
+
+(defun rm/find-file-below ()
+  "Pick a file and open it in a split below."
+  (interactive)
+  (rm/find-file-split 'below))
+
 (defvar-keymap rm/window-map
-  :doc "Window menu: splits, swap, resize, balance, layout undo."
+  :doc "Window menu: splits, file-into-split, swap, divider drag, balance, layout undo."
   "s" #'split-window-below                ; like :sp
   "v" #'split-window-right                ; like :vs
-  "h" #'shrink-window-horizontally        ; resize: narrower
-  "l" #'enlarge-window-horizontally       ; resize: wider
-  "j" #'enlarge-window                    ; resize: taller
-  "k" #'shrink-window                     ; resize: shorter
+  "f" #'rm/find-file-right                ; pick a file into a right split
+  "b" #'rm/find-file-below                ; pick a file into a below split
+  "h" #'rm/window-edge-left               ; drag the divider left
+  "l" #'rm/window-edge-right              ; drag the divider right
+  "j" #'rm/window-edge-down               ; drag the divider down
+  "k" #'rm/window-edge-up                 ; drag the divider up
   "w" #'ace-swap-window                   ; swap 2 windows' buffers (asks if 3+)
   "=" #'balance-windows
   "d" #'delete-window
@@ -822,10 +881,11 @@ dismisses the splash."
 ;; 2026-07-19), styled like rougier's nano dired: Roboto Mono, no icons,
 ;; airy rows, details hidden, no banner line (the header line names the
 ;; root instead).  TAB expands a folder in-place (dired-subtree); RET
-;; opens the file into the main window; hjkl navigate vim-style (see
-;; below).  Dotfiles, . / .., README/TODO, and LaTeX build artifacts are
-;; omitted (dired-omit-mode); .org/.md extensions are hidden; directories
-;; sort before files at every level.  Two roots for the two corpora:
+;; opens the file into the main window; f / b open it in a split right
+;; of / below the main window (same letters as C-c w f/b); hjkl navigate
+;; vim-style (see below).  Dotfiles, . / .., README/TODO, and LaTeX build
+;; artifacts are omitted (dired-omit-mode); .org/.md extensions are hidden;
+;; directories sort before files at every level.  Two roots for the two corpora:
 ;; C-c n = the notes vault, C-c p = research-wip (papers/dissertation/CV
 ;; under documents/); <f8> toggles a sidebar at the current project.
 ;; Directories before files, at every level -- dired-subtree's expansions
@@ -975,6 +1035,31 @@ one `l' away instead."
   (define-key dired-sidebar-mode-map (kbd "k") #'dired-previous-line)
   (define-key dired-sidebar-mode-map (kbd "l") #'rm/sidebar-open)
   (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close)
+  ;; f / b: open the file at point in a split of the MAIN window -- right
+  ;; and below, the same letters as C-c w f/b (one split vocabulary
+  ;; everywhere).  The main window is found the way dired-sidebar itself
+  ;; finds it (most recently used; the sidebar is dedicated, so it's never
+  ;; picked).  Shadows dired's f (find-file; l/RET already cover opening)
+  ;; -- sidebar only, plain dired keeps it.
+  (defun rm/sidebar--open-split (side)
+    "Visit the file at point in a new SIDE split of the main window."
+    (let ((file (dired-get-filename nil t)))
+      (when (or (null file) (file-directory-p file))
+        (user-error "No file at point"))
+      (let ((main (get-mru-window nil nil t)))
+        (unless main (user-error "No other window to split"))
+        (select-window (split-window main nil side))
+        (find-file file))))
+  (defun rm/sidebar-open-right ()
+    "Open the file at point in a split right of the main window."
+    (interactive)
+    (rm/sidebar--open-split 'right))
+  (defun rm/sidebar-open-below ()
+    "Open the file at point in a split below the main window."
+    (interactive)
+    (rm/sidebar--open-split 'below))
+  (define-key dired-sidebar-mode-map (kbd "f") #'rm/sidebar-open-right)
+  (define-key dired-sidebar-mode-map (kbd "b") #'rm/sidebar-open-below)
   ;; Yazi-style file ops, single lowercase keys (sidebar only -- plain
   ;; dired keeps its stock commands).  "At point" targeting: on a folder
   ;; line ops go INTO that folder; on a file line, beside it.

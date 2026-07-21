@@ -17,11 +17,12 @@
 
   Agenda / capture ... [C-c a / C-c c]    Papers ..................... [C-c p]
   Close buffer ............... [C-a k]    Quit Emacs ............... [C-a C-c]
-  Compile LaTeX ............ [C-c C-c]    Save ..................... [C-a C-s]
-  File in project .......... [C-a p f]    Switch buffer .............. [C-a b]
-  Jump / swap .................. [M-o]    Undo / redo .......... [C-z / C-S-z]
-  Move to window ......... [C-h j k l]    Window menu ................ [C-c w]
-  Notes ...................... [C-c n]
+  Compile LaTeX ............ [C-c C-c]    Resize windows ........ [C-c w hjkl]
+  File in project .......... [C-a p f]    Save ..................... [C-a C-s]
+  File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
+  Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
+  Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
+  Notes ...................... [C-c n]    Window menu ................ [C-c w]
 
 *Help*
 
