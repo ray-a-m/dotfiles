@@ -128,11 +128,9 @@
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'visual-line-mode)   ; soft-wrap prose
 
-;; which-key shows the possible completions after you start a key
-;; sequence -- indispensable while learning binds.  Built in on Emacs 30,
-;; but :ensure keeps this working on older Emacsen too.
-(use-package which-key
-  :config (which-key-mode 1))
+;; (which-key removed 2026-07-21.)  To list a prefix's bindings on demand,
+;; press `C-h' after the prefix -- e.g. `C-c w C-h' shows the window menu,
+;; `C-a C-h' lists ctl-x-map.  marginalia already teaches binds inside M-x.
 
 ;; --- NANO visual base (rougier/nano-emacs, vendored in ./nano) ----------
 ;; The look: an elegant light theme, generous frame margins (internal-border),
@@ -263,7 +261,7 @@
 ;; home row -- so C-a *is* the command prefix here.  Bound DIRECTLY to
 ;; `ctl-x-map' (not a key-translation-map rewrite, which made every echo and
 ;; error report "C-x ..." for keys you typed as C-a): the sequence you type
-;; is the sequence Emacs sees, so echoes, describe-key and which-key all say
+;; is the sequence Emacs sees, so echoes and describe-key all say
 ;; C-a.  Only the *manuals* still print "C-x" -- mentally substitute.
 ;; Beginning-of-line lands on the vacated C-x -- bound at the END of this
 ;; file, because rebinding the C-x prefix to a command must come after every
@@ -296,7 +294,7 @@
 ;;   M-o        ace-window: <=2 windows hops immediately; 3+ shows a letter
 ;;              per window -- also `M-o m <letter>' swaps buffers with that
 ;;              window (agenda -> main window move), `M-o x <letter>' deletes
-;;   C-c w      window menu (which-key shows it): s/v split below/right
+;;   C-c w      window menu (C-c w C-h lists it): s/v split below/right
 ;;              (:sp/:vs mnemonic), f/b pick a file (vertico) straight into
 ;;              a new right/below split, h/j/k/l drag the shared divider
 ;;              left/down/up/right (edge motion, same from either side of
@@ -334,8 +332,8 @@
 
 ;; The C-c w menu.  :repeat t puts the resize + winner commands in a
 ;; repeat-map, so after the first press the bare key keeps going (repeat-mode
-;; is on above); any other key exits the repeat.  which-key pops the full
-;; menu after C-c w.
+;; is on above); any other key exits the repeat.  `C-c w C-h' lists the
+;; full menu.
 (defvar-keymap rm/window-repeat-map
   :doc "Repeatable window ops: bare h/j/k/l keep dragging after C-c w."
   :repeat t

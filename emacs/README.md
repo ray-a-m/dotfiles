@@ -16,7 +16,7 @@ and the sidebars — everything else is stock. Two ergonomic moves make stock
 livable: CapsLock is Ctrl at the Hyprland level (`hypr/input.conf`), and the
 command prefix is **swapped `C-x` → `C-a`** (so saving is `C-a C-s`, all on
 the home row; beginning-of-line lands on the vacated `C-x`). `C-a` is bound
-directly to `ctl-x-map`, so echoes, `describe-key` and which-key all report
+directly to `ctl-x-map`, so echoes and `describe-key` all report
 `C-a` — only external manuals still write "C-x".
 
 Runs **alongside** Neovim (still used for some paper writing via vimtex +
@@ -75,7 +75,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Keys | — (native) | stock bindings + a scoped window/sidebar layer; the help prefix lives on `C-c h` (and `<f1>`) since `C-h` moves windows |
 | Windows | built-in `windmove`/`winner`/`repeat` + `ace-window` | `C-h/j/k/l` focus (tmux/nvim habit), `M-o` jump/swap, `C-c w` menu with repeatable resize (see below) |
 | Completion | `vertico`, `orderless`, `marginalia` | live minibuffer lists; out-of-order fragment matching; annotated candidates (M-x shows each command's keybinding) |
-| Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `which-key`, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
+| Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
 | Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
 | Undo | built-in | linear undo/redo on `C-z` / `C-S-z` (`undo` / `undo-redo`) |
 | Git | `magit` | `C-a g` |
@@ -104,7 +104,7 @@ shell (bottom right), rearranged on the fly:
   window gets a home-row letter. Dispatch keys ride along: `M-o m <letter>`
   **swaps buffers** with that window (the "put the agenda in the big window"
   move), `M-o x <letter>` deletes it.
-- **`C-c w`** — the window menu (which-key pops the key list): `s`/`v` split
+- **`C-c w`** — the window menu (`C-c w C-h` lists the keys): `s`/`v` split
   below/right (`:sp`/`:vs` mnemonic), `f`/`b` pick a file (vertico) straight
   into a new right/below split — the prompt comes *before* the split, so
   `C-g` leaves the layout untouched — `h/j/k/l` drag the window's divider
