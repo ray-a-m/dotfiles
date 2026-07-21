@@ -8,24 +8,33 @@
 
 
 
+*Vault*  /file = ID--title__form_matter/    *form*                  *matter*
 
+  Backlinks ................ [C-c d b]    hub      musing       aesthetics
+  Catalog: regexp → dired .. [C-c d c]    idea     paperidea    hegel
+  Insert link .............. [C-c d k]    lit      poetry       kant
+  Jump: name fragments ..... [C-c d j]    log      talk         math
+  New note by form .... [C-c d <form>]    meeting  wip          physics
+  Promote / rename ......... [C-c d r]                          (none = misc)
 
+*Tasks*                                   *find*
 
-
+  Capture a task ........... [C-c c t]    one note, by name ........ [C-c d j]
+  Progress the state ....... [C-c C-t]    notes: «_form.*_matter» .. [C-c d c]
+  Tag the heading .......... [C-c C-c]    marks: «#important» ........ [rgrep]
+  Todos, all ............... [C-c a t]    text, in any body .......... [rgrep]
+  Todos, by tag ............ [C-c a m]
+  tags: research · service ·
+        teaching · technology
+        (none = misc)
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
   Agenda / capture ... [C-c a / C-c c]    Papers ..................... [C-c p]
-  Close buffer ............... [C-a k]    Quit Emacs ............... [C-a C-c]
-  Compile LaTeX ............ [C-c C-c]    Resize windows ........ [C-c w hjkl]
-  File in project .......... [C-a p f]    Save ..................... [C-a C-s]
+  Close buffer ............... [C-a k]    Resize windows ........ [C-c w hjkl]
+  Compile LaTeX ............ [C-c C-c]    Save ..................... [C-a C-s]
+  File in project .......... [C-a p f]    Splash (this screen) ....... [C-c s]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
   Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
   Notes ...................... [C-c n]    Window menu ................ [C-c w]
-
-*Help*
-
-  Help prefix  (C-c h k = describe key) ....... [C-c h]
-  Quick key cheat-sheet in the echo area ...... [C-M-h]
-
