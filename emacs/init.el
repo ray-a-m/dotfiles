@@ -687,7 +687,26 @@ layout untouched -- no empty window to clean up."
   :hook ((org-mode      . olivetti-mode)
          (markdown-mode . olivetti-mode)
          (LaTeX-mode    . olivetti-mode))
-  :init (setq olivetti-body-width 72))    ; text column width, in columns
+  :init (setq olivetti-body-width 72)     ; text column width, in columns
+  :config
+  ;; Centering margins count toward a window's MINIMUM width, so frame-level
+  ;; splits that halve the root refuse when half the frame is narrower than
+  ;; margins + body -- concretely: dired-sidebar's side window on the laptop
+  ;; frame (half of 184 cols < 56+56 margins) died with "window too small
+  ;; for splitting", which dired-sidebar turned into "window-live-p, nil"
+  ;; (2026-07-20).  Olivetti handles window-level splits via the
+  ;; `split-window' window parameter, but frame-root splits bypass it (its
+  ;; own FIXME admits side windows escape).  The built-in `min-margins'
+  ;; window parameter exists for exactly this: declare the margins
+  ;; collapsible, and splits shrink them freely -- olivetti then re-centers
+  ;; in the narrowed window from its own resize hook.  Stamped on every
+  ;; window olivetti dresses.
+  (define-advice olivetti-set-window (:after (&rest _) rm/collapsible-margins)
+    (walk-windows
+     (lambda (w)
+       (when (buffer-local-value 'olivetti-mode (window-buffer w))
+         (set-window-parameter w 'min-margins '(0 . 0))))
+     'no-minibuf t)))
 
 ;; Face tweaks layered over nano's theme (must run after it, so they win):
 ;;   * darker prose -- nano's body colour is a soft blue-grey (#37474F); the
