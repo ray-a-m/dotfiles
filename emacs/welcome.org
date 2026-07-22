@@ -12,10 +12,11 @@
 
   Attach: file → Files/ .... [C-c d a]    hub       paperidea       aesthetics    math
   Backlinks ................ [C-c d b]    idea      poetry          concepts      neo-kantian
-  Insert link .............. [C-c d k]    lit       presentation    fun           phenomenology
-  Promote / rename ......... [C-c d r]    log       talk            hegel         physics
-                                          meeting   wip             history       science
+  Classify: form + matter .. [C-c d c]    lit       presentation    fun           phenomenology
+  Insert link .............. [C-c d k]    log       talk            hegel         physics
+  Promote / rename ......... [C-c d r]    meeting   wip             history       science
                                           musing                    kant          teaching
+                                                                    (none = misc)
 
 *Tasks*                                   *find*
 
