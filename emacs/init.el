@@ -846,6 +846,7 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
 ;; The legacy folders coexist untouched; old notes adopt the scheme
 ;; gradually via C-c d r (git-tracked since 2026-07-21 -- commit often).
 (use-package denote
+  :bind (("C-c n" . rm/denote-note))       ; the guided "take a new note"
   :bind-keymap ("C-c d" . rm/denote-map)
   :init
   (defvar rm/denote-forms
@@ -883,6 +884,10 @@ new program is genuinely born; free-typing new matter still works.")
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
+  (defun rm/denote-note ()
+    "Create a note: pick the form, then title and matter (C-c n)."
+    (interactive)
+    (rm/denote-new (completing-read "Form: " rm/denote-forms nil t)))
   (defun rm/denote-grep ()
     "Live ripgrep across the vault's note bodies (consult-ripgrep)."
     (interactive)
@@ -1086,10 +1091,19 @@ very window the file is about to land in."
                       header-line-format nil
                       cursor-type nil)             ; no cursor
           ;; q / ESC dismiss; parenting org-mode-map keeps RET-on-links working.
+          ;; Single-key accelerators for the frequent moves (splash-local
+          ;; only -- the buffer is read-only, so letters are free):
           (let ((map (make-sparse-keymap)))
             (set-keymap-parent map org-mode-map)
             (define-key map (kbd "q")        #'rm/welcome-kill)
             (define-key map (kbd "<escape>") #'rm/welcome-kill)
+            (define-key map (kbd "n") #'rm/denote-note)         ; new note
+            (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
+            (define-key map (kbd "f") #'denote-open-or-create)  ; find by name
+            (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
+            (define-key map (kbd "a") #'org-agenda)             ; agenda
+            (define-key map (kbd "t") #'org-todo-list)          ; todos, all
+            (define-key map (kbd "c") #'org-capture)            ; capture
             (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))
@@ -1172,8 +1186,8 @@ dismisses the splash."
 
 (use-package dired-sidebar
   :defer t
-  :bind (("C-c n" . rm/notes-sidebar)
-         ("C-c p" . rm/papers-sidebar)
+  :bind (("C-c p" . rm/papers-sidebar)   ; notes browsing lives in C-c d now;
+                                         ; vault sidebar: M-x rm/notes-sidebar or <f8>
          ("<f8>"  . dired-sidebar-toggle-sidebar))
   :init
   (defun rm/notes-sidebar ()

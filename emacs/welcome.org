@@ -39,4 +39,6 @@
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
   Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
-  Notes ...................... [C-c n]    Window menu ................ [C-c w]
+  New note ................... [C-c n]    Window menu ................ [C-c w]
+
+          /on this screen: n new note · f find · g grep · a agenda · t todos · p papers · c capture · q quit/
