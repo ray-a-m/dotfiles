@@ -203,7 +203,7 @@ grammar (all custom, in init.el's Denote section):
   phenomenology teaching fun` (grown during the act-two migration review).
   Keywords sluggify like titles so `neo-kantian` keeps its hyphen; the one
   cost is that org's tag-match syntax reads `-` as NOT, so `C-c a m` can't
-  match that atom — find it via `C-c d c` / `C-c d g` instead.
+  match that atom — find it via `C-c d l` / `C-c d g` instead.
   **No matter means miscellaneous by design** — there is deliberately no
   "misc" keyword; a form-only filename (`__idea.org`) *is* the misc marker
   and is regexp-searchable. `denote-sort-keywords` is nil so the form
