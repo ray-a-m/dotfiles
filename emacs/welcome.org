@@ -28,7 +28,7 @@
 
   Act on thing at point ........ [C-.]    Papers ......................... [p]
   Agenda / capture ........... [a / c]    Resize windows ........ [C-c w hjkl]
-  Back → splash floor .......... [ESC]    Save ..................... [C-a C-s]
+  Back ......................... [ESC]    Save ..................... [C-a C-s]
   Close buffer ............... [C-a k]    Scratch ................ [s / C-c s]
   File in project .......... [C-a p f]    Search in buffer ........... [M-s l]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
