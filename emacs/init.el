@@ -1003,7 +1003,10 @@ the entry at point."
         (denote-rename-file buffer-file-name 'keep-current
                             (cons form matter) 'keep-current 'keep-current
                             'keep-current)))
-     ((derived-mode-p 'org-mode) (org-set-tags-command))
+     ((and (derived-mode-p 'org-mode)
+           buffer-file-name                      ; not the splash/scratch
+           (not (org-before-first-heading-p)))
+      (org-set-tags-command))
      (t (user-error "Nothing here to classify"))))
   (defun rm/denote-grep ()
     "Live ripgrep across the vault's note bodies (consult-ripgrep)."
