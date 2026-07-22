@@ -1276,11 +1276,31 @@ very window the file is about to land in."
    ((region-active-p) (deactivate-mark))
    ((> (recursion-depth) 0) (abort-recursive-edit))
    ((eq (current-buffer) (get-buffer "*welcome*")) nil)   ; the floor
-   ((seq-find (lambda (e) (and (buffer-live-p (car e))
-                               (not (eq (car e) (current-buffer)))))
-              (window-prev-buffers))
-    (switch-to-prev-buffer))         ; honors per-window history + point
-   (t (rm/welcome))))
+   (t (rm/escape--back))))
+(defun rm/escape--interesting-p (buf)
+  "Non-nil for stops HE made: files, dired, scratch, the agenda.
+Internal popups (*Calendar*, preview outputs, helper buffers) that
+machinery flashed through the window are not part of his trail."
+  (let ((name (buffer-name buf)))
+    (and name
+         (not (string-prefix-p " " name))
+         (or (not (string-prefix-p "*" name))
+             (member name '("*scratch*" "*Org Agenda*"))))))
+(defun rm/escape--back ()
+  "One meaningful step back in this window; splash when the trail ends.
+Walks with switch-to-prev-buffer (native bookkeeping: point restore,
+skipped stops land on the forward list), hopping over uninteresting
+buffers, capped so exhausted or cyclic histories land on the splash."
+  (let ((tries 10) done)
+    (while (and (not done) (> tries 0))
+      (setq tries (1- tries))
+      (if (seq-find (lambda (e) (and (buffer-live-p (car e))
+                                     (not (eq (car e) (current-buffer)))))
+                    (window-prev-buffers))
+          (progn (switch-to-prev-buffer)
+                 (setq done (rm/escape--interesting-p (current-buffer))))
+        (rm/welcome) (setq done t)))
+    (unless done (rm/welcome))))
 (keymap-global-set "<escape>" #'rm/escape)
 ;; ...and its opposite: M-ESC leaps forward to any buffer (previewing
 ;; list, most recent first -- the one-gesture return after an ESC).
