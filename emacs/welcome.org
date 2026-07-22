@@ -41,4 +41,4 @@
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
   New note ................... [C-c n]    Window menu ................ [C-c w]
 
-          /on this screen: n new note · f find · g grep · a agenda · t todos · p papers · c capture · q quit/
+          /on this screen: n new note · f find · g grep · a agenda · t todos · h hubs · p papers · c capture · q quit/

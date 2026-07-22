@@ -884,6 +884,10 @@ new program is genuinely born; free-typing new matter still works.")
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
+  (defun rm/denote-hubs ()
+    "Dired listing of the hub notes (splash `h')."
+    (interactive)
+    (denote-sort-dired "_hub" nil nil nil))
   (defun rm/denote-note ()
     "Create a note: pick the form, then title and matter (C-c n)."
     (interactive)
@@ -1104,6 +1108,7 @@ very window the file is about to land in."
             (define-key map (kbd "a") #'org-agenda)             ; agenda
             (define-key map (kbd "t") #'org-todo-list)          ; todos, all
             (define-key map (kbd "c") #'org-capture)            ; capture
+            (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))
