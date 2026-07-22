@@ -894,7 +894,7 @@ denote name only if it becomes something you search for."
       (make-directory dest-dir t)
       (copy-file file dest 1)
       (insert (format "[[file:Files/%s]]" (file-name-nondirectory file)))
-      (when (org-display-inline-images) nil)))
+      (when (derived-mode-p 'org-mode) (org-display-inline-images))))
   (defun rm/denote-hubs ()
     "Dired listing of the hub notes (splash `h')."
     (interactive)
