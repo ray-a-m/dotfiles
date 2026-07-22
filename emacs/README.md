@@ -199,9 +199,11 @@ grammar (all custom, in init.el's Denote section):
   for Raymond's own talks; `hub` = curated standing notes (e.g. the
   Technology hub, whose `TODO` headings the agenda picks up).
 - **Remaining keywords = matter** (research programs):
-  `physics hegel kant math aesthetics science concepts history neokantian
-  phenomenology teaching fun` (grown during the act-two migration review;
-  `neokantian` unhyphenated because denote strips hyphens from keywords).
+  `physics hegel kant math aesthetics science concepts history neo-kantian
+  phenomenology teaching fun` (grown during the act-two migration review).
+  Keywords sluggify like titles so `neo-kantian` keeps its hyphen; the one
+  cost is that org's tag-match syntax reads `-` as NOT, so `C-c a m` can't
+  match that atom — find it via `C-c d c` / `C-c d g` instead.
   **No matter means miscellaneous by design** — there is deliberately no
   "misc" keyword; a form-only filename (`__idea.org`) *is* the misc marker
   and is regexp-searchable. `denote-sort-keywords` is nil so the form

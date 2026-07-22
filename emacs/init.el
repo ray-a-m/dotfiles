@@ -725,13 +725,15 @@ layout untouched -- no empty window to clean up."
     (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)
     (keymap-set org-agenda-mode-map "d" #'org-agenda-kill))
   ;; Quieter agenda dressing.  The todo/match views insert a "Press 'N r'
-  ;; ..." hint line under the header -- strip it (real entries are
-  ;; indented, so ^Press only ever matches the hint).
+  ;; ..." hint under the header, whose keyword list wraps onto indented
+  ;; "(4)NEXT (5)TODO" continuation lines -- strip the whole block (real
+  ;; entries are indented but never start with a parenthesized number).
   (defun rm/agenda-strip-hints ()
     (save-excursion
       (goto-char (point-min))
       (let ((inhibit-read-only t))
-        (while (re-search-forward "^Press .*\n?" nil t)
+        (while (re-search-forward
+                "^Press .*\n\\(?:[ \t]+([0-9]+)[^\n]*\n?\\)*" nil t)
           (delete-region (match-beginning 0) (match-end 0))))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-strip-hints)
   ;; Source column: denote files would show as their raw filename
@@ -842,12 +844,17 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
     "Note forms: the first filename keyword, exactly one per note.")
   (defvar rm/denote-matter
     '("physics" "hegel" "kant" "math" "aesthetics" "science" "concepts"
-      "history" "neokantian" "phenomenology" "teaching" "fun")
+      "history" "neo-kantian" "phenomenology" "teaching" "fun")
     "Matter keywords: the research programs.  Grow this list only when a
-new program is genuinely born; free-typing new matter still works.
-neokantian, not neo-kantian: denote strips hyphens from keywords.")
+new program is genuinely born; free-typing new matter still works.")
   (setq denote-directory (expand-file-name "~/Dropbox/notes/")
         denote-known-keywords rm/denote-matter
+        ;; Keep hyphens in keywords (neo-kantian): keywords sluggify like
+        ;; titles.  Caveat: org's tag-match syntax reads "-" as NOT, so
+        ;; C-c a m can't match this one atom -- find it via C-c d c / g.
+        denote-file-name-slug-functions
+        '((title . denote-sluggify-title) (signature . denote-sluggify-signature)
+          (keyword . denote-sluggify-title))
         denote-sort-keywords nil          ; NEVER alphabetize: form stays first
         denote-history-completion-in-prompts nil)  ; vertico noise otherwise
   ;; One named command per form (rm/denote-idea, rm/denote-musing, ...):

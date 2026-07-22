@@ -8,15 +8,15 @@
 
 
 
-*Vault*  /file = ID--title__form_matter/      *form*                  *matter*
+*Vault*  /file = ID--title__form_matter/      *form*                      *matter*
 
-  Backlinks ................ [C-c d b]    hub     paperidea     aesthetics  math
-  Catalog: regexp → dired .. [C-c d c]    idea    poetry        concepts    neokantian
-  Insert link .............. [C-c d k]    lit     presentation  fun         phenomenology
-  Jump: name fragments ..... [C-c d j]    log     talk          hegel       physics
-  New note by form .... [C-c d <form>]    meeting wip           history     science
-  Promote / rename ......... [C-c d r]    musing                kant        teaching
-                                                                (none = misc)
+  Backlinks ................ [C-c d b]    hub       paperidea       aesthetics    math
+  Catalog: regexp → dired .. [C-c d c]    idea      poetry          concepts      neo-kantian
+  Insert link .............. [C-c d k]    lit       presentation    fun           phenomenology
+  Jump: name fragments ..... [C-c d j]    log       talk            hegel         physics
+  New note by form .... [C-c d <form>]    meeting   wip             history       science
+  Promote / rename ......... [C-c d r]    musing                    kant          teaching
+                                                                    (none = misc)
 
 *Tasks*                                   *find*
 
