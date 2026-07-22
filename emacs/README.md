@@ -30,7 +30,7 @@ for **notes + Org**.
 | `early-init.el` | Loaded before `package.el` and the first frame: startup GC / `file-name-handler-alist` tuning, UI-chrome suppression (no flash), `package-user-dir` / eln-cache redirects out of this git-tracked dir. |
 | `init.el` | Everything else. |
 | `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
-| `welcome.org` | The startup screen content — an editable Org file (logo + alphabetical Commands / Help cheat-sheet). |
+| `welcome.org` | The startup screen content — an editable Org file (logo + the system map: vault grammar, tasks, find, commands — with splash-local single keys). |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
 | `org-paper-export.el` | Body-only LaTeX export for papers-in-Org (the `paper-latex` backend; also loaded headless by the `publish` shell function). See "Papers in Org". |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
@@ -87,7 +87,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Org typography | `org-modern` | heading stars → ✦ ✧ ✱ ✳ (static, per level), TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); two roots — notes vault (`C-c n`) and papers (`C-c p`) (replaced treemacs 2026-07-19) |
+| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit; `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); papers root on `C-c p`; the vault sidebar is `M-x rm/notes-sidebar` or `<f8>` (`C-c n` captures a note now) (replaced treemacs 2026-07-19) |
 | Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
@@ -217,11 +217,15 @@ grammar (all custom, in init.el's Denote section):
   keyword, and words may be regexps), ripgrep for bodies, `C-c d b` backlinks. Span
   markers `#important` / `#definition` inside lit notes stay as grep-able
   ink, not keywords. The full map lives on the splash screen.
-- Per-form creation commands (`C-c d i/p/m/o/w/s/t/e/h/n`; lit via `C-c n` — `l` is the list key) prompt title
-  then matter, offering **only** the curated matter list (typing new matter
-  through it still works — vocabulary growth is deliberate, not drift).
-  (Terminology is Raymond's hylomorphic pair: **form** = the act of
-  writing, **matter** = the research program it serves.)
+- **Capture is frictionless**: `C-c n` opens an untitled, unclassified note
+  instantly (zero prompts). On save it titles itself from the first line
+  (`rm/denote-autotitle`, only while untitled); `M-c` (`rm/denote-classify`)
+  assigns form + matter from the curated lists and renames in place —
+  re-runnable, identifier stable. Per-form commands
+  (`C-c d i/p/m/o/w/s/t/e/h/n`) still create with a form directly,
+  prompting only for matter. (Terminology is Raymond's hylomorphic pair:
+  **form** = the act of writing, **matter** = the research program it
+  serves; vocabulary growth is deliberate, not drift.)
 
 The vault is **git-tracked** (local repo, initialized 2026-07-21 with a
 pre-denote baseline commit) so every migration step is a reviewable diff.
@@ -273,7 +277,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-S-k` / `C-S-l` | kill-line / recenter (displaced from `C-k` / `C-l`) |
 | `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
 | `C-c w` | window menu: split / pick-file-into-split (`f` right, `b` below) / swap / repeatable divider drag (`hjkl`) / winner undo |
-| `C-c n` | notes sidebar on the `~/Dropbox/notes` vault |
+| `C-c n` | capture a note: instant untitled vault note; titles itself from line 1 on save; `M-c` classifies (form+matter) in place |
 | `C-c p` | papers sidebar on `~/scholarship/research-wip` (dired-sidebar roots at the project; `documents/` is one `l` away) |
 | `<f8>` | toggle a sidebar at the current project |
 | `h` / `j` / `k` / `l` | *in the sidebar:* collapse/up · down · up · expand/visit (vim-style; sidebar-local — plain letters work because the pane is read-only, and they shadow dired's legacy single-key commands) |
@@ -293,7 +297,11 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-c a` / `C-c c` / `C-c l` | Org agenda / capture / store-link |
 | `C-c C-c` | compile via LatexMk (in `.tex`) |
 | `S-TAB` | cycle the document outline (in `.tex`) |
-| `q` / `ESC` | dismiss the welcome screen |
+| `ESC` | universal back: abort prompt → drop region → one step back through this window's buffer history (machinery popups skipped) → splash floor |
+| `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
+| `M-c` | classify: vault note → form+matter rename; task heading / agenda entry → task tags |
+| `C-c s` | pop the \*scratch\* buffer |
+| `q` | dismiss the welcome screen |
 
 Config reload after edits is `M-x rm/reload-init` (unbound — orderless makes
 `M-x rel in` find it instantly).

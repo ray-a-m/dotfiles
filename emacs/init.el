@@ -11,7 +11,8 @@
 ;; kept lagging evil-collection support, and the compat layer wasn't worth
 ;; it for a prose-only Emacs).  The custom layer is scoped to what the
 ;; defaults do badly: C-h/j/k/l window focus, M-o ace-window, a C-c w window
-;; menu with repeatable resize, C-c n / C-c p sidebars.  CapsLock is Ctrl at
+;; menu with repeatable resize, the C-c p sidebar, ESC as universal
+;; back (splash floor).  CapsLock is Ctrl at
 ;; the Hyprland level (hypr/input.conf) and the command prefix is swapped
 ;; C-x -> C-a, so the everything-prefix sits entirely on the home row.
 ;;
@@ -870,13 +871,14 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
 ;;   reference      lit (reading notes)  hub (curated standing notes, e.g.
 ;;                  the Technology hub; span markers like #important and
 ;;                  #definition stay as grep-able ink in lit bodies)
-;; Retrieval: C-c d j jumps by name fragments (orderless); C-c d c renders a
-;; catalog in dired from a filename regexp (`_paperidea.*_physics'); C-c d g
-;; ripgreps the bodies (consult); C-c d b backlinks.  Map on the splash.
-;; The legacy folders coexist untouched; old notes adopt the scheme
-;; gradually via C-c d r (git-tracked since 2026-07-21 -- commit often).
+;; Retrieval: C-c d f finds by name fragments (orderless); C-c d l lists
+;; a dired catalog from plain words (any order, `paperidea physics');
+;; C-c d g ripgreps the bodies (consult); C-c d b backlinks.  Capture:
+;; C-c n is instant and untitled (titles itself from line 1 on save);
+;; M-c classifies in place.  Map on the splash.  Vault fully denote
+;; since the 2026-07-22 migration (git-tracked -- commit often).
 (use-package denote
-  :bind (("C-c n" . rm/denote-note))       ; the guided "take a new note"
+  :bind (("C-c n" . rm/denote-note))       ; instant untitled capture
   :bind-keymap ("C-c d" . rm/denote-map)
   :init
   (defvar rm/denote-forms
@@ -1353,9 +1355,10 @@ dismisses the splash."
 ;; of / below the main window (same letters as C-c w f/b); hjkl navigate
 ;; vim-style (see below).  Dotfiles, . / .., README/TODO, and LaTeX build
 ;; artifacts are omitted (dired-omit-mode); .org/.md extensions are hidden;
-;; directories sort before files at every level.  Two roots for the two corpora:
-;; C-c n = the notes vault, C-c p = research-wip (papers/dissertation/CV
-;; under documents/); <f8> toggles a sidebar at the current project.
+;; directories sort before files at every level.  C-c p roots at
+;; research-wip (papers/dissertation/CV under documents/); the vault
+;; sidebar is M-x rm/notes-sidebar (C-c n is note capture now); <f8>
+;; toggles a sidebar at the current project.
 ;; Directories before files, at every level -- dired-subtree's expansions
 ;; read with the same switches, so the whole tree groups consistently.
 ;; Global on purpose: plain dired benefits too.
