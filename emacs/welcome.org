@@ -10,13 +10,13 @@
 
 *Vault*  /file = ID--title__form_matter/      *form*                      *matter*
 
-  Backlinks ................ [C-c d b]    hub       paperidea       aesthetics    math
-  Catalog: regexp → dired .. [C-c d c]    idea      poetry          concepts      neo-kantian
-  Insert link .............. [C-c d k]    lit       presentation    fun           phenomenology
-  Jump: name fragments ..... [C-c d j]    log       talk            hegel         physics
-  New note by form .... [C-c d <form>]    meeting   wip             history       science
-  Promote / rename ......... [C-c d r]    musing                    kant          teaching
-                                                                    (none = misc)
+  Attach: file → Files/ .... [C-c d a]    hub       paperidea       aesthetics    math
+  Backlinks ................ [C-c d b]    idea      poetry          concepts      neo-kantian
+  Catalog: regexp → dired .. [C-c d c]    lit       presentation    fun           phenomenology
+  Insert link .............. [C-c d k]    log       talk            hegel         physics
+  Jump: name fragments ..... [C-c d j]    meeting   wip             history       science
+  New note by form .... [C-c d <form>]    musing                    kant          teaching
+  Promote / rename ......... [C-c d r]                              (none = misc)
 
 *Tasks*                                   *find*
 

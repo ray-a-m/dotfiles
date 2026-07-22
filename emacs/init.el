@@ -884,6 +884,17 @@ new program is genuinely born; free-typing new matter still works.")
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
+  (defun rm/denote-attach (file)
+    "Copy FILE into the vault's Files/ bin and link it at point (C-c d a).
+Attachments stay plain files by design -- see README; promote one to a
+denote name only if it becomes something you search for."
+    (interactive "fAttach file: ")
+    (let* ((dest-dir (expand-file-name "Files/" denote-directory))
+           (dest (expand-file-name (file-name-nondirectory file) dest-dir)))
+      (make-directory dest-dir t)
+      (copy-file file dest 1)
+      (insert (format "[[file:Files/%s]]" (file-name-nondirectory file)))
+      (when (org-display-inline-images) nil)))
   (defun rm/denote-hubs ()
     "Dired listing of the hub notes (splash `h')."
     (interactive)
@@ -908,7 +919,8 @@ new program is genuinely born; free-typing new matter still works.")
     "m" #'rm/denote-musing  "o" #'rm/denote-poetry    "i" #'rm/denote-idea
     "p" #'rm/denote-paperidea  "w" #'rm/denote-wip    "l" #'rm/denote-lit
     "s" #'rm/denote-log     "t" #'rm/denote-talk      "e" #'rm/denote-meeting
-    "h" #'rm/denote-hub     "n" #'rm/denote-presentation)
+    "h" #'rm/denote-hub     "n" #'rm/denote-presentation
+    "a" #'rm/denote-attach)
   :config
   ;; Vault dired buffers fontify the filename grammar (ID / title / keywords
   ;; each get a face) -- the catalog reads like a catalog, not a file dump.
