@@ -732,8 +732,10 @@ layout untouched -- no empty window to clean up."
   ;; "(4)NEXT (5)TODO" continuation lines -- strip the whole block (real
   ;; entries are indented but never start with a parenthesized number).
   (defun rm/agenda-strip-hints ()
-    (save-excursion
-      (goto-char (point-min))
+    (save-restriction
+      (widen)
+      (save-excursion
+        (goto-char (point-min))
       (let ((inhibit-read-only t))
         (while (re-search-forward
                 "^Press .*\n\\(?:[ \t]+([0-9]+)[^\n]*\n?\\)*" nil t)
@@ -746,17 +748,21 @@ layout untouched -- no empty window to clean up."
   (defun rm/agenda-footer ()
     ;; Idempotent by CONTENT: agenda redraws strip text properties, so
     ;; sweep the literal footer line (and its leading blank) wherever it
-    ;; sits, then append exactly one at the end.
+    ;; sits, then append exactly one at the end.  MUST widen: state
+    ;; changes run finalize narrowed to the changed line (org-agenda.el
+    ;; admits as much above org-agenda-mark-clocking-task).
     (let ((inhibit-read-only t))
-      (save-excursion
-        (goto-char (point-min))
-        (while (re-search-forward
-                (concat "\n?" (regexp-quote rm/agenda-footer-text) "\n?")
-                nil t)
-          (delete-region (match-beginning 0) (match-end 0)))
-        (goto-char (point-max))
-        (insert (propertize (concat "\n" rm/agenda-footer-text "\n")
-                            'face 'nano-face-faded)))))
+      (save-restriction
+        (widen)
+        (save-excursion
+          (goto-char (point-min))
+          (while (re-search-forward
+                  (concat "\n?" (regexp-quote rm/agenda-footer-text) "\n?")
+                  nil t)
+            (delete-region (match-beginning 0) (match-end 0)))
+          (goto-char (point-max))
+          (insert (propertize (concat "\n" rm/agenda-footer-text "\n")
+                              'face 'nano-face-faded))))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-footer 90)
   ;; Source column: denote files would show as their raw filename
   ;; ("20260721T105802--technology__hub", truncated); show "title form"
