@@ -1194,18 +1194,31 @@ very window the file is about to land in."
   (interactive)
   (switch-to-buffer (get-scratch-buffer-create)))
 (keymap-global-set "C-c s" #'rm/scratch)
-;; ESC ESC ESC: quit whatever is quittable; when nothing is left to
-;; quit, land on the splash.  (Replaces stock keyboard-escape-quit,
-;; whose no-op case destructively did delete-other-windows.)
-(defun rm/escape-home ()
-  "Escape toward home: quit things first, then summon the splash."
+;; ESC, single press: universal "back out of where I am".
+;; Prompts abort; a marked region deactivates; otherwise one literal
+;; step back through the SELECTED WINDOW's own buffer history (every
+;; stop kept, by his ruling), with the splash as the sticky floor.
+;; Costs ESC-as-Meta in GUI frames -- his Meta is the real Alt key.
+;; Terminal frames are untouched (<escape> is a GUI-only event there).
+;; Unsaved edits are never at risk: this only changes what the window
+;; displays; buffers and their modifications live on untouched.
+(defun rm/escape ()
+  "Back out: abort prompt / drop region / window-back / splash floor."
   (interactive)
-  (if (or (minibuffer-window-active-p (minibuffer-window))
-          (region-active-p)
-          (> (recursion-depth) 0))
-      (keyboard-escape-quit)
-    (rm/welcome)))
-(keymap-global-set "ESC ESC ESC" #'rm/escape-home)
+  (cond
+   ((minibufferp) (abort-minibuffers))
+   ((minibuffer-window-active-p (minibuffer-window)) (abort-recursive-edit))
+   ((region-active-p) (deactivate-mark))
+   ((> (recursion-depth) 0) (abort-recursive-edit))
+   ((eq (current-buffer) (get-buffer "*welcome*")) nil)   ; the floor
+   ((seq-find (lambda (e) (and (buffer-live-p (car e))
+                               (not (eq (car e) (current-buffer)))))
+              (window-prev-buffers))
+    (switch-to-prev-buffer))         ; honors per-window history + point
+   (t (rm/welcome))))
+(keymap-global-set "<escape>" #'rm/escape)
+(with-eval-after-load 'isearch
+  (keymap-set isearch-mode-map "<escape>" #'isearch-abort))
 
 ;; No "When done with this frame, type C-a 5 0" echo in client frames --
 ;; Hyprland's Super+Q closes the frame like any window; the hint is noise.
