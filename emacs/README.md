@@ -212,11 +212,11 @@ grammar (all custom, in init.el's Denote section):
   `#+filetags`, which the agenda inherits, so teaching-matter TODOs and
   teaching-tagged tasks meet under the same `C-c a m` match.
 - **Retrieval**: `C-c d j` jump (orderless fragments against filenames),
-  `C-c d c` catalog (filename regexp → dired listing, e.g.
+  `C-c d l` list (filename regexp → dired catalog, e.g.
   `_paperidea.*_physics`), ripgrep for bodies, `C-c d b` backlinks. Span
   markers `#important` / `#definition` inside lit notes stay as grep-able
   ink, not keywords. The full map lives on the splash screen.
-- Per-form creation commands (`C-c d i/p/m/o/w/l/s/t/e/h/n`) prompt title
+- Per-form creation commands (`C-c d i/p/m/o/w/s/t/e/h/n`; lit via `C-c n` — `l` is the list key) prompt title
   then matter, offering **only** the curated matter list (typing new matter
   through it still works — vocabulary growth is deliberate, not drift).
   (Terminology is Raymond's hylomorphic pair: **form** = the act of

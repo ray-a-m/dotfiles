@@ -12,7 +12,7 @@
 
   Attach: file → Files/ .... [C-c d a]    hub       paperidea       aesthetics    math
   Backlinks ................ [C-c d b]    idea      poetry          concepts      neo-kantian
-  Catalog: regexp → dired .. [C-c d c]    lit       presentation    fun           phenomenology
+  List: regexp → dired ..... [C-c d l]    lit       presentation    fun           phenomenology
   Insert link .............. [C-c d k]    log       talk            hegel         physics
   Jump: name fragments ..... [C-c d j]    meeting   wip             history       science
   New note by form .... [C-c d <form>]    musing                    kant          teaching
@@ -21,7 +21,7 @@
 *Tasks*                                   *find*
 
   Capture a task ............... [c t]    one note, by name .............. [f]
-  Progress the state ... [C-c C-t / r]    list: «_form.*_matter» ... [C-c d c]
+  Progress the state ... [C-c C-t / r]    list: «_form.*_matter» ......... [l]
   Tag the heading .......... [C-c C-c]    text: any body, «#important» ... [g]
   Todos, all ..................... [t]
   Todos, by tag ................ [a m]
@@ -41,5 +41,3 @@
   Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
   New note ....................... [n]    Window menu ................ [C-c w]
-
-          /on this screen: n new note · f find · g grep · a agenda · t todos · h hubs · p papers · c capture · q quit/

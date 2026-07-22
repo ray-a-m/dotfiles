@@ -921,14 +921,15 @@ vertico would otherwise re-sort by history and length)."
     :doc "Denote: create by form, jump, catalog, grep, backlinks, rename."
     "d" #'denote                          ; raw create: full keyword control
     "j" #'denote-open-or-create           ; jump: fragments match filenames
-    "c" #'denote-sort-dired               ; catalog: regexp -> dired listing
+    "l" #'denote-sort-dired               ; list: regexp -> dired catalog
     "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
     "b" #'denote-backlinks                ; who links here?
     "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
     "k" #'denote-link                     ; insert a link to another note
     "m" #'rm/denote-musing  "o" #'rm/denote-poetry    "i" #'rm/denote-idea
-    "p" #'rm/denote-paperidea  "w" #'rm/denote-wip    "l" #'rm/denote-lit
-    "s" #'rm/denote-log     "t" #'rm/denote-talk      "e" #'rm/denote-meeting
+    "p" #'rm/denote-paperidea  "w" #'rm/denote-wip     ; (lit: use C-c n --
+    "s" #'rm/denote-log     "t" #'rm/denote-talk      ;  l is the list key)
+    "e" #'rm/denote-meeting
     "h" #'rm/denote-hub     "n" #'rm/denote-presentation
     "a" #'rm/denote-attach)
   :config
@@ -1131,6 +1132,7 @@ very window the file is about to land in."
             (define-key map (kbd "t") #'org-todo-list)          ; todos, all
             (define-key map (kbd "c") #'org-capture)            ; capture
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
+            (define-key map (kbd "l") #'denote-sort-dired)      ; list by regexp
             (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))
