@@ -888,13 +888,38 @@ new program is genuinely born; free-typing new matter still works.")
   ;; matter list (forms and inferred strays excluded), but new matter can
   ;; still be typed through it.
   (defun rm/denote-new (form)
-    "Create a denote note of FORM, prompting for title and matter."
+    "Create a denote note of FORM, prompting only for matter.
+No title prompt: write first, name after.  An untitled note takes its
+title from the first line on save (see rm/denote-autotitle); C-c d r
+renames deliberately whenever."
     (require 'denote)                     ; M-x rm/denote-idea before any C-c d
-    (let* ((title (denote-title-prompt nil (format "New %s. Title" form)))
-           (matter (let ((denote-known-keywords rm/denote-matter)
-                         (denote-infer-keywords nil))
-                     (denote-keywords-prompt "Matter (RET = none)"))))
-      (denote title (cons form matter))))
+    (let ((matter (let ((denote-known-keywords rm/denote-matter)
+                        (denote-infer-keywords nil))
+                    (denote-keywords-prompt "Matter (RET = none)"))))
+      (denote nil (cons form matter))))
+  (defun rm/denote-autotitle ()
+    "First save of an untitled vault note: derive the title from line 1.
+Only fires while the note is untitled, so a deliberate C-c d r (or a
+hand-edited #+title) is never overridden."
+    (when (and buffer-file-name
+               (denote-file-is-note-p buffer-file-name)
+               (string-empty-p (or (denote-retrieve-title-value
+                                    buffer-file-name 'org) "")))
+      (save-excursion
+        (goto-char (point-min))
+        (when (re-search-forward "^[^#: \n].*$" nil t)
+          (let ((title (truncate-string-to-width
+                        (string-trim (replace-regexp-in-string
+                                      "[*/=~_]" "" (match-string 0)))
+                        60)))
+            (unless (string-blank-p title)
+              (goto-char (point-min))
+              (when (re-search-forward "^#\\+title:\\s-*$" nil t)
+                (insert " " title)
+                (let ((denote-rename-confirmations nil)
+                      (denote-save-buffers t))
+                  (denote-rename-file-using-front-matter buffer-file-name)))))))))
+  (add-hook 'after-save-hook #'rm/denote-autotitle)
   (dolist (form rm/denote-forms)
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
