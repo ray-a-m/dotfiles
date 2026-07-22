@@ -900,9 +900,19 @@ denote name only if it becomes something you search for."
     (interactive)
     (denote-sort-dired "_hub" nil nil nil))
   (defun rm/denote-note ()
-    "Create a note: pick the form, then title and matter (C-c n)."
+    "Create a note: pick the form, then title and matter (C-c n).
+The form list shows alphabetically (the metadata pins the order --
+vertico would otherwise re-sort by history and length)."
     (interactive)
-    (rm/denote-new (completing-read "Form: " rm/denote-forms nil t)))
+    (let ((forms (sort (copy-sequence rm/denote-forms) #'string<)))
+      (rm/denote-new
+       (completing-read "Form: "
+                        (lambda (str pred action)
+                          (if (eq action 'metadata)
+                              '(metadata (display-sort-function . identity)
+                                         (cycle-sort-function . identity))
+                            (complete-with-action action forms str pred)))
+                        nil t))))
   (defun rm/denote-grep ()
     "Live ripgrep across the vault's note bodies (consult-ripgrep)."
     (interactive)
