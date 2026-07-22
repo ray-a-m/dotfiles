@@ -895,6 +895,22 @@ denote name only if it becomes something you search for."
       (copy-file file dest 1)
       (insert (format "[[file:Files/%s]]" (file-name-nondirectory file)))
       (when (derived-mode-p 'org-mode) (org-display-inline-images))))
+  (defun rm/denote-list (query)
+    "Dired listing of the notes whose filenames match every word of QUERY.
+Words match in any order, anywhere in the filename (title or keywords)
+-- no regexp needed.  A leading underscore anchors a word to a keyword
+(_physics); each word may still be a regexp if you want one."
+    (interactive "sList notes matching: ")
+    (let* ((terms (split-string query))
+           (files (seq-filter
+                   (lambda (f)
+                     (let ((base (file-name-nondirectory f)))
+                       (seq-every-p (lambda (rx) (string-match-p rx base)) terms)))
+                   (denote-directory-files))))
+      (if files
+          (dired (cons (denote-directory)
+                       (mapcar #'file-relative-name files)))
+        (user-error "No notes match %S" query))))
   (defun rm/denote-hubs ()
     "Dired listing of the hub notes (splash `h')."
     (interactive)
@@ -921,7 +937,7 @@ vertico would otherwise re-sort by history and length)."
     :doc "Denote: create by form, jump, catalog, grep, backlinks, rename."
     "d" #'denote                          ; raw create: full keyword control
     "j" #'denote-open-or-create           ; jump: fragments match filenames
-    "l" #'denote-sort-dired               ; list: regexp -> dired catalog
+    "l" #'rm/denote-list                  ; list: words -> dired catalog
     "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
     "b" #'denote-backlinks                ; who links here?
     "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
@@ -1132,7 +1148,7 @@ very window the file is about to land in."
             (define-key map (kbd "t") #'org-todo-list)          ; todos, all
             (define-key map (kbd "c") #'org-capture)            ; capture
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
-            (define-key map (kbd "l") #'denote-sort-dired)      ; list by regexp
+            (define-key map (kbd "l") #'rm/denote-list)         ; list by words
             (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))

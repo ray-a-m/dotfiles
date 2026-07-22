@@ -12,17 +12,17 @@
 
   Attach: file → Files/ .... [C-c d a]    hub       paperidea       aesthetics    math
   Backlinks ................ [C-c d b]    idea      poetry          concepts      neo-kantian
-  List: regexp → dired ..... [C-c d l]    lit       presentation    fun           phenomenology
-  Insert link .............. [C-c d k]    log       talk            hegel         physics
-  Jump: name fragments ..... [C-c d j]    meeting   wip             history       science
+  Insert link .............. [C-c d k]    lit       presentation    fun           phenomenology
+  Jump: name fragments ..... [C-c d j]    log       talk            hegel         physics
+  List: words → dired ...... [C-c d l]    meeting   wip             history       science
   New note by form .... [C-c d <form>]    musing                    kant          teaching
   Promote / rename ......... [C-c d r]                              (none = misc)
 
 *Tasks*                                   *find*
 
-  Capture a task ............... [c t]    one note, by name .............. [f]
-  Progress the state ... [C-c C-t / r]    list: «_form.*_matter» ......... [l]
-  Tag the heading .......... [C-c C-c]    text: any body, «#important» ... [g]
+  Capture a task ............... [c t]    by name ........................ [f]
+  Progress the state ... [C-c C-t / r]    by content ..................... [g]
+  Tag the heading .......... [C-c C-c]    list ........................... [l]
   Todos, all ..................... [t]
   Todos, by tag ................ [a m]
   in agenda: hjkl move · r progress · d delete · s save
