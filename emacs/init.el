@@ -955,20 +955,39 @@ Words match in any order, anywhere in the filename (title or keywords)
     "Dired listing of the hub notes (splash `h')."
     (interactive)
     (denote-sort-dired "_hub" nil nil nil))
-  (defun rm/denote-note ()
-    "Create a note: pick the form, then title and matter (C-c n).
-The form list shows alphabetically (the metadata pins the order --
+  (defun rm/denote--form-prompt ()
+    "Pick a form, listed alphabetically (metadata pins the order --
 vertico would otherwise re-sort by history and length)."
-    (interactive)
     (let ((forms (sort (copy-sequence rm/denote-forms) #'string<)))
-      (rm/denote-new
-       (completing-read "Form: "
-                        (lambda (str pred action)
-                          (if (eq action 'metadata)
-                              '(metadata (display-sort-function . identity)
-                                         (cycle-sort-function . identity))
-                            (complete-with-action action forms str pred)))
-                        nil t))))
+      (completing-read "Form: "
+                       (lambda (str pred action)
+                         (if (eq action 'metadata)
+                             '(metadata (display-sort-function . identity)
+                                        (cycle-sort-function . identity))
+                           (complete-with-action action forms str pred)))
+                       nil t)))
+  (defun rm/denote-note ()
+    "Frictionless capture: straight into an empty note, zero prompts.
+Title arrives from the first line on save (rm/denote-autotitle); form
+and matter are assigned in the note with C-c d c (rm/denote-classify)."
+    (interactive)
+    (require 'denote)
+    (denote nil nil))
+  (defun rm/denote-classify ()
+    "Give the note at hand its form and matter; renames in place.
+Title and identifier are kept; re-run any time to reclassify."
+    (interactive)
+    (unless (and buffer-file-name (denote-file-is-note-p buffer-file-name))
+      (user-error "Not in a vault note"))
+    (let ((form (rm/denote--form-prompt))
+          (matter (let ((denote-known-keywords rm/denote-matter)
+                        (denote-infer-keywords nil))
+                    (denote-keywords-prompt "Matter (RET = none)")))
+          (denote-rename-confirmations nil)
+          (denote-save-buffers t))
+      (denote-rename-file buffer-file-name 'keep-current
+                          (cons form matter) 'keep-current 'keep-current
+                          'keep-current)))
   (defun rm/denote-grep ()
     "Live ripgrep across the vault's note bodies (consult-ripgrep)."
     (interactive)
@@ -978,6 +997,7 @@ vertico would otherwise re-sort by history and length)."
     "d" #'denote                          ; raw create: full keyword control
     "f" #'denote-open-or-create           ; find by name: fragments match filenames
     "l" #'rm/denote-list                  ; list: words -> dired catalog
+    "c" #'rm/denote-classify              ; classify: form+matter, in note
     "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
     "b" #'denote-backlinks                ; who links here?
     "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
