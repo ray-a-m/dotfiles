@@ -1217,6 +1217,9 @@ very window the file is about to land in."
     (switch-to-prev-buffer))         ; honors per-window history + point
    (t (rm/welcome))))
 (keymap-global-set "<escape>" #'rm/escape)
+;; ...and its opposite: M-ESC leaps forward to any buffer (previewing
+;; list, most recent first -- the one-gesture return after an ESC).
+(keymap-global-set "M-<escape>" #'consult-buffer)
 (with-eval-after-load 'isearch
   (keymap-set isearch-mode-map "<escape>" #'isearch-abort))
 
