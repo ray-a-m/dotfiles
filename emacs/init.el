@@ -951,7 +951,7 @@ vertico would otherwise re-sort by history and length)."
   (defvar-keymap rm/denote-map
     :doc "Denote: create by form, jump, catalog, grep, backlinks, rename."
     "d" #'denote                          ; raw create: full keyword control
-    "j" #'denote-open-or-create           ; jump: fragments match filenames
+    "f" #'denote-open-or-create           ; find by name: fragments match filenames
     "l" #'rm/denote-list                  ; list: words -> dired catalog
     "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
     "b" #'denote-backlinks                ; who links here?
