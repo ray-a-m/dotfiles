@@ -20,11 +20,11 @@
 
 *Tasks*                                   *find*
 
-  Capture a task ........... [C-c c t]    one note, by name ........ [C-c d j]
+  Capture a task ............... [c t]    one note, by name .............. [f]
   Progress the state ... [C-c C-t / r]    notes: «_form.*_matter» .. [C-c d c]
-  Tag the heading .......... [C-c C-c]    marks: «#important» ...... [C-c d g]
-  Todos, all ............... [C-c a t]    text, in any body ........ [C-c d g]
-  Todos, by tag ............ [C-c a m]
+  Tag the heading .......... [C-c C-c]    marks: «#important» ............ [g]
+  Todos, all ..................... [t]    text, in any body .............. [g]
+  Todos, by tag ................ [a m]
   in agenda: hjkl move · r progress · d delete · s save
   tags: research · service ·
         teaching · technology
@@ -32,14 +32,14 @@
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
-  Act on thing at point ........ [C-.]    Papers ..................... [C-c p]
-  Agenda / capture ... [C-c a / C-c c]    Resize windows ........ [C-c w hjkl]
+  Act on thing at point ........ [C-.]    Papers ......................... [p]
+  Agenda / capture ........... [a / c]    Resize windows ........ [C-c w hjkl]
   Close buffer ............... [C-a k]    Save ..................... [C-a C-s]
   Compile LaTeX ............ [C-c C-c]    Search in buffer ........... [M-s l]
   File in project .......... [C-a p f]    Splash (this screen) ....... [C-c s]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
   Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
-  New note ................... [C-c n]    Window menu ................ [C-c w]
+  New note ....................... [n]    Window menu ................ [C-c w]
 
           /on this screen: n new note · f find · g grep · a agenda · t todos · h hubs · p papers · c capture · q quit/
