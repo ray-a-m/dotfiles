@@ -22,7 +22,7 @@
 
   Capture a task ............... [c t]    by name ........................ [f]
   Todos, all ..................... [t]    by content ..................... [g]
-  Todos, by tag ................ [a m]    list ........................... [l]
+  Todos, by tag ................ [a M]    list ........................... [l]
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
