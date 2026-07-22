@@ -742,11 +742,17 @@ layout untouched -- no empty window to clean up."
   ;; The agenda's own keys, printed where they apply (footer of every
   ;; agenda view) rather than on the splash.
   (defun rm/agenda-footer ()
-    (save-excursion
-      (goto-char (point-max))
-      (let ((inhibit-read-only t))
+    ;; Idempotent: state changes re-run finalize, so sweep old footers
+    ;; (tracked by text property) before appending the one at the end.
+    (let ((inhibit-read-only t))
+      (save-excursion
+        (goto-char (point-min))
+        (let (m)
+          (while (setq m (text-property-search-forward 'rm-agenda-footer))
+            (delete-region (prop-match-beginning m) (prop-match-end m))))
+        (goto-char (point-max))
         (insert (propertize "\n hjkl move \u00b7 r progress \u00b7 d delete \u00b7 s save\n"
-                            'face 'nano-face-faded)))))
+                            'face 'nano-face-faded 'rm-agenda-footer t)))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-footer 90)
   ;; Source column: denote files would show as their raw filename
   ;; ("20260721T105802--technology__hub", truncated); show "title form"
