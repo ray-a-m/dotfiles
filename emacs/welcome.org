@@ -20,9 +20,9 @@
 
 *Tasks*                                   *find*
 
-  Capture a task ............... [c t]    by name .............. [f / C-c d f]
-  Progress the state ... [C-c C-t / r]    by content ........... [g / C-c d g]
-  Todos, all ..................... [t]    list ................. [l / C-c d l]
+  Capture a task ............... [c t]    by name ........................ [f]
+  Progress the state ... [C-c C-t / r]    by content ..................... [g]
+  Todos, all ..................... [t]    list ........................... [l]
   Todos, by tag ................ [a m]
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/

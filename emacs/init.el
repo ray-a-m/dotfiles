@@ -1442,7 +1442,7 @@ one `l' away instead."
             (lambda ()
               (setq-local line-spacing 3   ; airier rows
                           dired-omit-files
-                          "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'"
+                          "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'\\|\\`auto\\'"
                           ;; nano's header line would show the buffer name
                           ;; (":~/full/path/..."); show just the root's name
                           header-line-format
