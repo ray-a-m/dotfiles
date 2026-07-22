@@ -974,20 +974,27 @@ and matter are assigned in the note with C-c d c (rm/denote-classify)."
     (require 'denote)
     (denote nil nil))
   (defun rm/denote-classify ()
-    "Give the note at hand its form and matter; renames in place.
-Title and identifier are kept; re-run any time to reclassify."
+    "Classify the thing at hand -- one gesture, context decides.
+Vault note: form + matter, renames in place (identifier kept,
+re-runnable).  Org heading elsewhere (capture buffer, inbox, any
+TODO): the task tags via the fast-select menu.  Agenda view: tags for
+the entry at point."
     (interactive)
-    (unless (and buffer-file-name (denote-file-is-note-p buffer-file-name))
-      (user-error "Not in a vault note"))
-    (let ((form (rm/denote--form-prompt))
-          (matter (let ((denote-known-keywords rm/denote-matter)
-                        (denote-infer-keywords nil))
-                    (denote-keywords-prompt "Matter (RET = none)")))
-          (denote-rename-confirmations nil)
-          (denote-save-buffers t))
-      (denote-rename-file buffer-file-name 'keep-current
-                          (cons form matter) 'keep-current 'keep-current
-                          'keep-current)))
+    (cond
+     ((derived-mode-p 'org-agenda-mode)
+      (call-interactively #'org-agenda-set-tags))
+     ((and buffer-file-name (denote-file-is-note-p buffer-file-name))
+      (let ((form (rm/denote--form-prompt))
+            (matter (let ((denote-known-keywords rm/denote-matter)
+                          (denote-infer-keywords nil))
+                      (denote-keywords-prompt "Matter (RET = none)")))
+            (denote-rename-confirmations nil)
+            (denote-save-buffers t))
+        (denote-rename-file buffer-file-name 'keep-current
+                            (cons form matter) 'keep-current 'keep-current
+                            'keep-current)))
+     ((derived-mode-p 'org-mode) (org-set-tags-command))
+     (t (user-error "Nothing here to classify"))))
   (defun rm/denote-grep ()
     "Live ripgrep across the vault's note bodies (consult-ripgrep)."
     (interactive)
