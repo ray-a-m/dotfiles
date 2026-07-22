@@ -16,7 +16,6 @@
   Promote / rename ......... [C-c d r]    log       talk            hegel         physics
                                           meeting   wip             history       science
                                           musing                    kant          teaching
-                                                                    (none = misc)
 
 *Tasks*                                   *find*
 
@@ -24,9 +23,6 @@
   Progress the state ... [C-c C-t / r]    by content ........... [g / C-c d g]
   Todos, all ..................... [t]    list ................. [l / C-c d l]
   Todos, by tag ................ [a m]
-  tags: research · service ·
-        teaching · technology
-        (none = misc)
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
