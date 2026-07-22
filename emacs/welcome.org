@@ -21,9 +21,8 @@
 *Tasks*                                   *find*
 
   Capture a task ............... [c t]    by name ........................ [f]
-  Progress the state ... [C-c C-t / r]    by content ..................... [g]
-  Todos, all ..................... [t]    list ........................... [l]
-  Todos, by tag ................ [a m]
+  Todos, all ..................... [t]    by content ..................... [g]
+  Todos, by tag ................ [a m]    list ........................... [l]
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
