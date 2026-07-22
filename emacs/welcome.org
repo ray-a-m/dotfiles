@@ -13,31 +13,30 @@
   Attach: file → Files/ .... [C-c d a]    hub       paperidea       aesthetics    math
   Backlinks ................ [C-c d b]    idea      poetry          concepts      neo-kantian
   Insert link .............. [C-c d k]    lit       presentation    fun           phenomenology
-  Jump: name fragments ..... [C-c d j]    log       talk            hegel         physics
-  List: words → dired ...... [C-c d l]    meeting   wip             history       science
-  New note by form .... [C-c d <form>]    musing                    kant          teaching
-  Promote / rename ......... [C-c d r]                              (none = misc)
+  Promote / rename ......... [C-c d r]    log       talk            hegel         physics
+                                          meeting   wip             history       science
+                                          musing                    kant          teaching
+                                                                    (none = misc)
 
 *Tasks*                                   *find*
 
-  Capture a task ............... [c t]    by name ........................ [f]
-  Progress the state ... [C-c C-t / r]    by content ..................... [g]
-  Tag the heading .......... [C-c C-c]    list ........................... [l]
-  Todos, all ..................... [t]
+  Capture a task ............... [c t]    by name .............. [f / C-c d j]
+  Progress the state ... [C-c C-t / r]    by content ........... [g / C-c d g]
+  Todos, all ..................... [t]    list ................. [l / C-c d l]
   Todos, by tag ................ [a m]
-  in agenda: hjkl move · r progress · d delete · s save
   tags: research · service ·
         teaching · technology
         (none = misc)
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
-  Act on thing at point ........ [C-.]    Papers ......................... [p]
-  Agenda / capture ........... [a / c]    Resize windows ........ [C-c w hjkl]
-  Close buffer ............... [C-a k]    Save ..................... [C-a C-s]
+  Act on thing at point ........ [C-.]    Resize windows ........ [C-c w hjkl]
+  Agenda / capture ........... [a / c]    Save ..................... [C-a C-s]
+  Close buffer ............... [C-a k]    Scratch ................ [s / C-c s]
   Compile LaTeX ............ [C-c C-c]    Search in buffer ........... [M-s l]
-  File in project .......... [C-a p f]    Splash (this screen) ....... [C-c s]
+  File in project .......... [C-a p f]    Splash ............... [ESC ESC ESC]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
   Jump / swap .................. [M-o]    Switch buffer .............. [C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
   New note ....................... [n]    Window menu ................ [C-c w]
+  Papers ......................... [p]

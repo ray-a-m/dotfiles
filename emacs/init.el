@@ -739,6 +739,15 @@ layout untouched -- no empty window to clean up."
                 "^Press .*\n\\(?:[ \t]+([0-9]+)[^\n]*\n?\\)*" nil t)
           (delete-region (match-beginning 0) (match-end 0))))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-strip-hints)
+  ;; The agenda's own keys, printed where they apply (footer of every
+  ;; agenda view) rather than on the splash.
+  (defun rm/agenda-footer ()
+    (save-excursion
+      (goto-char (point-max))
+      (let ((inhibit-read-only t))
+        (insert (propertize "\n hjkl move \u00b7 r progress \u00b7 d delete \u00b7 s save\n"
+                            'face 'nano-face-faded)))))
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-footer 90)
   ;; Source column: denote files would show as their raw filename
   ;; ("20260721T105802--technology__hub", truncated); show "title form"
   ;; instead, fixed-width so the TODO column stays aligned.
@@ -1139,7 +1148,7 @@ very window the file is about to land in."
           (let ((map (make-sparse-keymap)))
             (set-keymap-parent map org-mode-map)
             (define-key map (kbd "q")        #'rm/welcome-kill)
-            (define-key map (kbd "<escape>") #'rm/welcome-kill)
+
             (define-key map (kbd "n") #'rm/denote-note)         ; new note
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
             (define-key map (kbd "f") #'denote-open-or-create)  ; find by name
@@ -1149,6 +1158,7 @@ very window the file is about to land in."
             (define-key map (kbd "c") #'org-capture)            ; capture
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'rm/denote-list)         ; list by words
+            (define-key map (kbd "s") #'rm/scratch)             ; scratch
             (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))
@@ -1171,7 +1181,25 @@ very window the file is about to land in."
 
 (add-hook 'window-setup-hook #'rm/welcome)
 ;; Summon the splash on demand -- "go home" (interactive calls always show it).
-(keymap-global-set "C-c s" #'rm/welcome)
+;; C-c s: the *scratch* buffer, from anywhere (s on the splash too).
+;; The splash itself is the ESC-chain's terminus -- see rm/escape-home.
+(defun rm/scratch ()
+  "Pop to the *scratch* buffer."
+  (interactive)
+  (switch-to-buffer (get-scratch-buffer-create)))
+(keymap-global-set "C-c s" #'rm/scratch)
+;; ESC ESC ESC: quit whatever is quittable; when nothing is left to
+;; quit, land on the splash.  (Replaces stock keyboard-escape-quit,
+;; whose no-op case destructively did delete-other-windows.)
+(defun rm/escape-home ()
+  "Escape toward home: quit things first, then summon the splash."
+  (interactive)
+  (if (or (minibuffer-window-active-p (minibuffer-window))
+          (region-active-p)
+          (> (recursion-depth) 0))
+      (keyboard-escape-quit)
+    (rm/welcome)))
+(keymap-global-set "ESC ESC ESC" #'rm/escape-home)
 
 ;; No "When done with this frame, type C-a 5 0" echo in client frames --
 ;; Hyprland's Super+Q closes the frame like any window; the hint is noise.
