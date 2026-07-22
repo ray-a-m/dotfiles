@@ -25,6 +25,7 @@
   Tag the heading .......... [C-c C-c]    marks: «#important» ...... [C-c d g]
   Todos, all ............... [C-c a t]    text, in any body ........ [C-c d g]
   Todos, by tag ............ [C-c a m]
+  in agenda: hjkl move · r progress · d delete · s save
   tags: research · service ·
         teaching · technology
         (none = misc)
