@@ -713,14 +713,46 @@ layout untouched -- no empty window to clean up."
   (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5))
   ;; Agenda vim feel: hjkl moves (j/k lines, h/l shifts the date range in
   ;; calendar views), r progresses the TODO state at point (cycle; C-u r to
-  ;; pick).  Stock keys displaced: refresh stays on `g', goto-date via
-  ;; M-x org-agenda-goto-date, capture via C-c c, log mode via `v l'.
+  ;; pick), d deletes the entry from its source file (his flow: fixed
+  ;; frictions get deleted, not archived).  Stock keys displaced: refresh
+  ;; stays on `g', goto-date via M-x org-agenda-goto-date, capture via
+  ;; C-c c, log mode via `v l', day view via `v d'.
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
     (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
     (keymap-set org-agenda-mode-map "h" #'org-agenda-earlier)
     (keymap-set org-agenda-mode-map "l" #'org-agenda-later)
-    (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)))
+    (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)
+    (keymap-set org-agenda-mode-map "d" #'org-agenda-kill))
+  ;; Quieter agenda dressing.  The todo/match views insert a "Press 'N r'
+  ;; ..." hint line under the header -- strip it (real entries are
+  ;; indented, so ^Press only ever matches the hint).
+  (defun rm/agenda-strip-hints ()
+    (save-excursion
+      (goto-char (point-min))
+      (let ((inhibit-read-only t))
+        (while (re-search-forward "^Press .*\n?" nil t)
+          (delete-region (match-beginning 0) (match-end 0))))))
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-strip-hints)
+  ;; Source column: denote files would show as their raw filename
+  ;; ("20260721T105802--technology__hub", truncated); show "title form"
+  ;; instead, fixed-width so the TODO column stays aligned.
+  (defun rm/agenda-category ()
+    (let* ((f (buffer-file-name (buffer-base-buffer)))
+           (base (and f (file-name-base f)))
+           (s (if (and base (string-match
+                             "\\`[0-9]\\{8\\}T[0-9]\\{6\\}--\\(.+?\\)\\(?:__\\([a-z]+\\).*\\)?\\'"
+                             base))
+                  (concat (subst-char-in-string ?- ?\s (match-string 1 base))
+                          (if (match-string 2 base)
+                              (concat " " (match-string 2 base)) ""))
+                (org-get-category))))
+      (truncate-string-to-width (or s "") 18 nil ?\s "…")))
+  (setq org-agenda-prefix-format
+        '((agenda . " %i %(rm/agenda-category) %?-12t% s")
+          (todo   . " %i %(rm/agenda-category) ")
+          (tags   . " %i %(rm/agenda-category) ")
+          (search . " %i %(rm/agenda-category) "))))
 
 ;; --- Papers in Org: body-only LaTeX export --------------------------------
 ;; paper.org files under research-wip/documents/papers/<slug>/ export to the
