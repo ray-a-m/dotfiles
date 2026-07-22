@@ -680,6 +680,9 @@ layout untouched -- no empty window to clean up."
         ;; visible (agenda lands in another/new window -- 'current-window
         ;; put the task list ON TOP of the file you were reading); the
         ;; daily paper+notes+agenda layout survives and C-c w hjkl work.
+        ;; Which "other window" is pinned by the display-buffer-alist rule
+        ;; below: reuse a visible agenda window, else ALWAYS split a fresh
+        ;; one -- never commandeer an existing window.
         org-agenda-window-setup 'other-window
         org-startup-folded 'showall       ; open fully expanded; S-TAB cycles all folding
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
@@ -754,7 +757,14 @@ layout untouched -- no empty window to clean up."
         '((agenda . " %i %(rm/agenda-category) %?-12t% s")
           (todo   . " %i %(rm/agenda-category) ")
           (tags   . " %i %(rm/agenda-category) ")
-          (search . " %i %(rm/agenda-category) "))))
+          (search . " %i %(rm/agenda-category) ")))
+  ;; The agenda always gets its own window: reuse one already showing it,
+  ;; else split fresh (largest window gives up the space); never replace
+  ;; the buffer in an existing window.  Pairs with 'other-window above.
+  (add-to-list 'display-buffer-alist
+               '("\\*Org Agenda\\*"
+                 (display-buffer-reuse-window display-buffer-pop-up-window)
+                 (inhibit-same-window . t))))
 
 ;; --- Papers in Org: body-only LaTeX export --------------------------------
 ;; paper.org files under research-wip/documents/papers/<slug>/ export to the
