@@ -700,6 +700,11 @@ layout untouched -- no empty window to clean up."
         org-tag-alist '(("technology" . ?t) ("teaching" . ?e)
                         ("service" . ?s) ("research" . ?r)))
   :config
+  ;; Dispatcher `m' = todos by tag (the stock m is a headline-tag match
+  ;; that filetag inheritance floods with note sections -- dead weight
+  ;; in this grammar; stock M behavior takes its key).
+  (setq org-agenda-custom-commands
+        '(("m" "Todos, by tag" (lambda (_) (org-tags-view t)))))
   (setq org-capture-templates
         '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "Tasks")
            "* TODO %?\n  %U\n" :empty-lines 1)
