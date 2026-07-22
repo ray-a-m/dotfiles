@@ -21,9 +21,9 @@
 *Tasks*                                   *find*
 
   Capture a task ............... [c t]    one note, by name .............. [f]
-  Progress the state ... [C-c C-t / r]    notes: «_form.*_matter» .. [C-c d c]
-  Tag the heading .......... [C-c C-c]    marks: «#important» ............ [g]
-  Todos, all ..................... [t]    text, in any body .............. [g]
+  Progress the state ... [C-c C-t / r]    list: «_form.*_matter» ... [C-c d c]
+  Tag the heading .......... [C-c C-c]    text: any body, «#important» ... [g]
+  Todos, all ..................... [t]
   Todos, by tag ................ [a m]
   in agenda: hjkl move · r progress · d delete · s save
   tags: research · service ·
