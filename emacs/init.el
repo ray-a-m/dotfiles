@@ -1004,7 +1004,7 @@ the entry at point."
     "d" #'denote                          ; raw create: full keyword control
     "f" #'denote-open-or-create           ; find by name: fragments match filenames
     "l" #'rm/denote-list                  ; list: words -> dired catalog
-    "c" #'rm/denote-classify              ; classify: form+matter, in note
+    "c" #'rm/denote-classify              ; classify (alias; main key: M-c)
     "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
     "b" #'denote-backlinks                ; who links here?
     "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
@@ -1272,6 +1272,10 @@ very window the file is about to land in."
 ;; ...and its opposite: M-ESC leaps forward to any buffer (previewing
 ;; list, most recent first -- the one-gesture return after an ESC).
 (keymap-global-set "M-<escape>" #'consult-buffer)
+;; M-c: classify the thing at hand (note -> form/matter, task -> tags).
+;; Used constantly, so it earns home-row Meta; capitalize-word yields
+;; (M-u / M-l cover the rare case).
+(keymap-global-set "M-c" #'rm/denote-classify)
 (with-eval-after-load 'isearch
   (keymap-set isearch-mode-map "<escape>" #'isearch-abort))
 
