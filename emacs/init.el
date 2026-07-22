@@ -710,7 +710,17 @@ layout untouched -- no empty window to clean up."
   ;; Inline LaTeX preview (C-c C-x C-l): crisp SVG output, a bit larger than
   ;; the tiny default so equations are readable next to the prose font.
   (setq org-preview-latex-default-process 'dvisvgm)
-  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5)))
+  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5))
+  ;; Agenda vim feel: hjkl moves (j/k lines, h/l shifts the date range in
+  ;; calendar views), r progresses the TODO state at point (cycle; C-u r to
+  ;; pick).  Stock keys displaced: refresh stays on `g', goto-date via
+  ;; M-x org-agenda-goto-date, capture via C-c c, log mode via `v l'.
+  (with-eval-after-load 'org-agenda
+    (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
+    (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
+    (keymap-set org-agenda-mode-map "h" #'org-agenda-earlier)
+    (keymap-set org-agenda-mode-map "l" #'org-agenda-later)
+    (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)))
 
 ;; --- Papers in Org: body-only LaTeX export --------------------------------
 ;; paper.org files under research-wip/documents/papers/<slug>/ export to the

@@ -21,7 +21,7 @@
 *Tasks*                                   *find*
 
   Capture a task ........... [C-c c t]    one note, by name ........ [C-c d j]
-  Progress the state ....... [C-c C-t]    notes: «_form.*_matter» .. [C-c d c]
+  Progress the state ... [C-c C-t / r]    notes: «_form.*_matter» .. [C-c d c]
   Tag the heading .......... [C-c C-c]    marks: «#important» ...... [C-c d g]
   Todos, all ............... [C-c a t]    text, in any body ........ [C-c d g]
   Todos, by tag ............ [C-c a m]
