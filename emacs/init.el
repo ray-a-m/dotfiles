@@ -795,12 +795,15 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
   :bind-keymap ("C-c d" . rm/denote-map)
   :init
   (defvar rm/denote-forms
-    '("musing" "poetry" "idea" "paperidea" "wip" "lit" "log" "talk" "meeting" "hub")
+    '("musing" "poetry" "idea" "paperidea" "wip" "lit" "log" "talk" "meeting"
+      "hub" "presentation")
     "Note forms: the first filename keyword, exactly one per note.")
   (defvar rm/denote-matter
-    '("physics" "hegel" "kant" "math" "aesthetics")
+    '("physics" "hegel" "kant" "math" "aesthetics" "science" "concepts"
+      "history" "neokantian" "phenomenology" "teaching" "fun")
     "Matter keywords: the research programs.  Grow this list only when a
-new program is genuinely born; free-typing new matter still works.")
+new program is genuinely born; free-typing new matter still works.
+neokantian, not neo-kantian: denote strips hyphens from keywords.")
   (setq denote-directory (expand-file-name "~/Dropbox/notes/")
         denote-known-keywords rm/denote-matter
         denote-sort-keywords nil          ; NEVER alphabetize: form stays first
@@ -837,7 +840,7 @@ new program is genuinely born; free-typing new matter still works.")
     "m" #'rm/denote-musing  "o" #'rm/denote-poetry    "i" #'rm/denote-idea
     "p" #'rm/denote-paperidea  "w" #'rm/denote-wip    "l" #'rm/denote-lit
     "s" #'rm/denote-log     "t" #'rm/denote-talk      "e" #'rm/denote-meeting
-    "h" #'rm/denote-hub)
+    "h" #'rm/denote-hub     "n" #'rm/denote-presentation)
   :config
   ;; Vault dired buffers fontify the filename grammar (ID / title / keywords
   ;; each get a face) -- the catalog reads like a catalog, not a file dump.

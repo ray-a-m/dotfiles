@@ -190,35 +190,44 @@ timestamp, title, and keywords; no database, legible to `ls` forever. The
 grammar (all custom, in init.el's Denote section):
 
 - **First keyword = the form** (the act of writing), exactly one:
-  `musing poetry idea paperidea wip lit log talk meeting hub`.
+  `musing poetry idea paperidea wip lit log talk meeting hub presentation`.
   Two families with **no pipeline between them**: contemplative
   (musing/poetry/log/talk/meeting — finished when written) and productive
   (`idea → paperidea → wip`, promoted by `denote-rename-file`, `C-c d r` —
   the ID is immutable so links survive; a live `wip` exits to research-wip).
-  `lit` = reading notes; `hub` = curated standing notes (e.g. the
+  `lit` = reading notes; `talk` = talks attended; `presentation` = notes
+  for Raymond's own talks; `hub` = curated standing notes (e.g. the
   Technology hub, whose `TODO` headings the agenda picks up).
-- **Remaining keywords = matter** (research programs): seeded
-  `physics hegel kant math aesthetics`; **no matter means miscellaneous by
-  design** — there is deliberately no "misc" keyword; a form-only filename
-  (`__idea.org`) *is* the misc marker and is regexp-searchable.
-  `denote-sort-keywords` is nil so the form always stays first.
+- **Remaining keywords = matter** (research programs):
+  `physics hegel kant math aesthetics science concepts history neokantian
+  phenomenology teaching fun` (grown during the act-two migration review;
+  `neokantian` unhyphenated because denote strips hyphens from keywords).
+  **No matter means miscellaneous by design** — there is deliberately no
+  "misc" keyword; a form-only filename (`__idea.org`) *is* the misc marker
+  and is regexp-searchable. `denote-sort-keywords` is nil so the form
+  always stays first. Note-matter `teaching` and the org task tag
+  `:teaching:` share a name on purpose: denote keywords land in
+  `#+filetags`, which the agenda inherits, so teaching-matter TODOs and
+  teaching-tagged tasks meet under the same `C-c a m` match.
 - **Retrieval**: `C-c d j` jump (orderless fragments against filenames),
   `C-c d c` catalog (filename regexp → dired listing, e.g.
   `_paperidea.*_physics`), ripgrep for bodies, `C-c d b` backlinks. Span
   markers `#important` / `#definition` inside lit notes stay as grep-able
   ink, not keywords. The full map lives on the splash screen.
-- Per-form creation commands (`C-c d i/p/m/o/w/l/s/t/e/h`) prompt title then
-  matter, offering **only** the curated matter list (typing new matter
+- Per-form creation commands (`C-c d i/p/m/o/w/l/s/t/e/h/n`) prompt title
+  then matter, offering **only** the curated matter list (typing new matter
   through it still works — vocabulary growth is deliberate, not drift).
   (Terminology is Raymond's hylomorphic pair: **form** = the act of
   writing, **matter** = the research program it serves.)
 
 The vault is **git-tracked** (local repo, initialized 2026-07-21 with a
-pre-denote baseline commit) so every future migration step is a reviewable
-diff. Legacy folders coexist untouched; old notes adopt the scheme gradually
-via `C-c d r` (link rewriting for renamed lit notes is a planned, verified
-migration pass — act two; the design record lives in the 2026-07-21 session
-memory).
+pre-denote baseline commit) so every migration step is a reviewable diff.
+**Act two (the legacy migration) ran 2026-07-22**: 103 legacy files became
+415 denote notes at the vault root, split per the reviewed mapping
+(`act-two-mapping.org` in the vault records every ruling; originals live in
+git history and `~/Dropbox/notes-premigration-20260722.tar.gz`). Only
+`Dissertation/` (active-paper notes, deliberately left) and `Files/`
+(attachments) remain as folders.
 
 ## Papers in Org (migration started 2026-07-20)
 
