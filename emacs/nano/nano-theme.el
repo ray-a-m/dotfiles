@@ -272,7 +272,7 @@ Defaults to nil."
 (defun nano-theme--bookmark ()
   "Derive bookmark faces from nano faces."
   (with-eval-after-load 'bookmark
-    (set-face 'bookmark-menu-heading                  'nano-face-strong)
+    ;; bookmark-menu-heading was removed upstream (Emacs 30 has no such face)
     (set-face 'bookmark-menu-bookmark                'nano-face-salient)))
 
 
