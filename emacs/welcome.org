@@ -33,6 +33,6 @@
   Close buffer ............... [C-a k]    Scratch ................ [s / C-c s]
   File in project .......... [C-a p f]    Search in buffer ........... [M-s l]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
-  Jump / swap .................. [M-o]    Switch buffer .... [M-ESC / C-a b]
+  Jump / swap .................. [M-o]    Switch buffer ...... [M-ESC / C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
   New note ....................... [n]    Window menu ................ [C-c w]
