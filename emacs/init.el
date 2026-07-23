@@ -817,6 +817,14 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
     "Straight into a task capture (the t template) -- splash `t'."
     (interactive)
     (org-capture nil "t"))
+  ;; Prose is soft-wrapped (visual-line + olivetti own the line width;
+  ;; the papers' legacy hard fills were removed 2026-07-23, gated by
+  ;; pdftotext + pixel comparison).  A huge fill-column turns M-q into
+  ;; an UNfiller: refilling can't reintroduce char-count line breaks,
+  ;; which render ragged under a proportional font.
+  (defun rm/org-no-hard-fill ()
+    (setq-local fill-column most-positive-fixnum))
+  (add-hook 'org-mode-hook #'rm/org-no-hard-fill)
   ;; org's multi-key selectors (capture templates, export dispatch) read
   ;; chars in a recursive loop that ESC cannot break: the ESC char is
   ;; just one more "Invalid key" and the pending selector eats every
@@ -1446,7 +1454,12 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   (defun rm/mixed-pitch-fix-height ()
     (if mixed-pitch-mode
         (dolist (face mixed-pitch-fixed-pitch-faces)
-          (push (face-remap-add-relative face :height 0.75)
+          (push (face-remap-add-relative
+                 face :height
+                 ;; inline LaTeX sits INSIDE a serif line: at the block
+                 ;; scale (0.75) it read visibly smaller than the prose
+                 ;; around it (his $\Omega^-$ report) -- give it more
+                 (if (eq face 'org-latex-and-related) 0.9 0.75))
                 rm/mixed-pitch-height-cookies))
       (mapc #'face-remap-remove-relative rm/mixed-pitch-height-cookies)
       (setq rm/mixed-pitch-height-cookies nil)))
