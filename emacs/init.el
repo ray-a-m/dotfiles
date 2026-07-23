@@ -785,6 +785,33 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
     "Straight into a task capture (the t template) -- splash `t'."
     (interactive)
     (org-capture nil "t"))
+  ;; org's multi-key selectors (capture templates, export dispatch) read
+  ;; chars in a recursive loop that ESC cannot break: the ESC char is
+  ;; just one more "Invalid key" and the pending selector eats every
+  ;; keystroke until C-g -- which stranded the splash behind a stuck
+  ;; "Invalid key: 'a'" (2026-07-23).  Teach the reader that ESC aborts,
+  ;; consistent with ESC = universal back.  Stock body otherwise
+  ;; (org-macs.el, org--mks-read-key).
+  (defun rm/org--mks-read-key (allowed-keys prompt navigation-keys)
+    (setq header-line-format
+          (when navigation-keys "Use C-n, C-p, C-v, M-v to navigate."))
+    (let ((char-key (read-char-exclusive prompt)))
+      (cond
+       ((eq char-key ?\e) (user-error "Abort"))
+       ((and navigation-keys (memq char-key '(14 16 22 134217846)))
+        (org-scroll char-key)
+        (rm/org--mks-read-key allowed-keys prompt navigation-keys))
+       (t
+        (let ((key (char-to-string
+                    (pcase char-key
+                      ((or ?\s ?\t ?\r) ?\t)
+                      (char char)))))
+          (if (member key allowed-keys)
+              key
+            (message "Invalid key: `%s'" key)
+            (sit-for 1)
+            (rm/org--mks-read-key allowed-keys prompt navigation-keys)))))))
+  (advice-add 'org--mks-read-key :override #'rm/org--mks-read-key)
   (defun rm/latex-preview-clear ()
     "LaTeX preview stays OFF: clear any rendered fragments here instead."
     (interactive)
