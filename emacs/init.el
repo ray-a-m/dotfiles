@@ -521,7 +521,8 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   (require 'vertico-multiform)
   (require 'vertico-buffer)
   (setq vertico-multiform-commands '((rm/denote-find buffer)
-                                     (rm/denote-grep buffer))
+                                     (rm/denote-grep buffer)
+                                     (rm/denote-list buffer))
         vertico-buffer-display-action '(display-buffer-same-window))
   (vertico-multiform-mode 1))
 
@@ -1084,22 +1085,16 @@ denote name only if it becomes something you search for."
       (copy-file file dest 1)
       (insert (format "[[file:Files/%s]]" (file-name-nondirectory file)))
       (when (derived-mode-p 'org-mode) (org-display-inline-images))))
-  (defun rm/denote-list (query)
-    "Dired listing of the notes whose filenames match every word of QUERY.
-Words match in any order, anywhere in the filename (title or keywords)
--- no regexp needed.  A leading underscore anchors a word to a keyword
-(_physics); each word may still be a regexp if you want one."
-    (interactive "sList notes matching: ")
-    (let* ((terms (split-string query))
-           (files (seq-filter
-                   (lambda (f)
-                     (let ((base (file-name-nondirectory f)))
-                       (seq-every-p (lambda (rx) (string-match-p rx base)) terms)))
-                   (denote-directory-files))))
-      (if files
-          (dired (cons (denote-directory)
-                       (mapcar #'file-relative-name files)))
-        (user-error "No notes match %S" query))))
+  (defun rm/denote-list ()
+    "The picker over titles AND keywords: fragments match either (splash l).
+Same catalog as f, but candidates carry their keywords (faded, after
+the title), so `_hegel hub' narrows by form/matter too."
+    (interactive)
+    (require 'denote)
+    (when-let ((f (rm/note-pick (nreverse (denote-directory-files))
+                                "Note (title/keywords): "
+                                #'rm/note--display-kw)))
+      (find-file f)))
   (defun rm/denote-hubs ()
     "Dired listing of the hub notes (splash `h')."
     (interactive)
@@ -1147,18 +1142,26 @@ the entry at point."
            (not (org-before-first-heading-p)))
       (org-set-tags-command))
      (t (user-error "Nothing here to classify"))))
-  ;; --- The note picker: f (all notes) and g (notes containing words) ----
+  ;; --- The note picker: f (titles), l (titles+keywords), g (content) ----
   ;; Type-to-narrow completion, displayed BIG: vertico-multiform routes
-  ;; these two commands through vertico-buffer into the original window,
-  ;; not the minibuffer's echo line.  Candidates are TITLES (the filename
-  ;; slug -- no ID, no date, no keywords; untitled notes show their bare
-  ;; ID).  M-j/M-k walk candidates for free (vertico remaps next/
-  ;; previous-line, which is what the vim-Meta keys call); the candidate
-  ;; previews in a window to the right as the selection moves; M-d
-  ;; deletes it after confirmation; RET opens; ESC aborts home.
+  ;; these commands through vertico-buffer into the original window, not
+  ;; the minibuffer's echo line, and each opens STRAIGHT into the full
+  ;; catalog -- typing narrows from there.  Candidates are TITLES (no
+  ;; ID, no date; untitled notes show their bare ID; l appends the
+  ;; keywords, faded, so fragments match form/matter too).  M-j/M-k walk
+  ;; candidates for free (vertico remaps next/previous-line, which is
+  ;; what the vim-Meta keys call); the candidate previews in a window to
+  ;; the right as the selection moves; M-d deletes it after
+  ;; confirmation; RET opens; ESC aborts home.  g narrows by CONTENT:
+  ;; every keystroke re-runs rg over the vault and the pass-through
+  ;; rm-anything completion style stops vertico from also filtering the
+  ;; titles against the typed words.
   (defvar rm/note-pick--alist nil)
   (defvar rm/note-pick--pwin nil)
   (defvar rm/note-pick--pfile nil)
+  (defvar rm/note-pick--display-fn nil)
+  (defvar rm/note-pick--content-mode nil)
+  (defvar rm/note-pick--content-words 'unset)
   (defun rm/note--display (file)
     "FILE's picker name: the title slug, or the bare ID when untitled."
     (let ((base (file-name-sans-extension (file-name-nondirectory file))))
@@ -1166,6 +1169,50 @@ the entry at point."
            "\\`[0-9]\\{8\\}T[0-9]\\{6\\}--\\(.*?\\)\\(?:__.*\\)?\\'" base)
           (match-string 1 base)
         base)))
+  (defun rm/note--display-kw (file)
+    "Like `rm/note--display', with the keywords faded after the title."
+    (let ((base (file-name-sans-extension (file-name-nondirectory file))))
+      (if (string-match
+           "\\`[0-9]\\{8\\}T[0-9]\\{6\\}--\\(.*?\\)\\(?:__\\(.*\\)\\)?\\'" base)
+          (let ((title (match-string 1 base))
+                (kw (match-string 2 base)))
+            (if kw
+                (format "%s  %s" title
+                        (propertize kw 'face 'nano-face-faded))
+              title))
+        base)))
+  (defun rm/note-pick--set-files (files)
+    "Fill the candidate alist from FILES, qualifying duplicate titles."
+    (setq rm/note-pick--alist
+          (mapcar (lambda (f) (cons (funcall rm/note-pick--display-fn f) f))
+                  files))
+    (let (seen)
+      (dolist (cell rm/note-pick--alist)
+        (if (member (car cell) seen)
+            (setcar cell (format "%s · %s" (car cell)
+                                 (file-name-nondirectory (cdr cell))))
+          (push (car cell) seen)))))
+  ;; pass-through completion style: the table's candidates ARE the answer
+  ;; (g's rg already narrowed them); the typed words must not be matched
+  ;; against the titles again
+  (defun rm/style-anything-all (_str table pred _point)
+    (all-completions "" table pred))
+  (defun rm/style-anything-try (str _table _pred _point &optional _md) str)
+  (add-to-list 'completion-styles-alist
+               '(rm-anything rm/style-anything-try rm/style-anything-all
+                             "Pass-through: table decides."))
+  (defun rm/note-pick--content-update ()
+    "g's live narrowing: re-run rg when the typed words change."
+    (when rm/note-pick--content-mode
+      (let ((words (split-string (minibuffer-contents-no-properties))))
+        (unless (equal words rm/note-pick--content-words)
+          (setq rm/note-pick--content-words words)
+          (let ((files (nreverse (denote-directory-files))))
+            (dolist (w words)
+              (setq files (rm/denote--files-containing w files)))
+            (rm/note-pick--set-files files))
+          (when (and (minibufferp) (fboundp 'vertico--exhibit))
+            (vertico--exhibit))))))
   (defun rm/note-pick--table (str pred action)
     (if (eq action 'metadata)
         '(metadata (display-sort-function . identity)
@@ -1206,24 +1253,26 @@ the entry at point."
         (insert "x") (delete-char -1)
         (minibuffer-message "Deleted"))))
   (defvar-keymap rm/note-pick-map "M-d" #'rm/note-pick-delete)
-  (defun rm/note-pick (files prompt)
-    "Pick a note from FILES by title; return its path, nil on abort."
-    (setq rm/note-pick--alist
-          (mapcar (lambda (f) (cons (rm/note--display f) f)) files)
+  (defun rm/note-pick (files prompt &optional display-fn content-mode)
+    "Pick a note from FILES; return its path, nil on abort.
+DISPLAY-FN renders a candidate (default: the title slug).  With
+CONTENT-MODE, typing narrows by note CONTENT (live rg) instead of by
+candidate text."
+    (setq rm/note-pick--display-fn (or display-fn #'rm/note--display)
+          rm/note-pick--content-mode content-mode
+          rm/note-pick--content-words 'unset
           rm/note-pick--pfile nil)
-    ;; title collisions: qualify later duplicates with their filename
-    (let (seen)
-      (dolist (cell rm/note-pick--alist)
-        (if (member (car cell) seen)
-            (setcar cell (format "%s · %s" (car cell)
-                                 (file-name-nondirectory (cdr cell))))
-          (push (car cell) seen))))
+    (rm/note-pick--set-files files)
     (unwind-protect
         (let ((choice
                (minibuffer-with-setup-hook
                    (lambda ()
                      (use-local-map (make-composed-keymap
                                      rm/note-pick-map (current-local-map)))
+                     (when rm/note-pick--content-mode
+                       (setq-local completion-styles '(rm-anything)))
+                     (add-hook 'post-command-hook
+                               #'rm/note-pick--content-update nil t)
                      (add-hook 'post-command-hook
                                #'rm/note-pick--preview nil t))
                  (completing-read prompt #'rm/note-pick--table nil t))))
@@ -1246,21 +1295,20 @@ the entry at point."
                            "-l" "-i" "--fixed-strings" word files)
                     (split-string (buffer-string) "\n" t))))
         (seq-filter (lambda (f) (member f hits)) files))))
-  (defun rm/denote-grep (query)
-    "Notes containing every word of QUERY, as the picker (splash g)."
-    (interactive "sNotes containing: ")
+  (defun rm/denote-grep ()
+    "Straight into the catalog; typing narrows by CONTENT (splash g).
+Every keystroke re-runs rg: the list shrinks to the notes containing
+all the typed words."
+    (interactive)
     (require 'denote)
-    (let ((files (nreverse (denote-directory-files))))
-      (dolist (w (split-string query))
-        (setq files (rm/denote--files-containing w files)))
-      (unless files (user-error "No notes contain %s" query))
-      (when-let ((f (rm/note-pick files (format "Note (%s): " query))))
-        (find-file f))))
+    (when-let ((f (rm/note-pick (nreverse (denote-directory-files))
+                                "Notes containing: " nil t)))
+      (find-file f)))
   (defvar-keymap rm/denote-map
     :doc "Denote: create by form, jump, catalog, grep, backlinks, rename."
     "d" #'denote                          ; raw create: full keyword control
     "f" #'rm/denote-find                  ; the picker: titles, preview, M-d
-    "l" #'rm/denote-list                  ; list: words -> dired catalog
+    "l" #'rm/denote-list                  ; the picker, keywords matchable
     "c" #'rm/denote-classify              ; classify (alias; main key: M-c)
     "g" #'rm/denote-grep                  ; by content: words -> the picker
     "b" #'denote-backlinks                ; who links here?
