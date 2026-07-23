@@ -900,6 +900,21 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
    'org-mode
    '((rm/org-cite-pill-matcher 0 (rm/org-cite-pill-spec) prepend))
    t)
+  ;; @@latex:...@@ escape hatches: the INK vanishes -- the span displays
+  ;; as its inner content only (empty separators disappear entirely),
+  ;; revealing raw at point via the same watcher as the citation pills.
+  ;; Mostly historical: the byte-parity era needed escapes for accents /
+  ;; \dots / $math$-hyphen collisions, all of which now have escape-free
+  ;; spellings (see README "LaTeX in org prose").
+  (font-lock-add-keywords
+   'org-mode
+   '(("@@latex:\\([^@\n]*\\)@@"
+      0
+      (list 'face nil
+            'display (substring-no-properties (match-string 1))
+            'rm-cite-pill t)
+      prepend))
+   t)
   (defvar-local rm/cite-pill--revealed nil)
   (defun rm/cite-pill--watch ()
     "Reveal the pill at point (full \\cite command); re-hide on exit."
