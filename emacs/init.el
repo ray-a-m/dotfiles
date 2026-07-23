@@ -598,7 +598,10 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 
 (use-package magit
   :defer t
-  :bind ("C-x g" . magit-status))
+  ;; Into ctl-x-map DIRECTLY (typed C-a g): a "C-x g" sequence bind works
+  ;; at first boot but errors on every rm/reload-init once end-of-init
+  ;; makes plain C-x a non-prefix (same class as the old C-x k bug).
+  :bind (:map ctl-x-map ("g" . magit-status)))
 
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
@@ -776,23 +779,29 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-startup-with-latex-preview nil)
   ;; org's 'latex option covers fragments/environments but NOT prose
   ;; macros -- \textcite{...} stayed unhighlighted.  Add the macro
-  ;; pattern ourselves, same face.  SKIP block content: export blocks
-  ;; are already org-block-styled, and stacking the latex face there
-  ;; compounds the two relative 0.75 height remaps into tiny text
-  ;; (float face heights MULTIPLY down the merge chain).
+  ;; pattern ourselves.  In prose the span gets org-latex-and-related
+  ;; (sienna mono at prose height).  Inside org-block-faced text
+  ;; (export blocks) it gets a COLOUR-ONLY face instead: the block
+  ;; already supplies mono + the 0.75 size, and stacking a second
+  ;; height-remapped face there compounds the two relative heights
+  ;; into tiny text (float face heights MULTIPLY down the merge chain).
+  (defface rm/org-latex-in-block
+    '((t :foreground "#9c6644"))
+    "LaTeX macro colour inside blocks: colour only, no family/height.")
   (defconst rm/org-latex-macro-rx
     "\\\\[a-zA-Z@]+\\*?\\(?:\\[[^]\n]*\\]\\)*\\(?:{[^{}\n]*}\\)*")
   (defun rm/org-latex-macro-matcher (limit)
-    "Find a LaTeX macro before LIMIT, outside org-block-faced text."
-    (catch 'found
-      (while (re-search-forward rm/org-latex-macro-rx limit t)
-        (let ((f (get-text-property (match-beginning 0) 'face)))
-          (unless (memq 'org-block (flatten-tree (list f)))
-            (throw 'found t))))
-      nil))
+    (re-search-forward rm/org-latex-macro-rx limit t))
   (font-lock-add-keywords
    'org-mode
-   '((rm/org-latex-macro-matcher 0 'org-latex-and-related prepend))
+   '((rm/org-latex-macro-matcher
+      0
+      (if (memq 'org-block
+                (flatten-tree (list (get-text-property (match-beginning 0)
+                                                       'face))))
+          'rm/org-latex-in-block
+        'org-latex-and-related)
+      prepend))
    t)
   (defun rm/capture-task ()
     "Straight into a task capture (the t template) -- splash `t'."
@@ -1937,10 +1946,8 @@ with \"Cannot move to same file\".  A path as the new name still moves."
 ;; When you want them:
 ;;   * the elegant "Welcome" second page (quick-help + clickable commands),
 ;;     ported from rougier/elegant-emacs's Welcome.org
-;;   * citar      -- \cite by fuzzy author/title search over references.bib,
-;;                   riding on vertico; deferred while RefTeX (C-c [) suffices
-;;   * pdf-tools  -- view/annotate PDFs in Emacs (zathura already views)
 ;;   * a theme that follows Omarchy -- Emacs won't auto-track it; its own project
+;; (citar and pdf-tools graduated from this list on 2026-07-23.)
 
 ;; --- C-x -> beginning-of-line (the other half of the C-a swap) -----------
 ;; Deliberately LAST: every "C-x ..." definition above (C-x k, magit's C-x g,
