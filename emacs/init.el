@@ -694,7 +694,8 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 (use-package org
   :ensure nil                             ; org ships with Emacs
   :bind (("C-c a" . org-agenda)           ; the calendar/todo dispatcher
-         ("C-c c" . org-capture)          ; jot a task/note from anywhere
+         ;; (C-c c UNBOUND 2026-07-23: t/n on the splash are capture --
+         ;;  rm/capture-task still calls org-capture programmatically)
          ("C-c l" . org-store-link)
          :map org-mode-map
          ;; preview is OFF for good (rendered fragments kept reappearing);
@@ -1474,7 +1475,7 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "a") #'org-todo-list)          ; todos, all -- what
                                         ; he actually uses (agenda views: C-c a)
             (define-key map (kbd "t") #'rm/capture-task)        ; new todo, directly
-            (define-key map (kbd "c") #'org-capture)            ; capture (any template)
+                                        ; (no c/capture menu: t and n ARE capture)
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'rm/denote-list)         ; list by words
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
