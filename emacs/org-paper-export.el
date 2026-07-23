@@ -52,9 +52,28 @@ flush at EOF leaves the paragraph open, and the driver's newline after
 \(observed on friedman's Conclusion, 2026-07-20)."
   (concat (string-trim-right output) "\n\n"))
 
+(defun rm/org-paper--splice-todo-headlines (tree _backend _info)
+  "TODO/NEXT/WAITING headline LINES vanish; their contents export in place.
+The headline is a work marker, the prose beneath belongs to the paper
+\(his rule, 2026-07-23 -- reversing the original drop-the-subtree
+convention, whose tasks:nil silently hid a third of symmetry-reality
+behind a level-1 TODO).  Innermost first, so nested markers splice
+cleanly.  Requires tasks:t in org-paper.setup: ox prunes tasks BEFORE
+parse-tree filters run."
+  (let (todos)
+    (org-element-map tree 'headline
+      (lambda (hl)
+        (when (org-element-property :todo-keyword hl) (push hl todos))))
+    (dolist (hl todos)                    ; push reversed = innermost first
+      (mapc (lambda (child) (org-element-insert-before child hl))
+            (org-element-contents hl))
+      (org-element-extract-element hl)))
+  tree)
+
 (org-export-define-derived-backend 'paper-latex 'latex
   :translate-alist '((latex-math-block . rm/org-paper--math-block))
-  :filters-alist '((:filter-headline . rm/org-paper--strip-section-labels)
+  :filters-alist '((:filter-parse-tree . rm/org-paper--splice-todo-headlines)
+                   (:filter-headline . rm/org-paper--strip-section-labels)
                    (:filter-final-output . rm/org-paper--final-newlines)))
 
 (defun rm/org-paper--doc-type ()
