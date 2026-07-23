@@ -291,7 +291,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-c h` | help prefix (`C-c h k` = describe key); `<f1>` works too |
 | `C-S-k` / `C-S-l` | kill-line / recenter (displaced from `C-k` / `C-l`) |
 | `M-o` | ace-window: jump to a window; `m` swaps, `x` deletes |
-| `C-c w` | window menu: split / pick-file-into-split (`f` right, `b` below) / swap / repeatable divider drag (`hjkl`) / winner undo |
+| `C-c w` | window menu: split / `n` fresh right split showing the splash / pick-file-into-split (`f` right, `b` below) / swap / repeatable divider drag (`hjkl`) / winner undo |
 | `C-c n` | capture a note: instant untitled vault note; titles itself from line 1 on save; `M-c` classifies (form+matter) in place |
 | `C-c p` | papers sidebar on `~/scholarship/research-wip` (dired-sidebar roots at the project; `documents/` is one `l` away) |
 | `<f8>` | toggle a sidebar at the current project |

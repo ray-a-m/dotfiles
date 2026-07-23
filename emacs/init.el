@@ -405,10 +405,17 @@ layout untouched -- no empty window to clean up."
   (interactive)
   (rm/find-file-split 'below))
 
+(defun rm/window-new ()
+  "Fresh window to the right, showing the splash -- a blank slate to
+navigate from with the splash's single keys (f, l, a, n, ...)."
+  (interactive)
+  (select-window (split-window-right))
+  (rm/welcome t))
 (defvar-keymap rm/window-map
   :doc "Window menu: splits, file-into-split, swap, divider drag, balance, layout undo."
   "s" #'split-window-below                ; like :sp
   "v" #'split-window-right                ; like :vs
+  "n" #'rm/window-new                     ; right split showing the splash
   "f" #'rm/find-file-right                ; pick a file into a right split
   "b" #'rm/find-file-below                ; pick a file into a below split
   "h" #'rm/window-edge-left               ; drag the divider left

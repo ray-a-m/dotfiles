@@ -149,17 +149,31 @@ Frontmatter files build the dissertation one level up."
         (cons (file-name-directory (directory-file-name dir)) "dissertation.tex")
       (cons dir (rm/org-paper--driver-name type)))))
 
+(defun rm/org-paper--compile-done (buffer status)
+  "Quiet verdict for the windowless latexmk runs of `rm/org-paper-compile'.
+Success is one word in the echo area; failure points at *compilation*,
+which exists but was never displayed."
+  (when (string-match-p "latexmk" (or (buffer-local-value 'compile-command buffer) ""))
+    (if (string-prefix-p "finished" status)
+        (message "PDF ready")
+      (message "LaTeX failed — log in *compilation* (M-ESC reaches it)"))))
+(add-hook 'compilation-finish-functions #'rm/org-paper--compile-done)
+
 (defun rm/org-paper-compile ()
   "Export the generated .tex, then latexmk the driver (C-c C-c parity
-with the AUCTeX latexmk binding).  For `org-ctrl-c-ctrl-c-final-hook':
-returns non-nil in research-document buffers so the fallthrough stops
-here."
+with the AUCTeX latexmk binding).  The compilation runs WINDOWLESS --
+no *compilation* popup; `rm/org-paper--compile-done' echoes the
+verdict instead (pdf-tools auto-reverts an open PDF on success).  For
+`org-ctrl-c-ctrl-c-final-hook': returns non-nil in research-document
+buffers so the fallthrough stops here."
   (when (rm/org-paper-buffer-p)
     (rm/org-paper-export)
     (pcase-let* ((`(,dir . ,driver) (rm/org-paper--build-target))
                  (default-directory dir))
-      (compile (format "latexmk -pdf -interaction=nonstopmode -halt-on-error %s"
-                       driver)))
+      (let ((display-buffer-overriding-action
+             '(display-buffer-no-window (allow-no-window . t))))
+        (compile (format "latexmk -pdf -interaction=nonstopmode -halt-on-error %s"
+                         driver))))
     t))
 
 (defun rm/org-paper-watch ()
