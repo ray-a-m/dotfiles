@@ -1841,10 +1841,12 @@ so the startup hook stays quiet when a frame opens on a file."
          (save-excursion
            (goto-char (point-min))
            (not (re-search-forward "^[^#: \n]" nil t))))
-    (let ((f buffer-file-name))
-      (set-buffer-modified-p nil)
-      (kill-buffer)
-      (delete-file f)
+    (let ((f buffer-file-name)
+          (born rm/welcome--origin))     ; splash-born? (its visit killed
+      (set-buffer-modified-p nil)        ;  the splash, so the window's
+      (kill-buffer)                      ;  fallback history is the whole
+      (delete-file f)                    ;  day -- go home directly)
+      (when born (rm/welcome t))
       (message "Empty note discarded")))
    ((eq (current-buffer) (get-buffer "*welcome*"))
     ;; the floor -- and a second splash in an extra window is a stale
@@ -1923,6 +1925,32 @@ would no-op and strand ESC."
 (keymap-global-set "M-c" #'rm/denote-classify)
 (with-eval-after-load 'isearch
   (keymap-set isearch-mode-map "<escape>" #'isearch-abort))
+
+;; Super+F fullscreen shows the page, nothing else: nano's header-line
+;; status bar hides while the frame fills its monitor, returns when it
+;; shrinks back.  (Hyprland can't tell Emacs about WM fullscreen, so
+;; detect it geometrically on size changes.  The opacity half lives in
+;; hypr/windows.conf: fullscreen no longer snaps to opaque.)  nano sets
+;; the DEFAULT header-line; buffers with their own local one (sidebar
+;; root name, agenda) keep it.
+(defvar rm/fullscreen--saved-header 'none)
+(defun rm/fullscreen--p (frame)
+  (let ((geo (frame-monitor-attribute 'geometry frame)))
+    (and geo
+         (>= (frame-pixel-width frame) (nth 2 geo))
+         (>= (frame-pixel-height frame) (- (nth 3 geo) 2)))))
+(defun rm/fullscreen-chrome (&optional frame)
+  (let ((f (or (and (framep frame) frame) (selected-frame))))
+    (when (display-graphic-p f)
+      (if (rm/fullscreen--p f)
+          (when (eq rm/fullscreen--saved-header 'none)
+            (setq rm/fullscreen--saved-header
+                  (default-value 'header-line-format))
+            (setq-default header-line-format nil))
+        (unless (eq rm/fullscreen--saved-header 'none)
+          (setq-default header-line-format rm/fullscreen--saved-header)
+          (setq rm/fullscreen--saved-header 'none))))))
+(add-hook 'window-size-change-functions #'rm/fullscreen-chrome)
 
 ;; No "When done with this frame, type C-a 5 0" echo in client frames --
 ;; Hyprland's Super+Q closes the frame like any window; the hint is noise.
