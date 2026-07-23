@@ -1187,6 +1187,22 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   :hook ((org-mode      . mixed-pitch-mode)
          (markdown-mode . mixed-pitch-mode)
          (LaTeX-mode    . mixed-pitch-mode))
+  :init
+  ;; mixed-pitch pins block/code/table faces to mono by FAMILY only, so
+  ;; export blocks rendered at full mono height -- larger than the prose
+  ;; around them (his report, 2026-07-23; mixed-pitch-set-height copies
+  ;; an absolute full-size height, no better).  Layer the fixed-pitch
+  ;; scale (0.75, tuned to sit level with ET Book) onto every pinned
+  ;; face ourselves, on the same mode hook.
+  (defvar-local rm/mixed-pitch-height-cookies nil)
+  (defun rm/mixed-pitch-fix-height ()
+    (if mixed-pitch-mode
+        (dolist (face mixed-pitch-fixed-pitch-faces)
+          (push (face-remap-add-relative face :height 0.75)
+                rm/mixed-pitch-height-cookies))
+      (mapc #'face-remap-remove-relative rm/mixed-pitch-height-cookies)
+      (setq rm/mixed-pitch-height-cookies nil)))
+  (add-hook 'mixed-pitch-mode-hook #'rm/mixed-pitch-fix-height)
   :config
   ;; LaTeX-in-prose keeps the prose family (his ruling): the highlight is
   ;; colour, not a font switch -- unpin it from mixed-pitch's mono list.
