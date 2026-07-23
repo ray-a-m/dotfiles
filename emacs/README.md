@@ -212,12 +212,15 @@ grammar (all custom, in init.el's Denote section):
   `:teaching:` share a name on purpose: denote keywords land in
   `#+filetags`, which the agenda inherits, so teaching-matter TODOs and
   teaching-tagged tasks meet under the same `C-c a m` match.
-- **Retrieval**: `C-c d f` find by name (orderless fragments against filenames),
-  `C-c d l` list (words → dired catalog: every filename containing
-  all the words, any order — `paperidea physics`; `_physics` anchors to a
-  keyword, and words may be regexps), ripgrep for bodies, `C-c d b` backlinks. Span
-  markers `#important` / `#definition` inside lit notes stay as grep-able
-  ink, not keywords. The full map lives on the splash screen.
+- **Retrieval — the note picker** (2026-07-23, also splash `f`/`g`/`l`): all
+  three keys open straight into a full-window catalog (vertico-buffer) of
+  titles, newest first — no ID, no date. Typing narrows: `f` by title,
+  `l` by title *or* keywords (shown faded after the title), `g` by
+  **content** (each keystroke re-runs rg over the vault). `M-j`/`M-k`
+  move, the selection previews in a window to the right, `M-d` deletes
+  the note after confirmation, `RET` opens, ESC aborts home. `C-c d b`
+  backlinks. Span markers `#important` / `#definition` inside lit notes
+  stay as grep-able ink, not keywords. The full map lives on the splash.
 - **Capture is frictionless**: `C-c n` opens an untitled, unclassified note
   instantly (zero prompts). On save it titles itself from the first line
   (`rm/denote-autotitle`, only while untitled); `M-c` (`rm/denote-classify`)

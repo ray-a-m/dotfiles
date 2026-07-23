@@ -1004,12 +1004,12 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
 ;;   reference      lit (reading notes)  hub (curated standing notes, e.g.
 ;;                  the Technology hub; span markers like #important and
 ;;                  #definition stay as grep-able ink in lit bodies)
-;; Retrieval: C-c d f finds by name fragments (orderless); C-c d l lists
-;; a dired catalog from plain words (any order, `paperidea physics');
-;; C-c d g ripgreps the bodies (consult); C-c d b backlinks.  Capture:
-;; C-c n is instant and untitled (titles itself from line 1 on save);
-;; M-c classifies in place.  Map on the splash.  Vault fully denote
-;; since the 2026-07-22 migration (git-tracked -- commit often).
+;; Retrieval: the note picker (f/l/g, splash and C-c d) -- full-window
+;; title catalog, typing narrows (f titles, l titles+keywords, g note
+;; CONTENT via live rg), preview right, M-d deletes; C-c d b backlinks.
+;; Capture: C-c n is instant and untitled (titles itself from line 1 on
+;; save); M-c classifies in place.  Map on the splash.  Vault fully
+;; denote since the 2026-07-22 migration (git-tracked -- commit often).
 (use-package denote
   :bind (("C-c n" . rm/denote-note))       ; instant untitled capture
   :bind-keymap ("C-c d" . rm/denote-map)
