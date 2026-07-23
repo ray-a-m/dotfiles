@@ -1545,6 +1545,10 @@ so the startup hook stays quiet when a frame opens on a file."
    ((minibuffer-window-active-p (minibuffer-window)) (abort-recursive-edit))
    ((region-active-p) (deactivate-mark))
    ((> (recursion-depth) 0) (abort-recursive-edit))
+   ;; a capture in progress: ESC aborts it (org's C-c C-k) -- the
+   ;; inserted template leaves the target with it, so an ESCed empty
+   ;; todo never reaches inbox.org (C-c C-c finalizes, as before)
+   ((bound-and-true-p org-capture-mode) (org-capture-kill))
    ((eq (current-buffer) (get-buffer "*welcome*"))
     ;; the floor -- and a second splash in an extra window is a stale
     ;; popup: close it; ONE splash is the floor
