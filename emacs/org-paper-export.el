@@ -73,6 +73,19 @@ parse-tree filters run."
       (lambda (hl)
         (when (org-element-property :todo-keyword hl) (push hl todos))))
     (dolist (hl todos)                    ; push reversed = innermost first
+      ;; the blank-line accounting at a headline boundary leaves with the
+      ;; headline, gluing the paragraph before the marker to the first
+      ;; paragraph after it (one LaTeX paragraph!) -- force a paragraph
+      ;; break on the element preceding the seam
+      (let* ((parent (org-element-property :parent hl))
+             (prev nil))
+        (dolist (sib (org-element-contents parent))
+          (when (eq sib hl)
+            (when prev
+              (org-element-put-property
+               prev :post-blank
+               (max 1 (or (org-element-property :post-blank prev) 0)))))
+          (setq prev sib)))
       (mapc (lambda (child) (org-element-insert-before child hl))
             (org-element-contents hl))
       (org-element-extract-element hl)))
