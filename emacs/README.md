@@ -264,16 +264,18 @@ auto-generated random `\label{sec:orgNNN}`, and ends bodies with exactly
 one blank line; a doc-type table mapping the four source patterns to their
 artifacts; and a driver writer with per-type templates. Shared export
 options live in `research-wip/documents/shared/org-paper.setup` (smart
-quotes and special strings off, `tasks:nil`, the TODO keywords for batch
+quotes and special strings off, `tasks:t`, the TODO keywords for batch
 runs). Saving regenerates the artifacts (after-save hook); `C-c C-c`
 exports + latexmks, matching the AUCTeX binding; `M-x rm/org-paper-watch`
 runs `latexmk -pvc` for continuous compile-on-save preview (zathura
 refreshes; no inverse search — SyncTeX maps to the generated `.tex`);
 `publish` regenerates everything headless via `emacs -Q --batch` before
 building. A `** TODO …` jotted mid-document reaches the global agenda
-(`org-agenda-files` includes `research-wip/documents/**/*.org`) and its
-whole subtree is dropped from export — so keep only task notes under TODO
-headlines, never prose. Citations stay raw LaTeX
+(`org-agenda-files` includes `research-wip/documents/**/*.org`); on export
+the TODO headline LINE vanishes while everything beneath it exports as
+paper prose (2026-07-23 inversion — the old drop-the-subtree rule silently
+hid real sections). Reminder text that must not reach the PDF goes in `#`
+org comments. Citations stay raw LaTeX
 (`\cite`/`\textcite`/`\parencite`), passed through verbatim.
 
 Every migration step was gated: generated artifacts byte-identical to the

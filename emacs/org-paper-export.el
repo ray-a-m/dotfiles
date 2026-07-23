@@ -27,7 +27,7 @@
 ;;     absent from the bodies and nondeterministic across exports, so a
 ;;     headline filter strips them
 ;;
-;; Shared export options (tasks:nil, ':nil, -:nil, ^:nil, ...) live in
+;; Shared export options (tasks:t + the TODO splice, ':nil, -:nil, ...) live in
 ;; research-wip/documents/shared/org-paper.setup, mirroring the shared
 ;; preamble.tex philosophy.  Loaded by init.el for interactive use and by
 ;; `emacs -Q --batch' from the publish shell function -- keep it free of
