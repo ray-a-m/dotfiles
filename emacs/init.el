@@ -1094,12 +1094,38 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
   :hook ((org-mode            . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda))  ; same look in C-c a
   :init
-  (setq org-modern-star 'replace          ; static glyphs, not fold-state triangles
-        org-modern-replace-stars "✦✧✱✳"   ; one per level; level 5+ reuses the last
-        org-modern-block-fringe nil       ; fringe markers sit wrong next to olivetti's margins
+  (setq org-modern-star nil               ; the ✦✧✱✳ glyphs moved into the
+                                          ; MARGIN (org-margin below) --
+                                          ; headline text sits flush left
+        ;; real bullets for plain lists -- the stock "-" -> "–" en dash
+        ;; read as hyphens (his complaint, 2026-07-23)
+        org-modern-list '((?- . "•") (?+ . "◦") (?* . "▹"))
+        org-modern-block-fringe nil       ; fringe markers sit wrong next to olivetti
         ;; tag/keyword pills look best unaligned (no trailing-whitespace columns)
         org-auto-align-tags nil
         org-tags-column 0))
+
+;; org-margin (rougier, vendored like nano): headline stars render IN the
+;; left margin as the level glyphs, so headline text starts at column 0 --
+;; the outdented look.  Implementation: font-lock puts a
+;; `display ((margin left-margin) GLYPH)' property on the leading stars.
+;; olivetti must center via FRINGES for this (style t below): both would
+;; otherwise fight over window margins.  nano paints fringes in the
+;; background colour, so the switch is visually silent.
+(require 'org-margin (expand-file-name "org-margin.el" user-emacs-directory))
+(setq org-margin-headers
+      (list (cons 'rm (list (propertize "✦" 'face 'org-level-1)
+                            (propertize "✧" 'face 'org-level-2)
+                            (propertize "✱" 'face 'org-level-3)
+                            (propertize "✳" 'face 'org-level-4)
+                            (propertize "✳" 'face 'org-level-5)
+                            (propertize "✳" 'face 'org-level-6))))
+      org-margin-headers-set 'rm
+      ;; quiet quote marker only (the icon-font defaults render as boxes)
+      org-margin-markers
+      (list (cons "\\(#\\+begin_quote\\)"
+                  (propertize "❝" 'face 'nano-face-faded))))
+(add-hook 'org-mode-hook #'org-margin-mode)
 
 ;; --- Denote: the thought vault (~/Dropbox/notes) --------------------------
 ;; One flat naming grammar instead of folders: every note's filename is its
@@ -1578,7 +1604,11 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   :hook ((org-mode      . olivetti-mode)
          (markdown-mode . olivetti-mode)
          (LaTeX-mode    . olivetti-mode))
-  :init (setq olivetti-body-width 72)     ; text column width, in columns
+  :init (setq olivetti-body-width 72      ; text column width, in columns
+              ;; center via FRINGES, not margins: org-margin owns the left
+              ;; margin now (headline glyphs render there).  nano paints
+              ;; fringes in the background colour -- looks identical.
+              olivetti-style t)
   :config
   ;; Centering margins count toward a window's MINIMUM width, so frame-level
   ;; splits that halve the root refuse when half the frame is narrower than
