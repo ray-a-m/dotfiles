@@ -35,6 +35,14 @@
 
 (require 'ox-latex)
 
+;; Let `$G$-action' parse as math: org's fragment parser demands
+;; punctuation-SYNTAX after the closing $, and org classes `-' as symbol.
+;; Reclassifying it as punctuation (arguably correct for prose) makes the
+;; hyphen-after-math case Just Work -- no \(...\) spelling, no escapes.
+;; Lives HERE, not init.el: the batch publish path loads only this module,
+;; and the live session and batch export MUST parse identically.
+(modify-syntax-entry ?- "." org-mode-syntax-table)
+
 (defun rm/org-paper--math-block (_math-block contents _info)
   "Transcode an inline math block back to $...$ (stock emits \\(...\\))."
   (when (org-string-nw-p contents)
