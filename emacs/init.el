@@ -1446,6 +1446,9 @@ so the startup hook stays quiet when a frame opens on a file."
     ;; the floor -- and a second splash in an extra window is a stale
     ;; popup: close it; ONE splash is the floor
     (unless (one-window-p) (delete-window)))
+   ;; a sidebar is a popup whatever its window history says (it re-roots
+   ;; and follows files, so its history wanders): ESC dismisses it
+   ((derived-mode-p 'dired-sidebar-mode) (dired-sidebar-hide-sidebar))
    (t (rm/escape--back))))
 (defun rm/escape--interesting-p (buf)
   "Non-nil for stops HE made: files, dired, scratch, the agenda.
@@ -1455,7 +1458,9 @@ machinery flashed through the window are not part of his trail."
     (and name
          (not (string-prefix-p " " name))
          (or (not (string-prefix-p "*" name))
-             (member name '("*scratch*" "*Org Agenda*"))))))
+             ;; the splash is a real stop: launch a dired/note from it and
+             ;; ESC walks back TO it (the floor rule then holds it there)
+             (member name '("*scratch*" "*Org Agenda*" "*welcome*"))))))
 (defun rm/escape--back ()
   "One meaningful step back in this window; the floor when the trail ends.
 Walks with switch-to-prev-buffer (native bookkeeping: point restore,
