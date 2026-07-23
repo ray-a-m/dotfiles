@@ -1457,6 +1457,24 @@ dismisses the splash."
 ;; Global on purpose: plain dired benefits too.
 (setq dired-listing-switches "-al --group-directories-first")
 
+;; Every dired hides build exhaust (his ask, 2026-07-23): the generated
+;; .tex artifacts (org is the authoring surface; hand-written preamble/
+;; config .tex stay listed) and latexmk leftovers the stock extension
+;; list predates (.bcf, .fdb_latexmk, ...).  Dotfiles and README stay
+;; visible in plain dired; the sidebar's stricter buffer-local regexp
+;; hides those too.  M-x dired-omit-mode toggles when you need the truth.
+(with-eval-after-load 'dired-x
+  (setq dired-omit-files
+        (concat dired-omit-files
+                "\\|\\`\\(?:body\\|paper\\|dissertation\\|maung_cv"
+                "\\|introduction\\|dedication\\|acknowledgements"
+                "\\|summary\\|vita\\)\\.tex\\'"))
+  (setq dired-omit-extensions
+        (append dired-omit-extensions
+                '(".bcf" ".fdb_latexmk" ".fls" ".log" ".out"
+                  ".run.xml" ".synctex.gz" ".xdv"))))
+(add-hook 'dired-mode-hook #'dired-omit-mode)
+
 ;; File operations in plain dired: R renames/moves the file at point (same
 ;; prompt -- type a new name, or a path to move), + makes a directory, `a'
 ;; makes an empty file (was dired-find-alternate-file, a disabled command).
@@ -1552,14 +1570,12 @@ one `l' away instead."
     ;; add-hook prepends: omit runs first, then extension hiding.
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-subtree))
-  ;; Hide clutter -- sidebar only, plain dired still lists everything.
-  ;; The regexp omits dotfiles (.git, .gitignore, and the . / .. self/parent
-  ;; entries every Unix dir carries), README.md / TODO.md, and the generated
-  ;; .tex build artifacts (org is the authoring surface; the hand-written
-  ;; preamble/config .tex stay visible); on top of that, dired-omit-mode's
-  ;; default `dired-omit-extensions' hides LaTeX build artifacts (.aux,
-  ;; .log, .bbl, ...).  Subtree expansions are out of dired-omit's reach --
-  ;; rm/sidebar-omit-subtree (above) covers them.
+  ;; Hide clutter -- the sidebar goes further than the dired-wide omit
+  ;; (see the dired section above): its buffer-local regexp also drops
+  ;; dotfiles (.git, .gitignore, the . / .. self/parent entries),
+  ;; README.md / TODO.md, and AUCTeX auto/, on top of the generated .tex
+  ;; and artifact extensions everyone omits.  Subtree expansions are out
+  ;; of dired-omit's reach -- rm/sidebar-omit-subtree (above) covers them.
   (setq dired-omit-verbose nil)
   (add-hook 'dired-sidebar-mode-hook
             (lambda ()
