@@ -613,6 +613,47 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   ;; makes plain C-x a non-prefix (same class as the old C-x k bug).
   :bind (:map ctl-x-map ("g" . magit-status)))
 
+;; C-c g: the `save' shell function, from inside -- save the buffer, then
+;; git add -A / commit / push its repo, async, verdict in the echo area.
+;; C-u C-c g prompts for the commit message (plain C-c g commits as ".").
+;; The vault has no remote: it reports "committed" instead of failing.
+(defun rm/save (&optional message)
+  "Save the buffer, then add/commit/push its git repo (shell `save')."
+  (interactive (list (when current-prefix-arg
+                       (read-string "Commit message: " nil nil "."))))
+  (when (and buffer-file-name (buffer-modified-p)) (save-buffer))
+  (let* ((dir (or (and buffer-file-name
+                       (file-name-directory buffer-file-name))
+                  default-directory))
+         (root (locate-dominating-file dir ".git")))
+    (unless root (user-error "Not in a git repository"))
+    (let ((default-directory root)
+          (name (abbreviate-file-name root)))
+      (with-current-buffer (get-buffer-create "*rm-save*")
+        (erase-buffer))
+      (make-process
+       :name "rm-save" :buffer "*rm-save*"
+       :command
+       (list "sh" "-c"
+             (format (concat "git add -A || exit 1\n"
+                             "if git diff --cached --quiet; then echo __NOTHING__; exit 0; fi\n"
+                             "git commit -m %s || exit 1\n"
+                             "git push 2>&1 || echo __PUSHFAIL__\n")
+                     (shell-quote-argument (or message "."))))
+       :sentinel
+       (lambda (p _e)
+         (when (memq (process-status p) '(exit signal))
+           (let ((out (with-current-buffer "*rm-save*" (buffer-string))))
+             (cond
+              ((not (zerop (process-exit-status p)))
+               (message "save failed in %s — log in *rm-save*" name))
+              ((string-match-p "__NOTHING__" out)
+               (message "Nothing to commit in %s" name))
+              ((string-match-p "__PUSHFAIL__" out)
+               (message "Committed in %s (push failed — no remote?)" name))
+              (t (message "Committed & pushed %s ✓" name))))))))))
+(keymap-global-set "C-c g" #'rm/save)
+
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
 ;; existing nvim/latexmk/zathura flow.

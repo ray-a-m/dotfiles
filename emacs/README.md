@@ -312,6 +312,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `M-4` / `M-6` | paragraph back / forward (vim `{`/`}` — on Corne-reachable keys) |
 | `C-M-h` | echo-area quick-help cheat-sheet (nano-help) |
 | `C-a g` | `magit-status` |
+| `C-c g` | the shell `save`, from inside: save buffer → `git add -A` / commit / push this repo, async verdict in the echo area (`C-u` prompts for the message; a remote-less repo like the vault just commits) |
 | `C-c a` / `C-c l` | Org agenda dispatcher / store-link (capture lives on the splash: `t` task, `n` note; `C-c c` unbound) |
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
 | `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds) |
