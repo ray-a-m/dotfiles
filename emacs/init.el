@@ -813,6 +813,70 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         'org-latex-and-related)
       prepend))
    t)
+  ;; Citation pills (his ruling, 2026-07-23): a full
+  ;; \textcite{dasguptaSymmetryEpistemicNotion2016} is a 40-char
+  ;; unbreakable chunk that forces early soft-wraps and ragged lines.
+  ;; In prose it DISPLAYS as a compact ‹author2016› (display property --
+  ;; the file is untouched); the full command reveals while point is
+  ;; inside, the org-appear pattern.  Blocks keep their full text.
+  (defconst rm/org-cite-rx
+    "\\\\\\(?:text\\|paren\\|auto\\|foot\\)?[Cc]ite\\*?\\(?:\\[[^]\n]*\\]\\)*{\\([^{}\n]*\\)}")
+  (defun rm/cite-pill--short (key)
+    "KEY's compact form: author+year from either Better BibTeX shape."
+    (setq key (string-trim key))
+    (let ((case-fold-search nil))         ; [a-z] must NOT eat the CamelCase
+      (cond
+       ((string-match "\\`\\([A-Za-z-]+[0-9]\\{4\\}\\)-[a-z]\\{2\\}\\'" key)
+        (match-string 1 key))                          ; Dewar2019-ns
+       ((string-match "\\`\\([a-z-]+\\)[A-Z].*?\\([0-9]\\{4\\}[a-z]?\\)\\'" key)
+        (concat (match-string 1 key) (match-string 2 key))) ; dasguptaTitle2016
+       (t key))))
+  (defun rm/org-cite-pill-matcher (limit)
+    (catch 'found
+      (while (re-search-forward rm/org-cite-rx limit t)
+        (unless (memq 'org-block
+                      (flatten-tree
+                       (list (get-text-property (match-beginning 0) 'face))))
+          (throw 'found t)))
+      nil))
+  (defun rm/org-cite-pill-spec ()
+    ;; facespec plists must START with `face' (nil = no face of its own;
+    ;; the macro keyword already coloured the span)
+    (list 'face nil
+          'display (format "‹%s›"
+                           (mapconcat #'rm/cite-pill--short
+                                      (split-string (match-string 1) ",")
+                                      ","))
+          'rm-cite-pill t))
+  (font-lock-add-keywords
+   'org-mode
+   '((rm/org-cite-pill-matcher 0 (rm/org-cite-pill-spec) prepend))
+   t)
+  (defvar-local rm/cite-pill--revealed nil)
+  (defun rm/cite-pill--watch ()
+    "Reveal the pill at point (full \\cite command); re-hide on exit."
+    (when-let ((range rm/cite-pill--revealed))
+      (when (or (< (point) (car range)) (> (point) (cdr range))
+                (not (get-text-property (car range) 'rm-cite-pill)))
+        (font-lock-flush (car range) (cdr range))
+        (setq rm/cite-pill--revealed nil)))
+    (unless rm/cite-pill--revealed
+      (when (get-text-property (point) 'rm-cite-pill)
+        (let ((beg (or (previous-single-property-change
+                        (min (1+ (point)) (point-max)) 'rm-cite-pill)
+                       (point-min)))
+              (end (or (next-single-property-change (point) 'rm-cite-pill)
+                       (point-max))))
+          (with-silent-modifications
+            (remove-text-properties beg end '(display nil)))
+          (setq rm/cite-pill--revealed (cons beg end))))))
+  (defun rm/cite-pill-setup ()
+    "Buffer-local plumbing for the citation pills."
+    (setq-local font-lock-extra-managed-props
+                (append '(display rm-cite-pill)
+                        font-lock-extra-managed-props))
+    (add-hook 'post-command-hook #'rm/cite-pill--watch nil t))
+  (add-hook 'org-mode-hook #'rm/cite-pill-setup)
   (defun rm/capture-task ()
     "Straight into a task capture (the t template) -- splash `t'."
     (interactive)
