@@ -1073,7 +1073,60 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
            "\\\\\\(?:text\\|paren\\|auto\\|foot\\)?cite\\(?:\\[[^]]*\\]\\)?{[^}]*"
            (line-beginning-position))
           (insert keys)
-        (insert (format "\\%s{%s}" (if arg "parencite" "textcite") keys))))))
+        (insert (format "\\%s{%s}" (if arg "parencite" "textcite") keys)))))
+  ;; As-you-type key completion (corfu pops it up): a capf that fires only
+  ;; inside a hand-typed \cite-family's braces.  Candidates come from
+  ;; parsing the bibliographies directly (cached until a bib's mtime
+  ;; changes) -- no citar internals, works before citar ever loads.
+  (defvar rm/cite--keys-cache nil
+    "(STAMP . KEYS) where STAMP is the bibs' (file . mtime) alist.")
+  (defun rm/cite--keys ()
+    "Citation keys from `citar-bibliography', re-parsed when a bib changes."
+    (let* ((files (seq-filter #'file-readable-p
+                              (mapcar #'expand-file-name citar-bibliography)))
+           (stamp (mapcar (lambda (f)
+                            (cons f (file-attribute-modification-time
+                                     (file-attributes f))))
+                          files)))
+      (unless (equal stamp (car rm/cite--keys-cache))
+        (let (keys)
+          (dolist (f files)
+            (with-temp-buffer
+              (insert-file-contents f)
+              (goto-char (point-min))
+              (while (re-search-forward
+                      "^@[[:alpha:]]+[({][ \t]*\\([^,\n]+\\)," nil t)
+                (push (string-trim (match-string 1)) keys))))
+          (setq rm/cite--keys-cache (cons stamp (nreverse keys)))))
+      (cdr rm/cite--keys-cache)))
+  (defun rm/cite-capf ()
+    "Complete citation keys inside a raw \\cite/\\textcite/\\parencite."
+    (when (looking-back
+           "\\\\\\(?:text\\|paren\\|auto\\|foot\\)?cite\\(?:\\[[^]]*\\]\\)?{\\([^}]*\\)"
+           (line-beginning-position))
+      (let* ((content-start (match-beginning 1))
+             (start (save-excursion
+                      (if (search-backward "," content-start t)
+                          (1+ (point))
+                        content-start))))
+        (list start (point) (rm/cite--keys) :exclusive 'no))))
+  (defun rm/cite-capf-enable ()
+    (add-hook 'completion-at-point-functions #'rm/cite-capf -10 t))
+  (add-hook 'org-mode-hook #'rm/cite-capf-enable)
+  (add-hook 'LaTeX-mode-hook #'rm/cite-capf-enable))
+
+;; corfu: the in-buffer completion popup (vertico's sibling, same author).
+;; Scoped to the writing modes -- its job here is citation keys via
+;; rm/cite-capf; auto-on so \textcite{Fr... pops candidates unprompted.
+;; C-c b stays the picker gesture (full minibuffer + vertico).
+(use-package corfu
+  :hook ((org-mode . corfu-mode)
+         (LaTeX-mode . corfu-mode))
+  :init
+  (setq corfu-auto t
+        corfu-auto-delay 0.15
+        corfu-auto-prefix 2
+        corfu-cycle t))
 
 ;; citar-denote: ties bibliography entries to vault notes -- the lit form IS
 ;; the reference-note keyword, so "open the note on this book" works from

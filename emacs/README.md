@@ -309,7 +309,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-M-h` | echo-area quick-help cheat-sheet (nano-help) |
 | `C-a g` | `magit-status` |
 | `C-c a` / `C-c c` / `C-c l` | Org agenda / capture / store-link |
-| `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key |
+| `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
 | `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds) |
 | `S-TAB` | cycle the document outline (in `.tex`) |
 | `ESC` | universal back: abort prompt → drop region → one step back through this window's buffer history (machinery popups skipped) → splash floor |
