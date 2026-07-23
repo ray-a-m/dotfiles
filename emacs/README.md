@@ -82,7 +82,8 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Git | `magit` | `C-a g` |
 | Spell / syntax | built-in + `hl-todo` | `flyspell` (aspell, personal dict in dotfiles, no duplicate-flagging) + `flymake`; `hl-todo` colours TODO/FIXME in code **and** prose |
 | LaTeX | `auctex` (14, via the `latex` feature), `cdlatex`, `auctex-latexmk` | RefTeX → shared dissertation `.bib`; `C-c C-c` → LatexMk (save-and-compile); SyncTeX ↔ **zathura**; `S-TAB` folds via `outline-minor-mode` |
-| Live math | built-in preview + `org-fragtog` | inline SVG via `dvisvgm` (`C-c C-x C-l` in Org, `C-c C-p C-p` in `.tex`); `org-fragtog` auto-renders Org fragments. **Not** xenops (dropped — broke font-lock). |
+| LaTeX in prose | `org-highlight-latex-and-related` + manual preview | `\commands` (cites included) and `$math$` read as highlighted source — muted sienna, same ET Book family as the text. No auto image rendering (`org-fragtog` REMOVED 2026-07-23: fragments made scrolling stutter; xenops dropped earlier — broke font-lock). On-demand preview stays: `C-c C-x C-l` in Org, `C-c C-p C-p` in `.tex` (dvisvgm). |
+| PDFs | `pdf-tools` | replaces DocView (crisp poppler rendering; `epdfinfo` compiled into the package dir). `j`/`k` scroll, `J`/`K` flip pages, `h`/`l` nudge sideways when zoomed; stock `SPC`/`S-SPC`, `+`/`-` zoom, `W`/`P` fit width/page, `o` outline, `C-s` searches the text layer. |
 | Org | built-in | notes + agenda + capture; `~/Dropbox/org/` for tasks, `~/Dropbox/notes/` for the vault; inline images on |
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Org typography | `org-modern` | heading stars → ✦ ✧ ✱ ✳ (static, per level), TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
@@ -312,7 +313,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
 | `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds) |
 | `S-TAB` | cycle the document outline (in `.tex`) |
-| `ESC` | universal back: abort prompt → drop region → one step back through this window's buffer history (machinery popups skipped) → splash floor |
+| `ESC` | universal back: abort prompt → drop region → one step back through this window's buffer history (machinery popups skipped) → when the trail ends, a popup window closes; the frame's last window floors on the splash (one splash only — ESC on a duplicate closes it) |
 | `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
 | `M-c` | classify: vault note → form+matter rename; task heading / agenda entry → task tags |
 | `C-c s` | pop the \*scratch\* buffer |

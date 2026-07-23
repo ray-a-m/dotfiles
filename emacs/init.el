@@ -641,14 +641,40 @@ layout untouched -- no empty window to clean up."
 (use-package cdlatex
   :defer t)
 
-;; --- Inline math preview: built-in Org/AUCTeX + org-fragtog -------------
-;; In Org, `C-c C-x C-l' renders the LaTeX fragment at point to an image; in
-;; .tex, AUCTeX's `C-c C-p C-p' does the same (both use dvisvgm).  org-fragtog
-;; makes the Org side *automatic*: point on a fragment shows editable source,
-;; point away auto-renders it -- the "live" feel, without xenops' font-lock
-;; breakage.  Rendering options (dvisvgm process + scale) are in the Org block.
-(use-package org-fragtog
-  :hook (org-mode . org-fragtog-mode))
+;; --- LaTeX in buffers: highlighted source, preview on demand ------------
+;; No in-text auto-rendering: org-fragtog REMOVED 2026-07-23 (his ruling --
+;; the image fragments made scrolling stutter).  Preview stays manual:
+;; `C-c C-x C-l' in Org, AUCTeX's `C-c C-p C-p' in .tex (both dvisvgm;
+;; options in the Org block).  In prose, LaTeX reads as highlighted
+;; SOURCE instead -- org-highlight-latex-and-related in the Org block.
+
+;; --- PDFs: pdf-tools replaces DocView -----------------------------------
+;; Crisp poppler rendering (DocView rasterizes through ghostscript and
+;; blurs).  The epdfinfo helper is compiled into the package dir at
+;; install time.  Vim feel on the reading keys: j/k scroll, J/K flip
+;; pages, h/l nudge sideways when zoomed in.  Stock keys kept: SPC /
+;; S-SPC page-scroll, +/- zoom, W fit width, P fit page, o outline,
+;; C-s isearch (searches the actual text layer).
+(use-package pdf-tools
+  :mode ("\\.pdf\\'" . pdf-view-mode)
+  :magic ("%PDF" . pdf-view-mode)
+  :config
+  (pdf-tools-install :no-query)
+  (setq pdf-view-display-size 'fit-width)
+  (defun rm/pdf-scroll-down ()
+    "Scroll the page down a comfortable step (vim j)."
+    (interactive)
+    (pdf-view-next-line-or-next-page 4))
+  (defun rm/pdf-scroll-up ()
+    "Scroll the page up a comfortable step (vim k)."
+    (interactive)
+    (pdf-view-previous-line-or-previous-page 4))
+  (keymap-set pdf-view-mode-map "j" #'rm/pdf-scroll-down)
+  (keymap-set pdf-view-mode-map "k" #'rm/pdf-scroll-up)
+  (keymap-set pdf-view-mode-map "J" #'pdf-view-next-page-command)
+  (keymap-set pdf-view-mode-map "K" #'pdf-view-previous-page-command)
+  (keymap-set pdf-view-mode-map "h" #'image-backward-hscroll)
+  (keymap-set pdf-view-mode-map "l" #'image-forward-hscroll))
 
 ;; --- Org: notes + TODO/agenda (:lang org, built into Emacs) -------------
 ;; Papers stay in LaTeX.  Org is for tasks/agenda and prose notes (the
@@ -724,6 +750,13 @@ layout untouched -- no empty window to clean up."
   ;; the tiny default so equations are readable next to the prose font.
   (setq org-preview-latex-default-process 'dvisvgm)
   (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5))
+  ;; LaTeX reads as highlighted SOURCE in prose: \commands (cites
+  ;; included) and $math$ get the org-latex-and-related face -- recoloured
+  ;; in rm/apply-face-tweaks, and kept in the PROSE family (mixed-pitch
+  ;; would pin it to mono; that pin is removed in its block).  This is
+  ;; the whole in-text story: no auto image rendering (org-fragtog
+  ;; removed 2026-07-23 -- it made scrolling stutter).
+  (setq org-highlight-latex-and-related '(latex))
   ;; Agenda vim feel: hjkl moves (j/k lines, h/l shifts the date range in
   ;; calendar views), r progresses the TODO state at point (cycle; C-u r to
   ;; pick), d deletes the entry from its source file (his flow: fixed
@@ -1153,7 +1186,12 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 (use-package mixed-pitch
   :hook ((org-mode      . mixed-pitch-mode)
          (markdown-mode . mixed-pitch-mode)
-         (LaTeX-mode    . mixed-pitch-mode)))
+         (LaTeX-mode    . mixed-pitch-mode))
+  :config
+  ;; LaTeX-in-prose keeps the prose family (his ruling): the highlight is
+  ;; colour, not a font switch -- unpin it from mixed-pitch's mono list.
+  (setq mixed-pitch-fixed-pitch-faces
+        (delq 'org-latex-and-related mixed-pitch-fixed-pitch-faces)))
 
 (use-package olivetti
   :hook ((org-mode      . olivetti-mode)
@@ -1199,8 +1237,16 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   ;; strokes are thinner than the roman, so same-colour italics look faded).
   ;; Break the inherit nano sets and restore the slant it wiped.
   (set-face-attribute 'italic nil :inherit 'unspecified :slant 'italic
-                      :foreground "#4a6fa5"))
+                      :foreground "#4a6fa5")
+  ;; LaTeX-in-prose: colour only, NEVER a family switch -- \textcite{...}
+  ;; and $math$ sit in the same ET Book as the sentence around them, in a
+  ;; muted sienna that reads as markup next to the blue italics.
+  (when (facep 'org-latex-and-related)
+    (set-face-attribute 'org-latex-and-related nil
+                        :inherit 'unspecified :family 'unspecified
+                        :foreground "#9c6644")))
 (rm/apply-face-tweaks)
+(with-eval-after-load 'org (rm/apply-face-tweaks))  ; the org face exists only once org loads
 
 ;; Daemon hardening: when Emacs starts as a daemon there is no graphical
 ;; frame yet, so nano-faces takes its TTY branches (bold weights, dummy
@@ -1225,7 +1271,7 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;;
 ;; A few deliberate choices make it behave under our stack:
 ;;   * we run `org-mode' with `org-mode-hook' let-bound to nil, so the prose
-;;     hooks (mixed-pitch, flyspell, org-fragtog, ...) do NOT fire -- the page
+;;     hooks (mixed-pitch, flyspell, ...) do NOT fire -- the page
 ;;     stays monospace so the cheat-sheet columns line up
 ;;   * `olivetti-mode' centres it in a measure that re-flows on resize, so it
 ;;     stays centred as you flip a Hyprland tile between small and full-screen
@@ -1277,22 +1323,30 @@ showing the splash).  No-op unless the computed width actually changed."
   "Non-nil in a buffer whose visit dismissed the splash.
 C-a k (rm/kill-buffer) sends such a buffer back to the splash.")
 
+(defun rm/welcome--dismiss-check (visitor)
+  "Decide the splash's fate once VISITOR's file visit has displayed.
+Splash no longer on any window: the visit replaced it -- kill the
+buffer (ESC's floor recreates it on demand).  Splash still showing:
+the visit landed elsewhere (a popup window, the agenda loading its
+files) -- keep the splash where it is, unstamp VISITOR, re-arm the
+one-shot hook."
+  (when-let ((buf (get-buffer "*welcome*")))
+    (if (get-buffer-window buf t)
+        (progn
+          (when (buffer-live-p visitor)
+            (with-current-buffer visitor (setq rm/welcome--origin nil)))
+          (add-hook 'find-file-hook #'rm/welcome--auto-dismiss))
+      (kill-buffer buf))))
+
 (defun rm/welcome--auto-dismiss ()
-  "One-shot: dismiss the welcome screen once a real file is visited.
+  "One-shot: dismiss the welcome screen when a file visit REPLACES it.
 Runs on `find-file-hook', which fires before the new buffer is
-displayed -- so the teardown is deferred a tick, lest we delete the
-very window the file is about to land in."
+displayed -- the decision is deferred a tick to
+`rm/welcome--dismiss-check', which sees the settled window layout."
   (remove-hook 'find-file-hook #'rm/welcome--auto-dismiss)
   (when (get-buffer "*welcome*")
-    (setq rm/welcome--origin t)                     ; this visit ended the splash
-    (run-with-timer 0 nil
-                    (lambda ()
-                      (when-let ((buf (get-buffer "*welcome*")))
-                        (dolist (win (get-buffer-window-list buf nil t))
-                          ;; a sole window can't be deleted; killing the
-                          ;; buffer below makes it show something else
-                          (ignore-errors (delete-window win)))
-                        (kill-buffer buf))))))
+    (setq rm/welcome--origin t)                     ; provisional; check may undo
+    (run-with-timer 0 nil #'rm/welcome--dismiss-check (current-buffer))))
 
 (defun rm/welcome (&optional force)
   "Show the welcome screen (welcome.org) unless a file was opened at launch.
@@ -1388,7 +1442,10 @@ so the startup hook stays quiet when a frame opens on a file."
    ((minibuffer-window-active-p (minibuffer-window)) (abort-recursive-edit))
    ((region-active-p) (deactivate-mark))
    ((> (recursion-depth) 0) (abort-recursive-edit))
-   ((eq (current-buffer) (get-buffer "*welcome*")) nil)   ; the floor
+   ((eq (current-buffer) (get-buffer "*welcome*"))
+    ;; the floor -- and a second splash in an extra window is a stale
+    ;; popup: close it; ONE splash is the floor
+    (unless (one-window-p) (delete-window)))
    (t (rm/escape--back))))
 (defun rm/escape--interesting-p (buf)
   "Non-nil for stops HE made: files, dired, scratch, the agenda.
@@ -1400,10 +1457,10 @@ machinery flashed through the window are not part of his trail."
          (or (not (string-prefix-p "*" name))
              (member name '("*scratch*" "*Org Agenda*"))))))
 (defun rm/escape--back ()
-  "One meaningful step back in this window; splash when the trail ends.
+  "One meaningful step back in this window; the floor when the trail ends.
 Walks with switch-to-prev-buffer (native bookkeeping: point restore,
 skipped stops land on the forward list), hopping over uninteresting
-buffers, capped so exhausted or cyclic histories land on the splash."
+buffers, capped so exhausted or cyclic histories hit the floor."
   (let ((tries 10) done)
     (while (and (not done) (> tries 0))
       (setq tries (1- tries))
@@ -1412,11 +1469,19 @@ buffers, capped so exhausted or cyclic histories land on the splash."
                     (window-prev-buffers))
           (progn (switch-to-prev-buffer)
                  (setq done (rm/escape--interesting-p (current-buffer))))
-        ;; forced: rm/welcome's non-interactive guard is a LAUNCH-time
-        ;; check (no file buffers yet) that is never true in a working
-        ;; session -- a plain call would no-op and strand ESC.
-        (rm/welcome t) (setq done t)))
-    (unless done (rm/welcome t))))
+        (rm/escape--floor) (setq done t)))
+    (unless done (rm/escape--floor))))
+(defun rm/escape--floor ()
+  "Trail exhausted: close a popup window, else floor on the splash.
+A window with no meaningful history of its own was created FOR its
+buffer (the agenda's split, a popped file) -- backing out of it means
+closing it; only the frame's last window floors on the splash.  Forced:
+rm/welcome's non-interactive guard is a launch-time check (no file
+buffers yet) that is never true in a working session -- a plain call
+would no-op and strand ESC."
+  (if (one-window-p)
+      (rm/welcome t)
+    (delete-window)))
 (keymap-global-set "<escape>" #'rm/escape)
 ;; C-a k: kill the buffer, but never strand the window on filler.  A
 ;; buffer whose visit dismissed the splash (rm/welcome--origin, stamped
@@ -1506,7 +1571,8 @@ dismisses the splash."
         (concat dired-omit-files
                 "\\|\\`\\(?:body\\|paper\\|dissertation\\|maung_cv"
                 "\\|introduction\\|dedication\\|acknowledgements"
-                "\\|summary\\|vita\\)\\.tex\\'"))
+                "\\|summary\\|vita\\)\\.tex\\'"
+                "\\|\\`ltximg\\'"))       ; org latex-preview image cache dirs
   (setq dired-omit-extensions
         (append dired-omit-extensions
                 '(".bcf" ".fdb_latexmk" ".fls" ".log" ".out"
@@ -1620,7 +1686,8 @@ one `l' away instead."
               (setq-local line-spacing 3   ; airier rows
                           dired-omit-files
                           (concat
-                           "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'\\|\\`auto\\'"
+                           "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'"
+                           "\\|\\`auto\\'\\|\\`ltximg\\'"
                            "\\|\\`\\(?:body\\|paper\\|dissertation\\|maung_cv"
                            "\\|introduction\\|dedication\\|acknowledgements"
                            "\\|summary\\|vita\\)\\.tex\\'")
