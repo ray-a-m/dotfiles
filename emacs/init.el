@@ -415,9 +415,10 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   :doc "Window menu: splits, file-into-split, swap, divider drag, balance, layout undo."
   "s" #'split-window-below                ; like :sp
   "v" #'split-window-right                ; like :vs
-  "t" #'rm/window-new                     ; fresh right split showing the
-                                          ; splash (vim :tabnew feel; n
-                                          ; would collide with n = note)
+  "SPC" #'rm/window-new                   ; blank slate: fresh right split
+                                          ; showing the splash (h = home was
+                                          ; his first pick, but h is the
+                                          ; resize quartet's drag-left)
   "f" #'rm/find-file-right                ; pick a file into a right split
   "b" #'rm/find-file-below                ; pick a file into a below split
   "h" #'rm/window-edge-left               ; drag the divider left
