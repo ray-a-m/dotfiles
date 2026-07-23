@@ -1062,12 +1062,18 @@ the entry at point."
         (list "~/scholarship/research-wip/documents/dissertation/references.bib"
               "~/scholarship/research-wip/documents/papers/friedman-kuhn-hegel-kant/Friedman and Kuhn, Hegel and Kant.bib"))
   (defun rm/cite (&optional arg)
-    "Insert a raw \\textcite for picked reference(s); with C-u, \\parencite."
+    "Insert a citation via completion over the bibliographies.
+Inside the braces of a hand-typed \\cite/\\textcite/\\parencite, insert
+just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
+\\parencite{...})."
     (interactive "P")
     (require 'citar)
-    (insert (format "\\%s{%s}"
-                    (if arg "parencite" "textcite")
-                    (string-join (citar-select-refs) ",")))))
+    (let ((keys (string-join (citar-select-refs) ",")))
+      (if (looking-back
+           "\\\\\\(?:text\\|paren\\|auto\\|foot\\)?cite\\(?:\\[[^]]*\\]\\)?{[^}]*"
+           (line-beginning-position))
+          (insert keys)
+        (insert (format "\\%s{%s}" (if arg "parencite" "textcite") keys))))))
 
 ;; citar-denote: ties bibliography entries to vault notes -- the lit form IS
 ;; the reference-note keyword, so "open the note on this book" works from
@@ -1495,16 +1501,22 @@ one `l' away instead."
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-subtree))
   ;; Hide clutter -- sidebar only, plain dired still lists everything.
   ;; The regexp omits dotfiles (.git, .gitignore, and the . / .. self/parent
-  ;; entries every Unix dir carries) plus README.md / TODO.md; on top of
-  ;; that, dired-omit-mode's default `dired-omit-extensions' hides LaTeX
-  ;; build artifacts (.aux, .log, .bbl, ...).  Subtree expansions are out
-  ;; of dired-omit's reach -- rm/sidebar-omit-subtree (above) covers them.
+  ;; entries every Unix dir carries), README.md / TODO.md, and the generated
+  ;; .tex build artifacts (org is the authoring surface; the hand-written
+  ;; preamble/config .tex stay visible); on top of that, dired-omit-mode's
+  ;; default `dired-omit-extensions' hides LaTeX build artifacts (.aux,
+  ;; .log, .bbl, ...).  Subtree expansions are out of dired-omit's reach --
+  ;; rm/sidebar-omit-subtree (above) covers them.
   (setq dired-omit-verbose nil)
   (add-hook 'dired-sidebar-mode-hook
             (lambda ()
               (setq-local line-spacing 3   ; airier rows
                           dired-omit-files
-                          "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'\\|\\`auto\\'"
+                          (concat
+                           "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'\\|\\`auto\\'"
+                           "\\|\\`\\(?:body\\|paper\\|dissertation\\|maung_cv"
+                           "\\|introduction\\|dedication\\|acknowledgements"
+                           "\\|summary\\|vita\\)\\.tex\\'")
                           ;; nano's header line would show the buffer name
                           ;; (":~/full/path/..."); show just the root's name
                           header-line-format
