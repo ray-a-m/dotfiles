@@ -1043,6 +1043,40 @@ the entry at point."
   ;; Buffer names show the note's TITLE, not the ID gibberish.
   (denote-rename-buffer-mode 1))
 
+;; consult-denote: denote's own file prompts (C-c d f, C-c d k, ...) go
+;; through consult, so picking a note gets live preview like M-ESC's buffer
+;; switch.  The custom C-c d g already rides consult-ripgrep directly.
+(use-package consult-denote
+  :after denote
+  :config (consult-denote-mode 1))
+
+;; citar: completion over the Zotero-exported bibliographies -- browse
+;; references, open their PDFs/URLs, and insert citation keys.  Citations in
+;; papers stay RAW LaTeX (\textcite/\parencite); org-cite's syntax is
+;; deliberately unused so compiled output never moves.  rm/cite is the
+;; insertion path: pick refs, get \textcite{...} (C-u = \parencite).
+(use-package citar
+  :bind (("C-c b" . rm/cite))
+  :init
+  (setq citar-bibliography
+        (list "~/scholarship/research-wip/documents/dissertation/references.bib"
+              "~/scholarship/research-wip/documents/papers/friedman-kuhn-hegel-kant/Friedman and Kuhn, Hegel and Kant.bib"))
+  (defun rm/cite (&optional arg)
+    "Insert a raw \\textcite for picked reference(s); with C-u, \\parencite."
+    (interactive "P")
+    (require 'citar)
+    (insert (format "\\%s{%s}"
+                    (if arg "parencite" "textcite")
+                    (string-join (citar-select-refs) ",")))))
+
+;; citar-denote: ties bibliography entries to vault notes -- the lit form IS
+;; the reference-note keyword, so "open the note on this book" works from
+;; the citar picker (and citar-denote-open-note the other way around).
+(use-package citar-denote
+  :after (citar denote)
+  :init (setq citar-denote-keyword "lit")
+  :config (citar-denote-mode 1))
+
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
 ;;   * the body font is ET Book (ETBembo), supplied via nano's proportional
