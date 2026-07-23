@@ -754,7 +754,14 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
          :map org-mode-map
          ;; preview is OFF for good (rendered fragments kept reappearing);
          ;; the stock preview key can only ever CLEAR images now
-         ("C-c C-x C-l" . rm/latex-preview-clear))
+         ("C-c C-x C-l" . rm/latex-preview-clear)
+         ;; list ergonomics (his spec, 2026-07-23): RET continues a list
+         ;; with a bullet at the same indent (empty bullet ends the
+         ;; list); TAB indents the item one level, C-TAB outdents (C-TAB
+         ;; was org-force-cycle-archived, never used)
+         ("RET" . rm/org-return)
+         ("TAB" . rm/org-tab)
+         ("C-<tab>" . rm/org-untab))
   :init
   (setq org-directory "~/Dropbox/org/"    ; agenda + capture home (synced, NOT the vault)
         ;; Agenda scans the dedicated org dir, the whole notes vault, *and* the
@@ -922,6 +929,33 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
     "Straight into a task capture (the t template) -- splash `t'."
     (interactive)
     (org-capture nil "t"))
+  (defun rm/org-return ()
+    "RET continues a list: a new bullet at the same indent.
+On an EMPTY bullet, ends the list (removes the bullet, opens a plain
+line).  Everywhere else, stock `org-return' (tables, headings, prose)."
+    (interactive)
+    (cond
+     ((and (org-in-item-p)
+           (save-excursion
+             (beginning-of-line)
+             (looking-at "[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)\\(?: \\[[ X-]\\]\\)?[ \t]*$")))
+      (delete-region (line-beginning-position) (line-end-position))
+      (org-return))
+     ((org-in-item-p)
+      (org-insert-item (org-at-item-checkbox-p)))
+     (t (org-return))))
+  (defun rm/org-tab ()
+    "TAB on a list item indents it one level; elsewhere, stock cycling."
+    (interactive)
+    (if (org-at-item-p)
+        (org-indent-item)
+      (org-cycle)))
+  (defun rm/org-untab ()
+    "C-TAB on a list item outdents it one level."
+    (interactive)
+    (if (org-at-item-p)
+        (org-outdent-item)
+      (user-error "Not on a list item")))
   ;; Prose is soft-wrapped (visual-line + olivetti own the line width;
   ;; the papers' legacy hard fills were removed 2026-07-23, gated by
   ;; pdftotext + pixel comparison).  A huge fill-column turns M-q into
