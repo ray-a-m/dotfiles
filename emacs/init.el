@@ -1933,7 +1933,7 @@ would no-op and strand ESC."
 ;; hypr/windows.conf: fullscreen no longer snaps to opaque.)  nano sets
 ;; the DEFAULT header-line; buffers with their own local one (sidebar
 ;; root name, agenda) keep it.
-(defvar rm/fullscreen--saved-header 'none)
+(defvar rm/fullscreen--saved-chrome 'none)
 (defun rm/fullscreen--p (frame)
   (let ((geo (frame-monitor-attribute 'geometry frame)))
     (and geo
@@ -1943,13 +1943,18 @@ would no-op and strand ESC."
   (let ((f (or (and (framep frame) frame) (selected-frame))))
     (when (display-graphic-p f)
       (if (rm/fullscreen--p f)
-          (when (eq rm/fullscreen--saved-header 'none)
-            (setq rm/fullscreen--saved-header
-                  (default-value 'header-line-format))
-            (setq-default header-line-format nil))
-        (unless (eq rm/fullscreen--saved-header 'none)
-          (setq-default header-line-format rm/fullscreen--saved-header)
-          (setq rm/fullscreen--saved-header 'none))))))
+          (when (eq rm/fullscreen--saved-chrome 'none)
+            (setq rm/fullscreen--saved-chrome
+                  (cons (default-value 'header-line-format)
+                        (default-value 'mode-line-format)))
+            (setq-default header-line-format nil)
+            ;; nano's default mode-line is "" -- an empty string still
+            ;; DRAWS the thin bar; nil removes it (text stays intact)
+            (setq-default mode-line-format nil))
+        (unless (eq rm/fullscreen--saved-chrome 'none)
+          (setq-default header-line-format (car rm/fullscreen--saved-chrome))
+          (setq-default mode-line-format (cdr rm/fullscreen--saved-chrome))
+          (setq rm/fullscreen--saved-chrome 'none))))))
 (add-hook 'window-size-change-functions #'rm/fullscreen-chrome)
 
 ;; No "When done with this frame, type C-a 5 0" echo in client frames --
