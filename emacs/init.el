@@ -776,11 +776,23 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-startup-with-latex-preview nil)
   ;; org's 'latex option covers fragments/environments but NOT prose
   ;; macros -- \textcite{...} stayed unhighlighted.  Add the macro
-  ;; pattern ourselves, same face.
+  ;; pattern ourselves, same face.  SKIP block content: export blocks
+  ;; are already org-block-styled, and stacking the latex face there
+  ;; compounds the two relative 0.75 height remaps into tiny text
+  ;; (float face heights MULTIPLY down the merge chain).
+  (defconst rm/org-latex-macro-rx
+    "\\\\[a-zA-Z@]+\\*?\\(?:\\[[^]\n]*\\]\\)*\\(?:{[^{}\n]*}\\)*")
+  (defun rm/org-latex-macro-matcher (limit)
+    "Find a LaTeX macro before LIMIT, outside org-block-faced text."
+    (catch 'found
+      (while (re-search-forward rm/org-latex-macro-rx limit t)
+        (let ((f (get-text-property (match-beginning 0) 'face)))
+          (unless (memq 'org-block (flatten-tree (list f)))
+            (throw 'found t))))
+      nil))
   (font-lock-add-keywords
    'org-mode
-   '(("\\\\[a-zA-Z@]+\\*?\\(?:\\[[^]\n]*\\]\\)*\\(?:{[^{}\n]*}\\)*"
-      0 'org-latex-and-related prepend))
+   '((rm/org-latex-macro-matcher 0 'org-latex-and-related prepend))
    t)
   (defun rm/capture-task ()
     "Straight into a task capture (the t template) -- splash `t'."
