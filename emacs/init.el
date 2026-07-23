@@ -514,7 +514,16 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 (use-package vertico
   :init
   (setq vertico-cycle t)                  ; C-n past the bottom wraps to the top
-  (vertico-mode 1))
+  (vertico-mode 1)
+  ;; The note picker (splash f/g) shows its candidates in the ORIGINAL
+  ;; window, not the minibuffer overlay: vertico-buffer via multiform,
+  ;; scoped to exactly those two commands.
+  (require 'vertico-multiform)
+  (require 'vertico-buffer)
+  (setq vertico-multiform-commands '((rm/denote-find buffer)
+                                     (rm/denote-grep buffer))
+        vertico-buffer-display-action '(display-buffer-same-window))
+  (vertico-multiform-mode 1))
 
 (use-package orderless
   :init
@@ -1138,17 +1147,122 @@ the entry at point."
            (not (org-before-first-heading-p)))
       (org-set-tags-command))
      (t (user-error "Nothing here to classify"))))
-  (defun rm/denote-grep ()
-    "Live ripgrep across the vault's note bodies (consult-ripgrep)."
+  ;; --- The note picker: f (all notes) and g (notes containing words) ----
+  ;; Type-to-narrow completion, displayed BIG: vertico-multiform routes
+  ;; these two commands through vertico-buffer into the original window,
+  ;; not the minibuffer's echo line.  Candidates are TITLES (the filename
+  ;; slug -- no ID, no date, no keywords; untitled notes show their bare
+  ;; ID).  M-j/M-k walk candidates for free (vertico remaps next/
+  ;; previous-line, which is what the vim-Meta keys call); the candidate
+  ;; previews in a window to the right as the selection moves; M-d
+  ;; deletes it after confirmation; RET opens; ESC aborts home.
+  (defvar rm/note-pick--alist nil)
+  (defvar rm/note-pick--pwin nil)
+  (defvar rm/note-pick--pfile nil)
+  (defun rm/note--display (file)
+    "FILE's picker name: the title slug, or the bare ID when untitled."
+    (let ((base (file-name-sans-extension (file-name-nondirectory file))))
+      (if (string-match
+           "\\`[0-9]\\{8\\}T[0-9]\\{6\\}--\\(.*?\\)\\(?:__.*\\)?\\'" base)
+          (match-string 1 base)
+        base)))
+  (defun rm/note-pick--table (str pred action)
+    (if (eq action 'metadata)
+        '(metadata (display-sort-function . identity)
+                   (cycle-sort-function . identity))
+      (complete-with-action action (mapcar #'car rm/note-pick--alist)
+                            str pred)))
+  (defun rm/note-pick--preview ()
+    (when-let* ((cand (and (bound-and-true-p vertico--input)
+                           (vertico--candidate)))
+                (f (cdr (assoc cand rm/note-pick--alist))))
+      (unless (equal f rm/note-pick--pfile)
+        (setq rm/note-pick--pfile f)
+        (let ((buf (find-file-noselect f)))
+          (if (window-live-p rm/note-pick--pwin)
+              (set-window-buffer rm/note-pick--pwin buf)
+            (setq rm/note-pick--pwin
+                  (with-selected-window
+                      (or (minibuffer-selected-window) (selected-window))
+                    (display-buffer buf
+                                    '(display-buffer-in-direction
+                                      (direction . right))))))))))
+  (defun rm/note-pick-delete ()
+    "Delete the picker's current note, after confirmation (M-d)."
     (interactive)
-    (consult-ripgrep denote-directory))
+    (when-let* ((cand (vertico--candidate))
+                (f (cdr (assoc cand rm/note-pick--alist))))
+      (when (let ((enable-recursive-minibuffers t))
+              (y-or-n-p (format "Delete note %s? " cand)))
+        (when-let ((b (find-buffer-visiting f)))
+          (with-current-buffer b (set-buffer-modified-p nil))
+          (kill-buffer b))
+        (delete-file f)
+        (setq rm/note-pick--alist
+              (assoc-delete-all cand rm/note-pick--alist))
+        (when (equal f rm/note-pick--pfile)
+          (setq rm/note-pick--pfile nil))
+        ;; nudge the input so vertico refilters against the shrunken table
+        (insert "x") (delete-char -1)
+        (minibuffer-message "Deleted"))))
+  (defvar-keymap rm/note-pick-map "M-d" #'rm/note-pick-delete)
+  (defun rm/note-pick (files prompt)
+    "Pick a note from FILES by title; return its path, nil on abort."
+    (setq rm/note-pick--alist
+          (mapcar (lambda (f) (cons (rm/note--display f) f)) files)
+          rm/note-pick--pfile nil)
+    ;; title collisions: qualify later duplicates with their filename
+    (let (seen)
+      (dolist (cell rm/note-pick--alist)
+        (if (member (car cell) seen)
+            (setcar cell (format "%s · %s" (car cell)
+                                 (file-name-nondirectory (cdr cell))))
+          (push (car cell) seen))))
+    (unwind-protect
+        (let ((choice
+               (minibuffer-with-setup-hook
+                   (lambda ()
+                     (use-local-map (make-composed-keymap
+                                     rm/note-pick-map (current-local-map)))
+                     (add-hook 'post-command-hook
+                               #'rm/note-pick--preview nil t))
+                 (completing-read prompt #'rm/note-pick--table nil t))))
+          (cdr (assoc choice rm/note-pick--alist)))
+      (when (window-live-p rm/note-pick--pwin)
+        (delete-window rm/note-pick--pwin))
+      (setq rm/note-pick--pwin nil)))
+  (defun rm/denote-find ()
+    "The vault, newest first: pick a note by title (splash f)."
+    (interactive)
+    (require 'denote)
+    (when-let ((f (rm/note-pick (nreverse (denote-directory-files)) "Note: ")))
+      (find-file f)))
+  (defun rm/denote--files-containing (word files)
+    "The members of FILES whose text contains WORD, in FILES' order
+\(rg -l parallelizes and returns hits in arbitrary order)."
+    (when files
+      (let ((hits (with-temp-buffer
+                    (apply #'call-process "rg" nil t nil
+                           "-l" "-i" "--fixed-strings" word files)
+                    (split-string (buffer-string) "\n" t))))
+        (seq-filter (lambda (f) (member f hits)) files))))
+  (defun rm/denote-grep (query)
+    "Notes containing every word of QUERY, as the picker (splash g)."
+    (interactive "sNotes containing: ")
+    (require 'denote)
+    (let ((files (nreverse (denote-directory-files))))
+      (dolist (w (split-string query))
+        (setq files (rm/denote--files-containing w files)))
+      (unless files (user-error "No notes contain %s" query))
+      (when-let ((f (rm/note-pick files (format "Note (%s): " query))))
+        (find-file f))))
   (defvar-keymap rm/denote-map
     :doc "Denote: create by form, jump, catalog, grep, backlinks, rename."
     "d" #'denote                          ; raw create: full keyword control
-    "f" #'denote-open-or-create           ; find by name: fragments match filenames
+    "f" #'rm/denote-find                  ; the picker: titles, preview, M-d
     "l" #'rm/denote-list                  ; list: words -> dired catalog
     "c" #'rm/denote-classify              ; classify (alias; main key: M-c)
-    "g" #'rm/denote-grep                  ; text: ripgrep the bodies, live
+    "g" #'rm/denote-grep                  ; by content: words -> the picker
     "b" #'denote-backlinks                ; who links here?
     "r" #'denote-rename-file              ; promotion (idea->paperidea->wip)
     "k" #'denote-link                     ; insert a link to another note
@@ -1491,7 +1605,7 @@ so the startup hook stays quiet when a frame opens on a file."
 
             (define-key map (kbd "n") #'rm/denote-note)         ; new note
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
-            (define-key map (kbd "f") #'denote-open-or-create)  ; find by name
+            (define-key map (kbd "f") #'rm/denote-find)         ; the note picker
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
             (define-key map (kbd "a") #'org-todo-list)          ; todos, all -- what
                                         ; he actually uses (agenda views: C-c a)
@@ -1549,6 +1663,23 @@ so the startup hook stays quiet when a frame opens on a file."
    ;; inserted template leaves the target with it, so an ESCed empty
    ;; todo never reaches inbox.org (C-c C-c finalizes, as before)
    ((bound-and-true-p org-capture-mode) (org-capture-kill))
+   ;; an empty, untitled vault note: `n' writes the file at creation, so
+   ;; backing out of one you never wrote in DELETES it -- the note
+   ;; sibling of the capture rule above (empty notes were piling up as
+   ;; undeletable ID-only files)
+   ((and buffer-file-name
+         (featurep 'denote)
+         (denote-file-is-note-p buffer-file-name)
+         (string-empty-p (or (denote-retrieve-title-value
+                              buffer-file-name 'org) ""))
+         (save-excursion
+           (goto-char (point-min))
+           (not (re-search-forward "^[^#: \n]" nil t))))
+    (let ((f buffer-file-name))
+      (set-buffer-modified-p nil)
+      (kill-buffer)
+      (delete-file f)
+      (message "Empty note discarded")))
    ((eq (current-buffer) (get-buffer "*welcome*"))
     ;; the floor -- and a second splash in an extra window is a stale
     ;; popup: close it; ONE splash is the floor
