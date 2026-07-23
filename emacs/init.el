@@ -694,7 +694,11 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   :ensure nil                             ; org ships with Emacs
   :bind (("C-c a" . org-agenda)           ; the calendar/todo dispatcher
          ("C-c c" . org-capture)          ; jot a task/note from anywhere
-         ("C-c l" . org-store-link))
+         ("C-c l" . org-store-link)
+         :map org-mode-map
+         ;; preview is OFF for good (rendered fragments kept reappearing);
+         ;; the stock preview key can only ever CLEAR images now
+         ("C-c C-x C-l" . rm/latex-preview-clear))
   :init
   (setq org-directory "~/Dropbox/org/"    ; agenda + capture home (synced, NOT the vault)
         ;; Agenda scans the dedicated org dir, the whole notes vault, *and* the
@@ -759,13 +763,36 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   ;; the tiny default so equations are readable next to the prose font.
   (setq org-preview-latex-default-process 'dvisvgm)
   (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5))
-  ;; LaTeX reads as highlighted SOURCE in prose: \commands (cites
-  ;; included) and $math$ get the org-latex-and-related face -- recoloured
-  ;; in rm/apply-face-tweaks, and kept in the PROSE family (mixed-pitch
-  ;; would pin it to mono; that pin is removed in its block).  This is
-  ;; the whole in-text story: no auto image rendering (org-fragtog
-  ;; removed 2026-07-23 -- it made scrolling stutter).
-  (setq org-highlight-latex-and-related '(latex))
+  ;; LaTeX reads as highlighted SOURCE in prose: $math$, environments,
+  ;; and \commands (citation keys included) get org-latex-and-related --
+  ;; sienna Roboto Mono at prose height, the export-block look he liked
+  ;; (family+size via the mixed-pitch pin, colour via
+  ;; rm/apply-face-tweaks).  This is the whole in-text story: NO image
+  ;; rendering (org-fragtog removed 2026-07-23 -- scroll stutter; the
+  ;; preview key is neutered below because renders kept reappearing).
+  (setq org-highlight-latex-and-related '(latex)
+        org-startup-with-latex-preview nil)
+  ;; org's 'latex option covers fragments/environments but NOT prose
+  ;; macros -- \textcite{...} stayed unhighlighted.  Add the macro
+  ;; pattern ourselves, same face.
+  (font-lock-add-keywords
+   'org-mode
+   '(("\\\\[a-zA-Z@]+\\*?\\(?:\\[[^]\n]*\\]\\)*\\(?:{[^{}\n]*}\\)*"
+      0 'org-latex-and-related prepend))
+   t)
+  (defun rm/capture-task ()
+    "Straight into a task capture (the t template) -- splash `t'."
+    (interactive)
+    (org-capture nil "t"))
+  (defun rm/latex-preview-clear ()
+    "LaTeX preview stays OFF: clear any rendered fragments here instead."
+    (interactive)
+    (let ((n 0))
+      (dolist (ov (overlays-in (point-min) (point-max)))
+        (when (eq (overlay-get ov 'org-overlay-type) 'org-latex-overlay)
+          (delete-overlay ov) (setq n (1+ n))))
+      (message "LaTeX preview is off%s"
+               (if (> n 0) (format " — %d rendered fragment(s) cleared" n) ""))))
   ;; Agenda vim feel: hjkl moves (j/k lines, h/l shifts the date range in
   ;; calendar views), r progresses the TODO state at point (cycle; C-u r to
   ;; pick), d deletes the entry from its source file (his flow: fixed
@@ -1211,12 +1238,11 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
                 rm/mixed-pitch-height-cookies))
       (mapc #'face-remap-remove-relative rm/mixed-pitch-height-cookies)
       (setq rm/mixed-pitch-height-cookies nil)))
-  (add-hook 'mixed-pitch-mode-hook #'rm/mixed-pitch-fix-height)
-  :config
-  ;; LaTeX-in-prose keeps the prose family (his ruling): the highlight is
-  ;; colour, not a font switch -- unpin it from mixed-pitch's mono list.
-  (setq mixed-pitch-fixed-pitch-faces
-        (delq 'org-latex-and-related mixed-pitch-fixed-pitch-faces)))
+  (add-hook 'mixed-pitch-mode-hook #'rm/mixed-pitch-fix-height))
+  ;; (org-latex-and-related stays IN mixed-pitch's pinned list: LaTeX
+  ;; spans render Roboto Mono at prose height, the block look -- his
+  ;; 2026-07-23 (later) ruling, reversing the brief keep-the-prose-family
+  ;; experiment from earlier the same day.)
 
 (use-package olivetti
   :hook ((org-mode      . olivetti-mode)
@@ -1263,9 +1289,10 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   ;; Break the inherit nano sets and restore the slant it wiped.
   (set-face-attribute 'italic nil :inherit 'unspecified :slant 'italic
                       :foreground "#4a6fa5")
-  ;; LaTeX-in-prose: colour only, NEVER a family switch -- \textcite{...}
-  ;; and $math$ sit in the same ET Book as the sentence around them, in a
-  ;; muted sienna that reads as markup next to the blue italics.
+  ;; LaTeX-in-prose: the face carries only the COLOUR (muted sienna,
+  ;; reads as markup next to the blue italics); family and size arrive
+  ;; via mixed-pitch's mono pin + the 0.75 layer -- Roboto Mono at prose
+  ;; height, the export-block look.
   (when (facep 'org-latex-and-related)
     (set-face-attribute 'org-latex-and-related nil
                         :inherit 'unspecified :family 'unspecified
@@ -1418,8 +1445,8 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
             (define-key map (kbd "a") #'org-agenda-list)        ; agenda, directly
                                         ; (dispatcher submenu: C-c a)
-            (define-key map (kbd "t") #'org-todo-list)          ; todos, all
-            (define-key map (kbd "c") #'org-capture)            ; capture
+            (define-key map (kbd "t") #'rm/capture-task)        ; new todo, directly
+            (define-key map (kbd "c") #'org-capture)            ; capture (any template)
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'rm/denote-list)         ; list by words
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
