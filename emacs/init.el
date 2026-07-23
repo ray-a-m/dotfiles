@@ -742,10 +742,10 @@ layout untouched -- no empty window to clean up."
       (widen)
       (save-excursion
         (goto-char (point-min))
-      (let ((inhibit-read-only t))
-        (while (re-search-forward
-                "^Press .*\n\\(?:[ \t]+([0-9]+)[^\n]*\n?\\)*" nil t)
-          (delete-region (match-beginning 0) (match-end 0))))))
+        (let ((inhibit-read-only t))
+          (while (re-search-forward
+                  "^Press .*\n\\(?:[ \t]+([0-9]+)[^\n]*\n?\\)*" nil t)
+            (delete-region (match-beginning 0) (match-end 0)))))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-strip-hints)
   ;; The agenda's own keys, printed where they apply (footer of every
   ;; agenda view) rather than on the splash.
