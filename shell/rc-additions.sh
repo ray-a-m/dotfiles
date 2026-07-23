@@ -55,12 +55,11 @@ save() {
   git add -A && git commit -m "${1:-.}" && git push
 }
 
-# Regenerate body.tex from paper.org where the org file exists (org is the
-# authoring surface for migrated papers; the generated body.tex stays
-# committed because the dissertation \inputpaperbody's it and provenance
-# tags need buildable trees).  emacs -Q on purpose: no daemon dependency,
-# no init.el -- the export module + the shared org-paper.setup carry
-# everything the batch path needs.
+# Regenerate a document's .tex build artifacts (body + driver) from its org
+# source where one exists — org is the authoring surface for everything in
+# research-wip; the .tex are gitignored artifacts.  emacs -Q on purpose: no
+# daemon dependency, no init.el -- the export module + the shared
+# org-paper.setup carry everything the batch path needs.
 _org_export_body() {
   local org="$1"
   [[ -f "$org" ]] || return 0
@@ -103,16 +102,22 @@ publish() {
     set -e
     cd "$src_dir"
     if [[ "$name" == dissertation ]]; then
-      # Chapters \inputpaperbody the papers' body.tex, and the frontmatter
-      # introduction is org-authored too -- refresh all of them before
-      # building.  find, not a glob: this file is sourced by both zsh and
-      # bash (no-match globs differ).
+      # Chapters \inputpaperbody the papers' body.tex, the frontmatter prose
+      # and the dissertation structure are org-authored too -- refresh all of
+      # them before building.  find, not a glob: this file is sourced by both
+      # zsh and bash (no-match globs differ).
       find "$HOME/scholarship/research-wip/documents/papers" \
            -mindepth 2 -maxdepth 2 -name paper.org |
         while IFS= read -r org; do
           _org_export_body "$org" || exit 1
         done
-      _org_export_body "$src_dir/frontmatter/introduction.org"
+      find "$src_dir/frontmatter" -maxdepth 1 -name '*.org' |
+        while IFS= read -r org; do
+          _org_export_body "$org" || exit 1
+        done
+      _org_export_body "$src_dir/dissertation.org"
+    elif [[ "$name" == cv ]]; then
+      _org_export_body "$src_dir/cv.org"
     else
       _org_export_body "$src_dir/paper.org"
     fi
@@ -165,6 +170,13 @@ doublespace() {
     echo "doublespace: file not found: $input"
     return 1
   fi
+  # The .tex are generated artifacts now — refresh from the org source first
+  # so a clean tree (or stale artifact) still builds the current content.
+  case "$input" in
+    paper.tex)        _org_export_body "$PWD/paper.org" ;;
+    dissertation.tex) _org_export_body "$PWD/dissertation.org" ;;
+    maung_cv.tex)     _org_export_body "$PWD/cv.org" ;;
+  esac
   local jobname="${input%.tex}-doublespaced"
   if [[ -n "$out_name" ]]; then
     out_name="${out_name%.pdf}"

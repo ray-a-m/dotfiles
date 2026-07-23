@@ -32,7 +32,7 @@ for **notes + Org**.
 | `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
 | `welcome.org` | The startup screen content — an editable Org file (logo + the system map: vault grammar, tasks, find, commands — with splash-local single keys). |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
-| `org-paper-export.el` | Body-only LaTeX export for papers-in-Org (the `paper-latex` backend; also loaded headless by the `publish` shell function). See "Papers in Org". |
+| `org-paper-export.el` | LaTeX export for the org-authored research workflow (the `paper-latex` backend + generated driver artifacts; also loaded headless by the `publish` shell function). See "Research documents in Org". |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
 
 Symlinked to `~/.config/emacs` by `install.sh` (`ln -sfn`, backing up any real
@@ -236,33 +236,47 @@ git history and `~/Dropbox/notes-premigration-20260722.tar.gz`). Only
 `Dissertation/` (active-paper notes, deliberately left) and `Files/`
 (attachments) remain as folders.
 
-## Papers in Org (migration started 2026-07-20)
+## Research documents in Org (papers 2026-07-20; whole workflow 2026-07-23)
 
-Papers under `research-wip/documents/papers/<slug>/` are authored as
-`paper.org` and export **body-only** to the `body.tex` their 8-line
-`paper.tex` driver `\input`s — the driver, `shared/preamble.tex`, the bibs,
-and the dissertation's `\inputpaperbody` never change, so the compiled PDF
-is byte-comparable with the hand-written original (verified per paper:
-empty `git diff` on the generated `body.tex`, `pdftotext` diff, and a
-pixel-level `pdftoppm`/`compare` pass). Machinery in `org-paper-export.el`:
-a `paper-latex` backend that keeps `$…$` inline math (stock ox-latex
-rewrites to `\(…\)`) and strips the auto-generated random
-`\label{sec:orgNNN}`. Shared export options live in
-`research-wip/documents/shared/org-paper.setup` (smart quotes and special
-strings off, `tasks:nil`, the TODO keywords for batch runs). Saving a
-`paper.org` regenerates `body.tex` (after-save hook); `C-c C-c` exports +
-latexmks, matching the AUCTeX binding; `publish` regenerates before
-building via `emacs -Q --batch`. A `** TODO …` jotted mid-paper reaches
-the global agenda (`org-agenda-files` includes
-`research-wip/documents/**/*.org`) and its whole subtree is dropped from
-export — so keep only task notes under TODO headlines, never prose.
-Citations stay raw LaTeX (`\cite`/`\textcite`/`\parencite`), passed
-through verbatim. Migrated: all three papers (higgs,
-friedman-kuhn-hegel-kant, symmetry-reality) and the dissertation's
-`frontmatter/introduction.org` — each verified byte-identical at the
-generated-.tex level and pixel-identical (`pdftoppm` + `compare`,
-AE=0 every page) at the PDF level, dissertation included. Still
-`.tex`: drivers, preambles, dissertation + remaining frontmatter, CV.
+Everything in `research-wip/documents/` is org-authored; the `.tex` each
+document compiles from are **generated, gitignored build artifacts**:
+
+- `papers/<slug>/paper.org` → `body.tex` + a `paper.tex` driver built from
+  the `#+PAPER_BIB:` keyword (the `\addbibresource` argument)
+- `dissertation/dissertation.org` → `body.tex` + `dissertation.tex`
+  (title-page fields ride as `#+LATEX_HEADER:` lines so hyperref's
+  `pdfusetitle` still sees them before `\begin{document}`)
+- `dissertation/frontmatter/*.org` → `<name>.tex` (`\input`ed, no driver)
+- `cv/cv.org` → `body.tex` + `maung_cv.tex`
+
+What stays hand-written LaTeX is typesetting config only:
+`shared/preamble.tex`, `shared/body-packages.tex`,
+`dissertation/preamble.tex` (which also holds `\inputpaperbody`),
+`cv/preamble.tex`, and the texmf `.sty` files.
+
+Machinery in `org-paper-export.el`: a `paper-latex` backend that keeps
+`$…$` inline math (stock ox-latex rewrites to `\(…\)`), strips the
+auto-generated random `\label{sec:orgNNN}`, and ends bodies with exactly
+one blank line; a doc-type table mapping the four source patterns to their
+artifacts; and a driver writer with per-type templates. Shared export
+options live in `research-wip/documents/shared/org-paper.setup` (smart
+quotes and special strings off, `tasks:nil`, the TODO keywords for batch
+runs). Saving regenerates the artifacts (after-save hook); `C-c C-c`
+exports + latexmks, matching the AUCTeX binding; `M-x rm/org-paper-watch`
+runs `latexmk -pvc` for continuous compile-on-save preview (zathura
+refreshes; no inverse search — SyncTeX maps to the generated `.tex`);
+`publish` regenerates everything headless via `emacs -Q --batch` before
+building. A `** TODO …` jotted mid-document reaches the global agenda
+(`org-agenda-files` includes `research-wip/documents/**/*.org`) and its
+whole subtree is dropped from export — so keep only task notes under TODO
+headlines, never prose. Citations stay raw LaTeX
+(`\cite`/`\textcite`/`\parencite`), passed through verbatim.
+
+Every migration step was gated: generated artifacts byte-identical to the
+previously committed files where applicable, and each document verified
+`pdftotext`-identical and pixel-identical (`pdftoppm -r 150` + ImageMagick
+`compare`, AE=0 every page — all 31 dissertation pages included) against a
+pre-migration baseline built at `98b474f`.
 
 ## Keybindings
 
