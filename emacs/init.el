@@ -428,7 +428,11 @@ layout untouched -- no empty window to clean up."
 ;; org-meta-return).  Bound into ctl-x-map DIRECTLY, not via the "C-x k"
 ;; path: after the end-of-init C-a/C-x swap, "C-x" is no longer a prefix,
 ;; so the path form would error on any rm/reload-init.  Typed as C-a k.
-(keymap-set ctl-x-map "k" #'kill-current-buffer)
+;; rm/kill-buffer (defined with the splash machinery) additionally lands
+;; on the splash when the window's real history is all dead -- killing a
+;; note captured from the splash returns you to the splash, not whatever
+;; buffer Emacs cycles in as filler.
+(keymap-set ctl-x-map "k" #'rm/kill-buffer)
 
 ;; --- Vim motions on Meta (mirrors the nvim workflow) --------------------
 ;; M-hjkl / M-w / M-b move (w is vim-exact: start of NEXT word, via misc.el's
@@ -1269,6 +1273,10 @@ showing the splash).  No-op unless the computed width actually changed."
   (when (get-buffer "*welcome*")
     (kill-buffer "*welcome*")))
 
+(defvar-local rm/welcome--origin nil
+  "Non-nil in a buffer whose visit dismissed the splash.
+C-a k (rm/kill-buffer) sends such a buffer back to the splash.")
+
 (defun rm/welcome--auto-dismiss ()
   "One-shot: dismiss the welcome screen once a real file is visited.
 Runs on `find-file-hook', which fires before the new buffer is
@@ -1276,6 +1284,7 @@ displayed -- so the teardown is deferred a tick, lest we delete the
 very window the file is about to land in."
   (remove-hook 'find-file-hook #'rm/welcome--auto-dismiss)
   (when (get-buffer "*welcome*")
+    (setq rm/welcome--origin t)                     ; this visit ended the splash
     (run-with-timer 0 nil
                     (lambda ()
                       (when-let ((buf (get-buffer "*welcome*")))
@@ -1285,10 +1294,14 @@ very window the file is about to land in."
                           (ignore-errors (delete-window win)))
                         (kill-buffer buf))))))
 
-(defun rm/welcome ()
-  "Show the welcome screen (welcome.org) unless a file was opened at launch."
-  (interactive)
-  (when (or (called-interactively-p 'interactive)   ; M-x always previews it
+(defun rm/welcome (&optional force)
+  "Show the welcome screen (welcome.org) unless a file was opened at launch.
+Interactive calls and a non-nil FORCE always show it; the guard below is
+a LAUNCH-time check (it only passes before any file is visited), there
+so the startup hook stays quiet when a frame opens on a file."
+  (interactive "p")
+  (when (or force
+            (called-interactively-p 'interactive)   ; M-x always previews it
             (and (not (member "-no-splash" command-line-args))
                  ;; no file-visiting buffers yet -> a bare `emacs' launch
                  (not (seq-some #'buffer-file-name (buffer-list)))))
@@ -1399,9 +1412,34 @@ buffers, capped so exhausted or cyclic histories land on the splash."
                     (window-prev-buffers))
           (progn (switch-to-prev-buffer)
                  (setq done (rm/escape--interesting-p (current-buffer))))
-        (rm/welcome) (setq done t)))
-    (unless done (rm/welcome))))
+        ;; forced: rm/welcome's non-interactive guard is a LAUNCH-time
+        ;; check (no file buffers yet) that is never true in a working
+        ;; session -- a plain call would no-op and strand ESC.
+        (rm/welcome t) (setq done t)))
+    (unless done (rm/welcome t))))
 (keymap-global-set "<escape>" #'rm/escape)
+;; C-a k: kill the buffer, but never strand the window on filler.  A
+;; buffer whose visit dismissed the splash (rm/welcome--origin, stamped
+;; by the auto-dismiss hook) returns TO the splash -- capture a note
+;; from the splash, kill it, you're back where you started.  Likewise
+;; when every real stop in the window's history is dead and Emacs would
+;; cycle in an arbitrary frame-list buffer.  A replacement that WAS in
+;; the window's live history is kept (killing mid-work still returns to
+;; the previous file).
+(defun rm/kill-buffer ()
+  "Kill the current buffer; splash-born buffers return to the splash."
+  (interactive)
+  (let ((victim (current-buffer))
+        (was-welcome (string= (buffer-name) "*welcome*"))
+        (born-of-splash rm/welcome--origin)
+        (history (delq (current-buffer)
+                       (mapcar #'car (window-prev-buffers)))))
+    (kill-current-buffer)
+    (when (and (not (buffer-live-p victim))          ; user may abort the kill
+               (not was-welcome)
+               (or born-of-splash
+                   (not (memq (current-buffer) history))))
+      (rm/welcome t))))
 ;; ...and its opposite: M-ESC leaps forward to any buffer (previewing
 ;; list, most recent first -- the one-gesture return after an ESC).
 (keymap-global-set "M-<escape>" #'consult-buffer)
