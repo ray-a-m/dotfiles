@@ -415,7 +415,9 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   :doc "Window menu: splits, file-into-split, swap, divider drag, balance, layout undo."
   "s" #'split-window-below                ; like :sp
   "v" #'split-window-right                ; like :vs
-  "n" #'rm/window-new                     ; right split showing the splash
+  "t" #'rm/window-new                     ; fresh right split showing the
+                                          ; splash (vim :tabnew feel; n
+                                          ; would collide with n = note)
   "f" #'rm/find-file-right                ; pick a file into a right split
   "b" #'rm/find-file-below                ; pick a file into a below split
   "h" #'rm/window-edge-left               ; drag the divider left
@@ -1414,7 +1416,8 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
             (define-key map (kbd "f") #'denote-open-or-create)  ; find by name
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
-            (define-key map (kbd "a") #'org-agenda)             ; agenda
+            (define-key map (kbd "a") #'org-agenda-list)        ; agenda, directly
+                                        ; (dispatcher submenu: C-c a)
             (define-key map (kbd "t") #'org-todo-list)          ; todos, all
             (define-key map (kbd "c") #'org-capture)            ; capture
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
