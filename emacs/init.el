@@ -1471,8 +1471,8 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
             (define-key map (kbd "f") #'denote-open-or-create)  ; find by name
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
-            (define-key map (kbd "a") #'org-agenda-list)        ; agenda, directly
-                                        ; (dispatcher submenu: C-c a)
+            (define-key map (kbd "a") #'org-todo-list)          ; todos, all -- what
+                                        ; he actually uses (agenda views: C-c a)
             (define-key map (kbd "t") #'rm/capture-task)        ; new todo, directly
             (define-key map (kbd "c") #'org-capture)            ; capture (any template)
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog

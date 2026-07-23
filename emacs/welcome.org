@@ -21,13 +21,13 @@
 *Tasks*                                   *find*
 
   Capture a task (todo) .......... [t]    by name ........................ [f]
-  Todos, all ............... [C-c a t]    by content ..................... [g]
-  Todos, by tag ............ [C-c a m]    list ........................... [l]
+  Todos, all ..................... [a]    by content ..................... [g]
+                                          list ........................... [l]
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
-  Agenda / capture ........... [a / c]    Resize windows ........ [C-c w hjkl]
-  Back ......................... [ESC]    Save ..................... [C-a C-s]
+  Back ......................... [ESC]    Resize windows ........ [C-c w hjkl]
+  Capture (pick template) ........ [c]    Save ..................... [C-a C-s]
   Close buffer ............... [C-a k]    Scratch ................ [s / C-c s]
   File in project .......... [C-a p f]    Search in buffer ........... [M-s l]
   File to split ........ [C-c w f / b]    Swap windows ............. [C-c w w]
