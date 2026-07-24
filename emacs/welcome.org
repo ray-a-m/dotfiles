@@ -26,12 +26,12 @@
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
-  Back ......................... [ESC]    Resize windows ........ [C-c w hjkl]
-  Close buffer ............... [C-a k]    Save ..................... [C-a C-s]
-  File in project .......... [C-a p f]    Scratch ................ [s / C-c s]
-  File to split ........ [C-c w f / b]    Search in buffer ........... [M-s l]
-  Git save (commit+push) ..... [C-c g]    Swap windows ............. [C-c w w]
+  Back ......................... [ESC]    Papers ......................... [p]
+  Close buffer ............... [C-a k]    Resize windows ........ [C-c w hjkl]
+  File in project .......... [C-a p f]    Save ..................... [C-a C-s]
+  File to split ........ [C-c w f / b]    Scratch ................ [s / C-c s]
+  Git save (commit+push) ..... [C-c g]    Search in buffer ........... [M-s l]
+  Home ..................... [C-c SPC]    Swap windows ............. [C-c w w]
   Jump / swap .................. [M-o]    Switch buffer ...... [M-ESC / C-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
   New note ....................... [n]    Window menu ................ [C-c w]
-  Papers ......................... [p]
