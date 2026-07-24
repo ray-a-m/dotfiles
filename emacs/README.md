@@ -302,9 +302,9 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `<f8>` | toggle a sidebar at the current project |
 | `h` / `j` / `k` / `l` | *in the sidebar:* collapse/up · down · up · expand/visit (vim-style; sidebar-local — plain letters work because the pane is read-only, and they shadow dired's legacy single-key commands) |
 | `f` / `b` | *in the sidebar:* open the file at point in a split right of / below the **main** window (same letters as `C-c w f`/`b`; shadows dired's find-file, sidebar-only) |
-| `a` / `r` / `d` / `y` / `p` | *in the sidebar:* yazi-style file ops — create (trailing `/` = folder) / rename (pre-fills the current name; a path moves) / delete / yank / paste. On a folder line, create/paste go *into* it; on a file line, beside it. Every op ends by expanding the tree down to its result and parking point on it — a paste into a collapsed folder is never invisible |
+| `a` / `r` / `d` / `y` / `p` | *in the sidebar:* yazi-style file ops — create (trailing `/` = folder) / rename (pre-fills the current name; a path moves) / delete (to the system trash) / yank / paste. On a folder line, create/paste go *into* it; on a file line, beside it. Every op ends by expanding the tree down to its result and parking point on it — a paste into a collapsed folder is never invisible |
 | `C-c e` | copy the last echo-area message (usually the last error) to the clipboard; `C-c h e` pops the full \*Messages\* log |
-| `R` / `+` / `a` / `D` | *in plain dired:* rename-or-move (type a name or a path) / new directory / new empty file / delete |
+| `R` / `+` / `a` / `D` | *in plain dired:* rename-or-move (type a name or a path) / new directory / new empty file / delete (to the system trash) |
 | `C-a C-q` | *in dired:* wdired — edit filenames like buffer text; `C-c C-c` commits, `C-c C-k` aborts (dired remaps `read-only-mode` to the wdired toggle) |
 | `C-a p p` / `C-a p f` | switch project / find file in project (project.el) |
 | `C-a k` | kill current buffer, no prompt |
