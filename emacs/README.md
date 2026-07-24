@@ -323,6 +323,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
 | `M-c` | classify: vault note → form+matter rename; task heading / agenda entry → task tags |
 | `C-c s` | pop the \*scratch\* buffer |
+| `C-c SPC` | straight home: the splash in the current window — the teleport when ESC's step-by-step walk is too long (`C-c w SPC` is the same destination in a new split) |
 | `q` | dismiss the welcome screen |
 
 Config reload after edits is `M-x rm/reload-init` (unbound — orderless makes

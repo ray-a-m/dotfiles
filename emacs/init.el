@@ -1882,12 +1882,20 @@ so the startup hook stays quiet when a frame opens on a file."
 (add-hook 'window-setup-hook #'rm/welcome)
 ;; Summon the splash on demand -- "go home" (interactive calls always show it).
 ;; C-c s: the *scratch* buffer, from anywhere (s on the splash too).
-;; The splash itself is the ESC-chain's terminus -- see rm/escape-home.
+;; C-c SPC: straight home in the CURRENT window -- the teleport ESC's
+;; step-by-step walk can't offer when the day's trail is long (his ask,
+;; 2026-07-24).  Sibling of C-c w SPC, which is the same destination in
+;; a NEW split.
 (defun rm/scratch ()
   "Pop to the *scratch* buffer."
   (interactive)
   (switch-to-buffer (get-scratch-buffer-create)))
 (keymap-global-set "C-c s" #'rm/scratch)
+(defun rm/home ()
+  "Jump straight to the splash in the selected window."
+  (interactive)
+  (rm/welcome t))
+(keymap-global-set "C-c SPC" #'rm/home)
 ;; ESC, single press: universal "back out of where I am".
 ;; Prompts abort; a marked region deactivates; otherwise one literal
 ;; step back through the SELECTED WINDOW's own buffer history (every
