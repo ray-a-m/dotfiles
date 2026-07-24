@@ -799,11 +799,16 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-todo-keywords
         '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
         ;; Task MATTER tags (the TODO keyword is the form, the tag is the
-        ;; matter it concerns): C-c C-c on a heading pops fast-select -- one letter
-        ;; toggles the tag.  Orthogonal to location: C-c a m gathers a tag's
-        ;; TODOs from inbox.org, the technology hub, anywhere the agenda
-        ;; scans.  Distinct namespace from the vault's note-matter (that names research
-        ;; programs; these name the legs of the job).
+        ;; matter it concerns): fast-select on M-c / C-c C-c -- one letter
+        ;; tags and exits.  `expert' keeps the whole exchange in the
+        ;; minibuffer (the stock grid WINDOW jarred against M-c's other
+        ;; contexts, all tiny prompts -- his rule, 2026-07-24); C-c inside
+        ;; the prompt still summons the grid.  Orthogonal to location:
+        ;; C-c a m gathers a tag's TODOs from inbox.org, the technology
+        ;; hub, anywhere the agenda scans.  Distinct namespace from the
+        ;; vault's note-matter (that names research programs; these name
+        ;; the legs of the job).
+        org-fast-tag-selection-single-key 'expert
         org-tag-alist '(("technology" . ?t) ("teaching" . ?e)
                         ("service" . ?s) ("research" . ?r)))
   :config
