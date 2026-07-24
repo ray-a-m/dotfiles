@@ -319,7 +319,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
 | `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds) |
 | `S-TAB` | cycle the document outline (in `.tex`) |
-| `ESC` | universal back: abort prompt → drop region → dismiss a sidebar → one step back through this window's buffer history (machinery popups skipped; the splash counts as a stop) → when the trail ends, a popup window closes; the frame's last window floors on the splash (one splash only — ESC on a duplicate closes it) |
+| `ESC` | universal back: abort prompt → drop region → dismiss a sidebar → one step back through this window's buffer history (machinery popups skipped; the splash counts as a stop) → when the trail ends, a popup window closes; the frame's last real window (sidebars don't count) dismisses an open sidebar first, then floors on the splash (one splash only — ESC on a duplicate closes it) |
 | `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
 | `M-c` | classify: vault note → form+matter rename; task heading / agenda entry → task tags |
 | `C-c s` | pop the \*scratch\* buffer |
