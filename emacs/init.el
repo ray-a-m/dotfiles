@@ -1238,8 +1238,13 @@ renames deliberately whenever."
   (defun rm/denote-autotitle ()
     "First save of an untitled vault note: derive the title from line 1.
 Only fires while the note is untitled, so a deliberate C-c d r (or a
-hand-edited #+title) is never overridden."
-    (when (and buffer-file-name
+hand-edited #+title) is never overridden.  The featurep guard: this
+sits on the GLOBAL after-save-hook, and before denote loads it errored
+void-function on every save of anything (fresh-daemon repro,
+2026-07-24) -- untitled notes can only be born from commands that load
+denote, so nothing is missed."
+    (when (and (featurep 'denote)
+               buffer-file-name
                (denote-file-is-note-p buffer-file-name)
                (string-empty-p (or (denote-retrieve-title-value
                                     buffer-file-name 'org) "")))
@@ -1315,7 +1320,10 @@ the entry at point."
     (cond
      ((derived-mode-p 'org-agenda-mode)
       (call-interactively #'org-agenda-set-tags))
-     ((and buffer-file-name (denote-file-is-note-p buffer-file-name))
+     ;; require, not featurep: M-c on a raw-opened vault note in a fresh
+     ;; session must still classify, not fall through to task tags
+     ((and buffer-file-name
+           (progn (require 'denote) (denote-file-is-note-p buffer-file-name)))
       (let ((form (rm/denote--form-prompt))
             (matter (let ((denote-known-keywords rm/denote-matter)
                           (denote-infer-keywords nil))
