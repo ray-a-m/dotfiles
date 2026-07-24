@@ -1936,9 +1936,14 @@ so the startup hook stays quiet when a frame opens on a file."
       (when born (rm/welcome t))
       (message "Empty note discarded")))
    ((eq (current-buffer) (get-buffer "*welcome*"))
-    ;; the floor -- and a second splash in an extra window is a stale
-    ;; popup: close it; ONE splash is the floor
-    (unless (one-window-p) (delete-window)))
+    ;; the floor.  A duplicate splash in an extra window is a stale
+    ;; popup: close it (ONE splash is the floor).  A sidebar beside the
+    ;; real splash dismisses instead -- it made the splash "not the last
+    ;; window", and deleting home stranded the frame on the file tree
+    ;; (his repro, 2026-07-24).
+    (cond
+     ((not (rm/escape--last-real-window-p)) (delete-window))
+     ((rm/escape--sidebar-visible-p) (dired-sidebar-hide-sidebar))))
    ;; a sidebar is a popup whatever its window history says (it re-roots
    ;; and follows files, so its history wanders): ESC dismisses it
    ((derived-mode-p 'dired-sidebar-mode) (dired-sidebar-hide-sidebar))
@@ -1969,17 +1974,33 @@ buffers, capped so exhausted or cyclic histories hit the floor."
                  (setq done (rm/escape--interesting-p (current-buffer))))
         (rm/escape--floor) (setq done t)))
     (unless done (rm/escape--floor))))
+(defun rm/escape--sidebar-visible-p ()
+  "Non-nil when a dired-sidebar window is showing in this frame."
+  (and (featurep 'dired-sidebar)
+       (dired-sidebar-showing-sidebar-p)))
+(defun rm/escape--last-real-window-p ()
+  "Is the selected window the frame's only window, sidebars aside?
+Sidebar windows don't count: they are chrome, and letting one make a
+real window \"not the last\" got the real window DELETED at the floor,
+stranding the frame on the file tree."
+  (not (seq-some (lambda (w)
+                   (and (not (eq w (selected-window)))
+                        (with-current-buffer (window-buffer w)
+                          (not (derived-mode-p 'dired-sidebar-mode)))))
+                 (window-list))))
 (defun rm/escape--floor ()
   "Trail exhausted: close a popup window, else floor on the splash.
 A window with no meaningful history of its own was created FOR its
 buffer (the agenda's split, a popped file) -- backing out of it means
-closing it; only the frame's last window floors on the splash.  Forced:
-rm/welcome's non-interactive guard is a launch-time check (no file
-buffers yet) that is never true in a working session -- a plain call
-would no-op and strand ESC."
-  (if (one-window-p)
-      (rm/welcome t)
-    (delete-window)))
+closing it; the frame's last REAL window (sidebars aside) dismisses an
+open sidebar first, then floors on the splash.  Forced: rm/welcome's
+non-interactive guard is a launch-time check (no file buffers yet)
+that is never true in a working session -- a plain call would no-op
+and strand ESC."
+  (cond
+   ((not (rm/escape--last-real-window-p)) (delete-window))
+   ((rm/escape--sidebar-visible-p) (dired-sidebar-hide-sidebar))
+   (t (rm/welcome t))))
 (keymap-global-set "<escape>" #'rm/escape)
 ;; C-a k: kill the buffer, but never strand the window on filler.  A
 ;; buffer whose visit dismissed the splash (rm/welcome--origin, stamped
