@@ -1432,7 +1432,7 @@ the entry at point."
         (when-let ((b (find-buffer-visiting f)))
           (with-current-buffer b (set-buffer-modified-p nil))
           (kill-buffer b))
-        (delete-file f)
+        (delete-file f delete-by-moving-to-trash)
         (setq rm/note-pick--alist
               (assoc-delete-all cand rm/note-pick--alist))
         (when (equal f rm/note-pick--pfile)
@@ -2128,6 +2128,14 @@ dismisses the splash."
                 '(".bcf" ".fdb_latexmk" ".fls" ".log" ".out"
                   ".run.xml" ".synctex.gz" ".xdv"))))
 (add-hook 'dired-mode-hook #'dired-omit-mode)
+
+;; Deletions go to the system trash (freedesktop ~/.local/share/Trash),
+;; not oblivion -- dired's recursive `y' was a literal rm -rf until it
+;; ate a notes/ folder (2026-07-24; git happened to have it).  Undo a
+;; deletion by pulling the files back out of the trash.  The ESC
+;; empty-note discard stays a real delete on purpose: those files are
+;; guaranteed contentless.
+(setq delete-by-moving-to-trash t)
 
 ;; File operations in plain dired: R renames/moves the file at point (same
 ;; prompt -- type a new name, or a path to move), + makes a directory, `a'
