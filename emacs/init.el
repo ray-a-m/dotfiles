@@ -2286,6 +2286,25 @@ one `l' away instead."
             (file-name-as-directory file)
           (file-name-directory file))
       (dired-current-directory)))
+  (defun rm/sidebar--reveal (file)
+    "Expand the tree down to FILE and land point on its line.
+An op targeting a COLLAPSED folder succeeds on disk but changes
+nothing on screen (\"yank not working?\", 2026-07-24 -- the pasted
+notes/ sat invisibly inside an unexpanded folder), so create/paste/
+rename all end here.  Walks top-down from the sidebar root, expanding
+each collapsed ancestor so the next component's line exists; stops
+silently if a component is omitted from the listing."
+    (let* ((root (expand-file-name default-directory))
+           (rel (file-relative-name (expand-file-name file) root)))
+      (unless (string-prefix-p ".." rel)
+        (let ((dir root) (parts (split-string rel "/" t)))
+          (while (cdr parts)
+            (setq dir (expand-file-name (car parts) dir))
+            (when (dired-utils-goto-line dir)
+              (unless (dired-subtree--is-expanded-p)
+                (dired-subtree-insert)))
+            (setq parts (cdr parts)))
+          (dired-utils-goto-line (expand-file-name (car parts) dir))))))
   (defun rm/sidebar-create ()
     "Create a file at point's directory; a trailing / creates a folder."
     (interactive)
@@ -2299,7 +2318,8 @@ one `l' away instead."
             (make-directory target t)
           (make-directory (file-name-directory target) t)
           (write-region "" nil target nil 0))
-        (dired-sidebar-refresh-buffer))))
+        (dired-sidebar-refresh-buffer)
+        (rm/sidebar--reveal target))))
   (defun rm/sidebar-rename ()
     "Rename the file at point, editing its current name (yazi-style).
 Plain `read-string' on purpose: `dired-do-rename' completes over
@@ -2319,7 +2339,8 @@ with \"Cannot move to same file\".  A path as the new name still moves."
             (user-error "%s already exists" (abbreviate-file-name target)))
           (make-directory (file-name-directory target) t)
           (dired-rename-file file target nil)
-          (dired-sidebar-refresh-buffer)))))
+          (dired-sidebar-refresh-buffer)
+          (rm/sidebar--reveal target)))))
   (defun rm/sidebar-yank ()
     "Yank (copy) the file at point for `rm/sidebar-paste'."
     (interactive)
@@ -2341,7 +2362,8 @@ with \"Cannot move to same file\".  A path as the new name still moves."
           (copy-directory rm/sidebar-yanked target)
         (copy-file rm/sidebar-yanked target))
       (message "Pasted %s" (abbreviate-file-name target))
-      (dired-sidebar-refresh-buffer)))
+      (dired-sidebar-refresh-buffer)
+      (rm/sidebar--reveal target)))
   (define-key dired-sidebar-mode-map "a" #'rm/sidebar-create)
   (define-key dired-sidebar-mode-map "r" #'rm/sidebar-rename)
   (define-key dired-sidebar-mode-map "d" #'dired-do-delete)
