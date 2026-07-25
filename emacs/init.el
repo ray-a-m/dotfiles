@@ -271,6 +271,16 @@
 ;; there; not a mode you write in.)
 (define-key global-map (kbd "C-a") ctl-x-map)
 
+;; M-SPC = C-c, everywhere (his ask, 2026-07-25: thumb on Alt + SPC beats
+;; the C-c pinky reach).  Unlike C-a above there is NO keymap to bind
+;; directly: global C-c lives in mode-specific-map but every mode's own
+;; C-c C-x... lives inside that mode's map under the literal "C-c"
+;; sequence -- only a key-translation rewrite reaches both (M-SPC M-SPC
+;; = C-c C-c compiles, M-SPC SPC = home).  Accepted cost, unlike the
+;; C-a call: echoes and describe-key report the sequence as "C-c ...".
+;; C-c itself still works; stock M-SPC (cycle-spacing, unused) is gone.
+(keymap-set key-translation-map "M-SPC" "C-c")
+
 ;; --- Projects (built-in project.el) --------------------------------------
 ;; The "land on a file fast" path, next to the sidebar's browse-around path:
 ;; C-a p p switches project, C-a p f finds a file in it -- with orderless,
@@ -2208,6 +2218,16 @@ one `l' away instead."
         dired-sidebar-should-follow-file t) ; keep the tree on the file you're editing
   ;; `a' (new file) should refresh the tree like R / + / D already do.
   (add-to-list 'dired-sidebar-special-refresh-commands 'dired-create-empty-file)
+  ;; Follow means "the FILE you're editing": stock follow re-roots for ANY
+  ;; buffer via its default-directory, and UI buffers carry one too -- the
+  ;; splash's is dotfiles/emacs (logo path), so going home re-rooted the
+  ;; tree to the config dir (his repro, 2026-07-25).  No file, no follow;
+  ;; dired/magit keep their own root logic.
+  (defun rm/sidebar-follow-only-files (orig &rest args)
+    (when (or buffer-file-name
+              (derived-mode-p 'dired-mode 'magit-mode))
+      (apply orig args)))
+  (advice-add 'dired-sidebar-follow-file :around #'rm/sidebar-follow-only-files)
   ;; Hide dired's banner line (absolute path + free space); the header line
   ;; shows the root directory's name instead.
   (defun rm/sidebar-hide-heading ()
