@@ -755,10 +755,12 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
          ;; preview is OFF for good (rendered fragments kept reappearing);
          ;; the stock preview key can only ever CLEAR images now
          ("C-c C-x C-l" . rm/latex-preview-clear)
-         ;; list ergonomics (his spec, 2026-07-23): RET continues a list
-         ;; with a bullet at the same indent (empty bullet ends the
-         ;; list); TAB indents the item one level, C-TAB outdents (C-TAB
-         ;; was org-force-cycle-archived, never used)
+         ;; list ergonomics = Obsidian's (his spec, 2026-07-24): RET
+         ;; continues a list with a bullet on the very next line; on an
+         ;; empty bullet it outdents a level per press, ending the list
+         ;; at top level; TAB indents the item one level (4-space steps,
+         ;; see org-list-indent-offset), C-TAB outdents (C-TAB was
+         ;; org-force-cycle-archived, never used)
          ("RET" . rm/org-return)
          ("TAB" . rm/org-tab)
          ("C-<tab>" . rm/org-untab))
@@ -801,6 +803,9 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         ;; enough to make every new item arrive a blank line down, reading
         ;; as a separate list (his repro, 2026-07-24)
         org-blank-before-new-entry '((heading . auto) (plain-list-item . nil))
+        ;; sub-items step in 4 spaces, not org's 2 (Obsidian's tab
+        ;; width): the offset is ADDED to the parent bullet's 2
+        org-list-indent-offset 2
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
         '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
@@ -956,18 +961,24 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
     (interactive)
     (org-capture nil "t"))
   (defun rm/org-return ()
-    "RET continues a list: a new bullet at the same indent.
-On an EMPTY bullet, ends the list (removes the bullet, opens a plain
-line).  Everywhere else, stock `org-return' (tables, headings, prose)."
+    "RET continues a list: a new bullet on the very next line (Obsidian).
+On an EMPTY bullet it walks back out, also Obsidian-style: a nested
+item outdents one level per press; a top-level one loses its bullet,
+leaving point on the emptied line -- no extra newline.  `org-at-item-p'
+on purpose: the old `org-in-item-p' counted the blank line just below
+a list as still \"in\" it, so the RET after ending a list re-inserted
+a bullet (make/delete loop, 2026-07-24).  Everywhere else, stock
+`org-return' (tables, headings, prose)."
     (interactive)
     (cond
-     ((and (org-in-item-p)
+     ((and (org-at-item-p)
            (save-excursion
              (beginning-of-line)
              (looking-at "[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)\\(?: \\[[ X-]\\]\\)?[ \t]*$")))
-      (delete-region (line-beginning-position) (line-end-position))
-      (org-return))
-     ((org-in-item-p)
+      (if (> (current-indentation) 0)
+          (org-outdent-item)
+        (delete-region (line-beginning-position) (line-end-position))))
+     ((org-at-item-p)
       (org-insert-item (org-at-item-checkbox-p)))
      (t (org-return))))
   (defun rm/org-tab ()
