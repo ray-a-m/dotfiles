@@ -281,6 +281,22 @@
 ;; C-c itself still works; stock M-SPC (cycle-spacing, unused) is gone.
 (keymap-set key-translation-map "M-SPC" "C-c")
 
+;; M-a = C-a too (same ask): the prefix itself binds DIRECTLY to
+;; ctl-x-map (clean echoes, the C-a pattern above), so M-a k / M-a p p /
+;; M-a C-s all just work.  The M-modified SECOND key (M-a M-s = C-a C-s)
+;; needs sequence translations -- ctl-x-map holds C-s, not M-s, and M-s
+;; can't be translated globally (it's the search prefix).  Unmatched
+;; seconds (M-a k) fall through untranslated to the prefix binding.
+;; Stock M-a (backward-sentence, unused) is gone.
+(define-key global-map (kbd "M-a") ctl-x-map)
+(dolist (c (number-sequence ?a ?z))
+  (keymap-set key-translation-map
+              (format "M-a M-%c" c) (format "C-a C-%c" c)))
+;; ...except M-a M-SPC: the M-SPC=C-c rewrite applies mid-sequence, so it
+;; landed on C-x C-c = save-buffers-kill-terminal -- an accidental
+;; frame-close from two thumb keys.  Quit instead.
+(keymap-set key-translation-map "M-a M-SPC" "C-g")
+
 ;; --- Projects (built-in project.el) --------------------------------------
 ;; The "land on a file fast" path, next to the sidebar's browse-around path:
 ;; C-a p p switches project, C-a p f finds a file in it -- with orderless,
