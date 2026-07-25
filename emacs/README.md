@@ -78,7 +78,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Retrieval | `consult`, `embark` (+`embark-consult`) | previewed prompts/searches: `C-a b` buffers+recents, `M-s l` in-buffer lines, `M-s r` ripgrep here, `M-s o` org headings, `C-c d f`/`g` the note picker (full-window titles, preview right, `M-d` deletes); `C-.` acts on thing at point, `C-. E` in a minibuffer exports the candidate set; prefix help (`C-c d C-h`) is a searchable list via `embark-prefix-help-command` |
 | Built-in defaults | — | `electric-pair`, `savehist`, `recentf`, auto-revert, `repeat-mode`; single-space sentence ends; soft-wrap prose; line numbers **only** in `prog-mode` |
 | Session | built-in `savehist` | persists kill-ring + command/search history across runs (the useful part of `nano-session`, keeping no-littering's file paths) |
-| Undo | built-in | linear undo/redo on `C-z` / `C-S-z` (`undo` / `undo-redo`) |
+| Undo | built-in | linear undo/redo on `C-z` / `C-S-z` (also `M-z` / `M-S-z`) |
 | Git | `magit` | `C-a g` |
 | Spell / syntax | built-in + `hl-todo` | `flyspell` (aspell, personal dict in dotfiles, no duplicate-flagging) + `flymake`; `hl-todo` colours TODO/FIXME in code **and** prose |
 | LaTeX | `auctex` (14, via the `latex` feature), `cdlatex`, `auctex-latexmk` | RefTeX → shared dissertation `.bib`; `C-c C-c` → LatexMk (save-and-compile); SyncTeX ↔ **zathura**; `S-TAB` folds via `outline-minor-mode` |
@@ -88,7 +88,7 @@ Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 | Emphasis | `org-appear` | `/…/` `*…*` markers hidden and rendered, revealed around point for editing |
 | Org typography | `org-modern` | heading stars → ✦ ✧ ✱ ✳ (static, per level), TODO/tags → pills, boxed timestamps, tidy lists/tables (agenda too) |
 | Prose look | `mixed-pitch`, `olivetti` | ET Book body font, centered column, darkened prose (see below) |
-| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit (plain dired also omits build exhaust — generated `.tex` + latexmk leftovers; `M-x dired-omit-mode` toggles the truth back); `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); papers root on `C-c p`; the vault sidebar is `M-x rm/notes-sidebar` or `<f8>` (`C-c n` captures a note now) (replaced treemacs 2026-07-19) |
+| Sidebars | `dired-sidebar` | dired in a side pane, nano-styled: Roboto Mono, no icons, no banner line (header shows the root's name), TAB expands folders, `hjkl` vim navigation; dotfiles / `.` `..` / README / TODO / LaTeX artifacts hidden via dired-omit (plain dired also omits build exhaust — generated `.tex`, latexmk leftovers, and `.bib` (Zotero-managed); `M-x dired-omit-mode` toggles the truth back); `.org`/`.md` extensions hidden; folders sort before files at every level (dired-wide); papers root on `C-c p`; the vault sidebar is `M-x rm/notes-sidebar` or `<f8>` (`C-c n` captures a note now); follow-file only re-roots from file-visiting buffers — UI buffers like the splash carry a `default-directory` but don't drag the tree (replaced treemacs 2026-07-19) |
 | Projects | built-in `project.el` | `C-a p p` switch (research-wip via git, notes vault via a `.project` marker), `C-a p f` find file in project — the fast "land on `higgs/paper.tex`" path |
 | Markdown | `markdown-mode` | any stray `.md`; `markdown-command` = pandoc |
 
@@ -288,7 +288,15 @@ pre-migration baseline built at `98b474f`.
 
 Stock Emacs everywhere, with **`C-a` as the command prefix** (bound straight
 to `ctl-x-map`: type `C-a C-s` to save, `C-a b` to switch buffers, `C-a k`
-to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
+to kill; plain `C-x` is now beginning-of-line). Every prefix also answers
+from the **Alt thumb** (2026-07-25): `M-a` = `C-a`, `M-SPC` = `C-c`,
+`M-g` = `C-g`, with M-modified second keys too — `M-a M-s` saves,
+`M-SPC SPC` goes home, `M-SPC M-SPC` is `C-c C-c`. The `C-` originals all
+still work; the M-SPC/M-g/second-key forms are key-translations, so echoes
+and `describe-key` display them as `C-…`. `M-g` quits at the command level
+(prompts, pending prefixes, regions) — interrupting *running* code is still
+real-`C-g`-only. `M-a M-SPC` is defused to plain quit (it would otherwise
+land on `C-x C-c`, close-the-frame). The custom layer on top:
 
 | Key | Command |
 |-----|---------|
@@ -308,7 +316,7 @@ to kill; plain `C-x` is now beginning-of-line). The custom layer on top:
 | `C-a C-q` | *in dired:* wdired — edit filenames like buffer text; `C-c C-c` commits, `C-c C-k` aborts (dired remaps `read-only-mode` to the wdired toggle) |
 | `C-a p p` / `C-a p f` | switch project / find file in project (project.el) |
 | `C-a k` | kill current buffer, no prompt |
-| `C-z` / `C-S-z` | undo / redo (built-in `undo` / `undo-redo`) |
+| `C-z` / `C-S-z`, `M-z` / `M-S-z` | undo / redo (built-in `undo` / `undo-redo`; the M forms displaced `zap-to-char`) |
 | `M-h/j/k/l`, `M-w`/`M-b` | vim motions: char/line movement, word forward (vim-exact start-of-next-word) / word back |
 | `M-v` / `M-d` / `M-y` / `M-p` | highlight toggle / cut / copy / paste — strict vim operators (`d`/`y` need a highlight); kill-ring ↔ system clipboard |
 | `M-4` / `M-6` | paragraph back / forward (vim `{`/`}` — on Corne-reachable keys) |
