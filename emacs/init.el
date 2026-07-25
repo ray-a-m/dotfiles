@@ -297,6 +297,13 @@
 ;; frame-close from two thumb keys.  Quit instead.
 (keymap-set key-translation-map "M-a M-SPC" "C-g")
 
+;; M-g = C-g (same ask): quit from the thumb.  Command-level only -- a
+;; translated C-g aborts prompts, pending prefixes, and regions, but
+;; interrupting RUNNING code stays real-C-g-only (quit-char is checked
+;; below the keymap layer).  Cost: the stock goto prefix (M-g g etc.,
+;; never bound here) -- M-x goto-line still exists.
+(keymap-set key-translation-map "M-g" "C-g")
+
 ;; --- Projects (built-in project.el) --------------------------------------
 ;; The "land on a file fast" path, next to the sidebar's browse-around path:
 ;; C-a p p switches project, C-a p f finds a file in it -- with orderless,
