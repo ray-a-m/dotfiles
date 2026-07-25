@@ -229,6 +229,10 @@
 (global-unset-key (kbd "C-z"))            ; was suspend-frame; reclaim it
 (keymap-global-set "C-z"   #'undo)
 (keymap-global-set "C-S-z" #'undo-redo)
+;; ...and from the thumb (his ask, 2026-07-25, with the M-a/M-SPC/M-g
+;; family): M-z was zap-to-char, unused
+(keymap-global-set "M-z"   #'undo)
+(keymap-global-set "M-S-z" #'undo-redo)
 
 ;; Reload init.el in place -- apply most config edits without a full restart.
 ;; No keybind: `M-x rm/reload-init' (orderless makes "M-x rel in" find it).
