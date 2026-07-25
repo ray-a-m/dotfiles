@@ -10,11 +10,11 @@
 
 *Vault*  /file = ID--title__form_matter/      *form*                      *matter*
 
-  Attach: file → Files/ .... [C-c d a]    hub       paperidea       aesthetics    math
-  Backlinks ................ [C-c d b]    idea      poetry          concepts      neo-kantian
+  Attach: file → Files/ .. [M-SPC d a]    hub       paperidea       aesthetics    math
+  Backlinks .............. [M-SPC d b]    idea      poetry          concepts      neo-kantian
   Classify: note / task ........ [M-c]    lit       presentation    fun           phenomenology
-  Insert link .............. [C-c d k]    log       talk            hegel         physics
-  Promote / rename ......... [C-c d r]    meeting   wip             history       science
+  Insert link ............ [M-SPC d k]    log       talk            hegel         physics
+  Promote / rename ....... [M-SPC d r]    meeting   wip             history       science
                                           musing                    kant          teaching
                                                                     (none = misc)
 
@@ -26,12 +26,13 @@
 
 *Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
 
-  Back ......................... [ESC]    Papers ......................... [p]
-  Close buffer ............... [C-a k]    Resize windows ........ [C-c w hjkl]
-  File in project .......... [C-a p f]    Save ..................... [C-a C-s]
-  File to split ........ [C-c w f / b]    Scratch ................ [s / C-c s]
-  Git save (commit+push) ..... [C-c g]    Search in buffer ........... [M-s l]
-  Home ..................... [C-c SPC]    Swap windows ............. [C-c w w]
-  Jump / swap .................. [M-o]    Switch buffer ...... [M-ESC / C-a b]
+  Back ......................... [ESC]    Quit / cancel ................ [M-g]
+  Close buffer ............... [M-a k]    Resize windows ...... [M-SPC w hjkl]
+  File in project .......... [M-a p f]    Save ..................... [M-a M-s]
+  File to split ...... [M-SPC w f / b]    Scratch .............. [s / M-SPC s]
+  Git save (commit+push) ... [M-SPC g]    Search in buffer ........... [M-s l]
+  Home ................... [M-SPC SPC]    Swap windows ........... [M-SPC w w]
+  Jump / swap .................. [M-o]    Switch buffer ...... [M-ESC / M-a b]
   Move to window ......... [C-h j k l]    Undo / redo .......... [C-z / C-S-z]
-  New note ....................... [n]    Window menu ................ [C-c w]
+  New note ....................... [n]    Window menu .............. [M-SPC w]
+  Papers ......................... [p]
