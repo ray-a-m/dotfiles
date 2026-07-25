@@ -2188,7 +2188,10 @@ dismisses the splash."
                 "\\|\\`ltximg\\'"))       ; org latex-preview image cache dirs
   (setq dired-omit-extensions
         (append dired-omit-extensions
-                '(".bcf" ".fdb_latexmk" ".fls" ".log" ".out"
+                ;; .bib too (his ask, 2026-07-25): bibs are Zotero
+                ;; auto-exports, never hand-edited -- friedman's local
+                ;; bib and the dissertation master both
+                '(".bcf" ".bib" ".fdb_latexmk" ".fls" ".log" ".out"
                   ".run.xml" ".synctex.gz" ".xdv"))))
 (add-hook 'dired-mode-hook #'dired-omit-mode)
 
