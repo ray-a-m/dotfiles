@@ -795,6 +795,12 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
         org-image-actual-width '(500)     ; cap oversized inline images at 500px
         org-hide-emphasis-markers t       ; show *bold* / italic rendered, hide the markers
+        ;; RET's new bullet goes on the VERY NEXT line, always (Obsidian
+        ;; behavior).  The default `auto' guesses from nearby blank lines
+        ;; -- the blank separating a list from the paragraph above it was
+        ;; enough to make every new item arrive a blank line down, reading
+        ;; as a separate list (his repro, 2026-07-24)
+        org-blank-before-new-entry '((heading . auto) (plain-list-item . nil))
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
         '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
