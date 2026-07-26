@@ -331,7 +331,7 @@ land on `C-x C-c`, close-the-frame). The custom layer on top:
 | `C-a g` | `magit-status` |
 | `C-c g` | the shell `save`, from inside: save buffer → `git add -A` / commit / push this repo, async verdict in the echo area (`C-u` prompts for the message; a remote-less repo like the vault just commits) |
 | `C-c a` / `C-c l` | Org agenda dispatcher / store-link (capture lives on the splash: `t` task, `n` note; `C-c c` unbound) |
-| `C-c M-S` | `org-schedule` (mirrors the `M-SPC` family; default `C-c C-s` still works) — a `SCHEDULED`/`DEADLINE` timestamp is what turns a TODO into a calendar event |
+| `C-c M-s` | `org-schedule` (reached as `M-SPC M-s`; mirrors the `M-SPC` family; default `C-c C-s` still works) — a `SCHEDULED`/`DEADLINE` timestamp is what turns a TODO into a calendar event. Also bound on `C-c M-S` / `C-c S-M-s` for input paths that keep the Shift (this Wayland setup drops it) |
 | `C-c G` | push timestamped `inbox.org` TODOs to the Google "org" calendar via **org-gcal** (REST, one-way — nothing read back; visible on the phone + rencal). Scheduling a task also auto-pushes just that entry, so `C-c G` is the bulk/manual fallback. Creds live in `~/.authinfo.gpg`; Google 403s CalDAV for unverified apps, hence REST/org-gcal not org-caldav |
 | `M-x restart-emacs` | restart the systemd Emacs daemon **and** reopen a frame (Super+Q / `super+w` only close the frame; a bare daemon restart leaves you headless) |
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |

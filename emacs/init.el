@@ -1325,10 +1325,15 @@ POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
 
 (keymap-global-set "C-c G" #'rm/org-gcal-push)   ; M-SPC G -- bulk one-way push
 
-;; Set a SCHEDULED stamp with M-SPC M-S (= C-c M-S), matching the M-SPC command
-;; family (the default C-c C-s still works).
+;; Set a SCHEDULED stamp with M-SPC M-s (= C-c M-s), matching the M-SPC command
+;; family (the default C-c C-s still works).  On this Wayland/Hyprland setup
+;; Alt+Shift+letter drops the Shift and delivers plain M-s (meta + lowercase s)
+;; -- so the lowercase form is what actually arrives.  Bind the capital/shift
+;; forms too as cross-machine insurance (other input paths send M-S or S-M-s).
 (with-eval-after-load 'org
-  (define-key org-mode-map (kbd "C-c M-S") #'org-schedule))
+  (define-key org-mode-map (kbd "C-c M-s")   #'org-schedule)
+  (define-key org-mode-map (kbd "C-c M-S")   #'org-schedule)
+  (define-key org-mode-map (kbd "C-c S-M-s") #'org-schedule))
 
 ;; Restart the systemd Emacs daemon (super+w only closes the frame).  Detached
 ;; via systemd-run so the restart survives THIS process being killed.

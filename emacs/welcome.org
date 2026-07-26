@@ -12,7 +12,7 @@ Tasks                                     form          matter
 
   Capture a task (todo) .......... [t]    hub           aesthetics
   Push to calendar ......... [M-SPC G]    idea          concepts
-  Schedule task .......... [M-SPC M-S]    lit           fun
+  Schedule task .......... [M-SPC M-s]    lit           fun
   Todos, all ..................... [a]    log           hegel
                                           meeting       history
 find                                      musing        kant
