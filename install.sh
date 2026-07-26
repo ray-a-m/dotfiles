@@ -392,7 +392,9 @@ if [ "$OS" = "Linux" ]; then
         yay -S --noconfirm mpvpaper
     fi
     # Daily-driver apps that live in the AUR: Zotero (research library),
-    # basilk (task board), rencal (calendar TUI).
+    # basilk (task board), rencal (calendar TUI), Beeper (all non-academic
+    # messaging -- unified chat, incl. self-hosted iMessage via a bbctl bridge
+    # that runs on the Mac).
     if command -v yay &>/dev/null && ! pacman -Q zotero-bin &>/dev/null; then
         echo "==> Installing Zotero from AUR"
         yay -S --noconfirm zotero-bin
@@ -404,6 +406,10 @@ if [ "$OS" = "Linux" ]; then
     if command -v yay &>/dev/null && ! pacman -Q rencal-bin &>/dev/null; then
         echo "==> Installing rencal from AUR"
         yay -S --noconfirm rencal-bin
+    fi
+    if command -v yay &>/dev/null && ! pacman -Q beeper-bin &>/dev/null; then
+        echo "==> Installing Beeper from AUR"
+        yay -S --noconfirm beeper-bin
     fi
     # firefox-pwa hosts the subset of omarchy-menu PWAs whose upstreams
     # publish a manifest and don't block non-Chromium browsers (currently
