@@ -1,0 +1,14 @@
+Commands                                       C = Ctrl (CapsLock too) · M = Alt
+
+  Back ......................... [ESC]    Quit / cancel ................ [M-g]
+  Close buffer ............... [M-a k]    Resize windows ...... [M-SPC w hjkl]
+  File in project .......... [M-a p f]    Restart Emacs .. [M-x restart-emacs]
+  File to split ...... [M-SPC w f / b]    Save ..................... [M-a M-s]
+  Git save (commit+push) ... [M-SPC g]    Scratch .............. [s / M-SPC s]
+  Home ................... [M-SPC SPC]    Search in buffer ........... [M-s l]
+  Jump / swap .................. [M-o]    Swap windows ........... [M-SPC w w]
+  Move to window ......... [C-h j k l]    Switch buffer ...... [M-ESC / M-a b]
+  New note ....................... [n]    Undo / redo .......... [M-z / M-S-z]
+  Papers ......................... [p]    Window menu .............. [M-SPC w]
+
+                              any key to dismiss

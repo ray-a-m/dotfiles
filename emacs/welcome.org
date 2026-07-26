@@ -4,35 +4,28 @@
 
 [[file:welcome-logo.svg]]
 
-                                   *GNU Emacs*
+                              GNU Emacs
 
 
 
-*Vault*  /file = ID--title__form_matter/      *form*                      *matter*
+Tasks                                     form          matter
 
-  Attach: file → Files/ .. [M-SPC d a]    hub       paperidea       aesthetics    math
-  Backlinks .............. [M-SPC d b]    idea      poetry          concepts      neo-kantian
-  Classify: note / task ........ [M-c]    lit       presentation    fun           phenomenology
-  Insert link ............ [M-SPC d k]    log       talk            hegel         physics
-  Promote / rename ....... [M-SPC d r]    meeting   wip             history       science
-                                          musing                    kant          teaching
-                                                                    (none = misc)
+  Capture a task (todo) .......... [t]    hub           aesthetics
+  Push to calendar ......... [M-SPC G]    idea          concepts
+  Schedule task .......... [M-SPC M-S]    lit           fun
+  Todos, all ..................... [a]    log           hegel
+                                          meeting       history
+find                                      musing        kant
+                                          paperidea     math
+  by content ..................... [g]    poetry        neo-kantian
+  by name ........................ [f]    presentation  phenomenology
+  by tag ......................... [l]    talk          physics
+  commands ....................... [c]    wip           science
+                                                        teaching
+Vault  file = ID--title__form_matter                    (none = misc)
 
-*Tasks*                                   *find*
-
-  Capture a task (todo) .......... [t]    by name ........................ [f]
-  Todos, all ..................... [a]    by content ..................... [g]
-                                          by tag ......................... [l]
-
-*Commands*                                     /C = Ctrl (CapsLock too) · M = Alt/
-
-  Back ......................... [ESC]    Quit / cancel ................ [M-g]
-  Close buffer ............... [M-a k]    Resize windows ...... [M-SPC w hjkl]
-  File in project .......... [M-a p f]    Save ..................... [M-a M-s]
-  File to split ...... [M-SPC w f / b]    Scratch .............. [s / M-SPC s]
-  Git save (commit+push) ... [M-SPC g]    Search in buffer ........... [M-s l]
-  Home ................... [M-SPC SPC]    Swap windows ........... [M-SPC w w]
-  Jump / swap .................. [M-o]    Switch buffer ...... [M-ESC / M-a b]
-  Move to window ......... [C-h j k l]    Undo / redo .......... [M-z / M-S-z]
-  New note ....................... [n]    Window menu .............. [M-SPC w]
-  Papers ......................... [p]
+  Attach: file → Files/ .. [M-SPC d a]
+  Backlinks .............. [M-SPC d b]
+  Classify: note / task ........ [M-c]
+  Insert link ............ [M-SPC d k]
+  Promote / rename ....... [M-SPC d r]

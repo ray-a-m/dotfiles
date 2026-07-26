@@ -30,7 +30,8 @@ for **notes + Org**.
 | `early-init.el` | Loaded before `package.el` and the first frame: startup GC / `file-name-handler-alist` tuning, UI-chrome suppression (no flash), `package-user-dir` / eln-cache redirects out of this git-tracked dir. |
 | `init.el` | Everything else. |
 | `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
-| `welcome.org` | The startup screen content — an editable Org file (logo + the system map: vault grammar, tasks, find, commands — with splash-local single keys). |
+| `welcome.org` | The startup screen content — an editable Org file (logo + the system map: tasks, find, vault grammar, and the form/matter taxonomy — with splash-local single keys; the full command cheat-sheet is `welcome-commands.org`, shown full-window on `c`). |
+| `welcome-commands.org` | The keybinding cheat-sheet shown full-window when you press `c` on the splash. |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
 | `org-paper-export.el` | LaTeX export for the org-authored research workflow (the `paper-latex` backend + generated driver artifacts; also loaded headless by the `publish` shell function). See "Research documents in Org". |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
@@ -143,9 +144,15 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
 ## Welcome screen
 
 At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
-read-only: the Emacs logo (pixel-centered via `org-image-align`), then two
-alphabetical sections — a two-column *Commands* cheat-sheet and *Help*.
-`q` / `ESC` dismiss; it also auto-dismisses the first time a real file is
+read-only: the Emacs logo (pixel-centered via `org-image-align`), then the
+system map — **Tasks**, **find**, and the **Vault** grammar stacked at the
+left, the **form**/**matter** taxonomy in single columns at the right — with
+splash-local single keys (`t` `n` `a` `f` `g` `l` `p` `s` `c`). Headers, the
+file-name hint, and `[keys]` are coloured with font-lock faces (bold / italic /
+salient), **not** Org emphasis markers — that marker-hiding proved unreliable on
+a fresh daemon frame (it showed raw asterisks), so the markers are gone from the
+file entirely. The full keybinding cheat-sheet lives in `welcome-commands.org`,
+shown full-window on `c` (any key returns). `q` / `ESC` dismiss; it also auto-dismisses the first time a real file is
 visited, so it never lingers in the buffer list or gets split around by later
 windows. Daemon client frames (`emacsclient -c`, the launcher's "Emacs"
 entry): the *first* frame of a visit greets with the splash — closing the
@@ -324,6 +331,9 @@ land on `C-x C-c`, close-the-frame). The custom layer on top:
 | `C-a g` | `magit-status` |
 | `C-c g` | the shell `save`, from inside: save buffer → `git add -A` / commit / push this repo, async verdict in the echo area (`C-u` prompts for the message; a remote-less repo like the vault just commits) |
 | `C-c a` / `C-c l` | Org agenda dispatcher / store-link (capture lives on the splash: `t` task, `n` note; `C-c c` unbound) |
+| `C-c M-S` | `org-schedule` (mirrors the `M-SPC` family; default `C-c C-s` still works) — a `SCHEDULED`/`DEADLINE` timestamp is what turns a TODO into a calendar event |
+| `C-c G` | push timestamped `inbox.org` TODOs to the Google "org" calendar via **org-gcal** (REST, one-way — nothing read back; visible on the phone + rencal). Scheduling a task also auto-pushes just that entry, so `C-c G` is the bulk/manual fallback. Creds live in `~/.authinfo.gpg`; Google 403s CalDAV for unverified apps, hence REST/org-gcal not org-caldav |
+| `M-x restart-emacs` | restart the systemd Emacs daemon **and** reopen a frame (Super+Q / `super+w` only close the frame; a bare daemon restart leaves you headless) |
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
 | `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds) |
 | `S-TAB` | cycle the document outline (in `.tex`) |

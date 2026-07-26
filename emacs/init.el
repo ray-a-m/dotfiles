@@ -1186,6 +1186,173 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
                                            user-emacs-directory))
                 (rm/org-paper-compile)))))
 
+;; Push timestamped Org TODOs from inbox.org to a dedicated Google Calendar
+;; ("org") via org-gcal (REST API v3).  ONE-WAY: we only ever POST entries,
+;; never fetch/import, so nothing is read back.  Both the phone Google
+;; Calendar app and rencal (itself a Google Calendar client) then display it;
+;; one push, two views.  Push on demand via M-SPC G (= C-c G, sibling of
+;; M-SPC g = git push); no timer.  (org-caldav was abandoned here: Google 403s
+;; its CalDAV gateway for unverified apps, while the REST API works fine.)
+;;
+;; Credential storage: ~/.authinfo.gpg encrypts to this machine's GPG key
+;; (ray@raymondmaung.com, no passphrase) non-interactively -- no recipient
+;; prompt on save, no decrypt prompt on read.  auth-sources is pinned to the
+;; encrypted file only (no plaintext ~/.authinfo fallback).
+(setq epa-file-encrypt-to '("ray@raymondmaung.com")
+      plstore-encrypt-to  '("ray@raymondmaung.com")
+      auth-sources        '("~/.authinfo.gpg"))
+
+;; org-gcal (REST API v3) pulls in aio/alert/oauth2-auto/persist/request as
+;; deps.  oauth2-auto runs a loopback redirect server, so consent is caught
+;; automatically -- no code-pasting.  Client id/secret come from
+;; ~/.authinfo.gpg; the token lives under no-littering's var/.  We only ever
+;; POST -- bulk via `rm/org-gcal-push' (M-SPC G), or one entry at a time via
+;; `rm/org-gcal-auto-push' (fires after you schedule/deadline in inbox.org).
+;; The fetch/sync commands are never called, so the calendar stays write-only
+;; from Emacs's side.
+(use-package org-gcal
+  :commands (org-gcal-post-at-point)
+  :init
+  (setq org-gcal-dir (no-littering-expand-var-file-name "org-gcal/")
+        org-gcal-token-file (no-littering-expand-var-file-name "org-gcal/token")
+        ;; Keep org-gcal's runtime state OUT of user-emacs-directory (= the
+        ;; dotfiles dir): oauth2-auto's OAuth token store and org-generic-id's
+        ;; location cache both default there and would litter -- and leak a
+        ;; (encrypted) token -- into git.  Redirect to no-littering's var/.
+        oauth2-auto-plstore (no-littering-expand-var-file-name "oauth2-auto.plist")
+        org-generic-id-locations-file (no-littering-expand-var-file-name "org-generic-id-locations")
+        ;; Placeholders so org-gcal's load-time check stays quiet (it warns when
+        ;; client-id/secret are nil).  The REAL values are read from authinfo at
+        ;; push time by `rm/org-gcal--ensure-auth', which also re-registers the
+        ;; provider -- so these strings are never actually used to authenticate.
+        org-gcal-client-id "set-at-push-time"
+        org-gcal-client-secret "set-at-push-time"
+        ;; inbox.org <-> the "org" calendar.  Used only to resolve the target
+        ;; calendar-id for pushes; the fetching commands stay unused.
+        org-gcal-fetch-file-alist
+        '(("18e761b7f73a7aa68dc5b96efc6273b189816168bf96b6f3d2fe791389b5bfe8@group.calendar.google.com"
+           . "~/Dropbox/org/inbox.org"))))
+
+;; Push helpers live at TOP LEVEL (not the use-package :config) so the auto-push
+;; advice and the M-SPC G command exist from startup; each loads org-gcal on
+;; first use via `require'.
+(defun rm/org-gcal--ensure-auth ()
+  "Load the Google OAuth client id/secret from ~/.authinfo.gpg and re-register
+the oauth2-auto `org-gcal' provider.  Read at PUSH time, not startup: in the
+systemd daemon gpg-agent may not be reachable when init loads, so a startup read
+returns nil and the authorize URL goes out with an empty client_id.  Retries
+once, since a cold gpg-agent can miss the first decrypt."
+  (require 'org-gcal)
+  (let ((c (or (car (auth-source-search :host "google-calendar-oauth"
+                                        :max 1 :require '(:user :secret)))
+               (progn (auth-source-forget-all-cached)
+                      (car (auth-source-search :host "google-calendar-oauth"
+                                               :max 1 :require '(:user :secret)))))))
+    (unless (and c (plist-get c :user) (plist-get c :secret))
+      (user-error "Could not read `google-calendar-oauth' from ~/.authinfo.gpg"))
+    (setq org-gcal-client-id (plist-get c :user)
+          org-gcal-client-secret
+          (let ((s (plist-get c :secret))) (if (functionp s) (funcall s) s))
+          oauth2-auto-additional-providers-alist
+          (assq-delete-all 'org-gcal oauth2-auto-additional-providers-alist))
+    (org-gcal-reload-client-id-secret)))
+
+(defun rm/org-gcal--push-entry (calid)
+  "Post the entry at point one-way (skip-import); return org-gcal's deferred.
+Stamps CALID as the entry's calendar-id if absent, so no prompt appears."
+  (unless (org-entry-get (point) org-gcal-calendar-id-property)
+    (org-entry-put (point) org-gcal-calendar-id-property calid))
+  (org-gcal-post-at-point t))
+
+(defun rm/org-gcal-push ()
+  "One-way push: POST every SCHEDULED/DEADLINE entry in inbox.org to the Google
+`org' calendar, importing nothing back.  Untimestamped entries are skipped, so
+they never reach the calendar.  Each POST is awaited so org-gcal's entry-id/etag
+writeback lands (re-push PATCHes, no duplicates); the file is then saved."
+  (interactive)
+  (rm/org-gcal--ensure-auth)
+  (with-current-buffer (find-file-noselect
+                        (expand-file-name "~/Dropbox/org/inbox.org"))
+    (let ((calid (org-gcal--get-calendar-id-of-buffer))
+          (n 0))
+      (org-map-entries
+       (lambda ()
+         (let ((elem (org-element-at-point)))
+           (when (or (org-element-property :scheduled elem)
+                     (org-element-property :deadline elem))
+             (deferred:sync! (rm/org-gcal--push-entry calid))
+             (setq n (1+ n)))))
+       nil 'file)
+      (save-buffer)
+      (message "org-gcal: pushed %d timestamped entr%s from inbox.org"
+               n (if (= n 1) "y" "ies")))))
+
+(defun rm/org-gcal-auto-push ()
+  "Auto-push the entry at point when it's a timestamped entry in inbox.org.
+Fired after `org-schedule'/`org-deadline' so a scheduled TODO becomes an event
+without a manual M-SPC G.  Async (non-blocking) with a save chained after the
+POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
+  (when (and buffer-file-name
+             (file-equal-p buffer-file-name
+                           (expand-file-name "~/Dropbox/org/inbox.org"))
+             (or (org-get-scheduled-time (point))
+                 (org-get-deadline-time (point))))
+    (rm/org-gcal--ensure-auth)
+    (let ((buf (current-buffer)))
+      (deferred:nextc (rm/org-gcal--push-entry (org-gcal--get-calendar-id-of-buffer))
+        (lambda (_)
+          (with-current-buffer buf (save-buffer))
+          (message "org-gcal: auto-pushed \"%s\"" (org-get-heading t t t t)))))))
+
+(defun rm/org-gcal--schedule-advice (&rest _)
+  "After-advice on `org-schedule'/`org-deadline': auto-push the entry."
+  (ignore-errors (rm/org-gcal-auto-push)))
+(dolist (fn '(org-schedule org-deadline))
+  (advice-add fn :after #'rm/org-gcal--schedule-advice))
+
+;; Also cover the splash-`t' capture path: there, scheduling happens INSIDE the
+;; capture buffer (not inbox.org), so the advice above can't see it.  On capture
+;; finish, push the just-filed entry if it landed a timestamp.  The marker moves
+;; to the newest stored entry each capture, so unrelated captures (notes, plain
+;; tasks) are skipped by `rm/org-gcal-auto-push's own timestamp check.
+(defun rm/org-gcal--capture-push ()
+  "Auto-push the just-captured entry if it filed a timestamp into inbox.org."
+  (when (and (bound-and-true-p org-capture-last-stored-marker)
+             (marker-buffer org-capture-last-stored-marker))
+    (org-with-point-at org-capture-last-stored-marker
+      (rm/org-gcal-auto-push))))
+(add-hook 'org-capture-after-finalize-hook #'rm/org-gcal--capture-push)
+
+(keymap-global-set "C-c G" #'rm/org-gcal-push)   ; M-SPC G -- bulk one-way push
+
+;; Set a SCHEDULED stamp with M-SPC M-S (= C-c M-S), matching the M-SPC command
+;; family (the default C-c C-s still works).
+(with-eval-after-load 'org
+  (define-key org-mode-map (kbd "C-c M-S") #'org-schedule))
+
+;; Restart the systemd Emacs daemon (super+w only closes the frame).  Detached
+;; via systemd-run so the restart survives THIS process being killed.
+(defun rm/restart-emacs ()
+  "Restart the systemd user Emacs daemon (`emacs.service') AND reopen a frame.
+Restarting the daemon alone brings it back headless -- your window is an
+`emacsclient' frame that must be re-created.  Both steps run in a detached
+`systemd-run' transient unit so they survive this process's death (a child in
+the emacs.service cgroup would be SIGTERMed with the daemon).  `emacs.service'
+is Type=notify, so `systemctl restart' only returns once the new daemon is
+ready to accept the client.  Display vars are forwarded so the frame lands on
+this session."
+  (interactive)
+  (when (yes-or-no-p "Restart the Emacs daemon (buffers are saved first)? ")
+    (save-some-buffers t)
+    (call-process
+     "systemd-run" nil 0 nil "--user"
+     (concat "--setenv=WAYLAND_DISPLAY=" (or (getenv "WAYLAND_DISPLAY") ""))
+     (concat "--setenv=DISPLAY=" (or (getenv "DISPLAY") ""))
+     "--"
+     "sh" "-c"
+     "systemctl --user restart emacs && exec emacsclient --alternate-editor= --create-frame -n")))
+(defalias 'restart-emacs #'rm/restart-emacs)
+
 ;; org-appear complements `org-hide-emphasis-markers' above: the markers are
 ;; hidden for clean, rendered text, but re-appear around the span your cursor
 ;; is on so you can still edit them -- Obsidian-style live preview.
@@ -1876,6 +2043,41 @@ displayed -- the decision is deferred a tick to
     (setq rm/welcome--origin t)                     ; provisional; check may undo
     (run-with-timer 0 nil #'rm/welcome--dismiss-check (current-buffer))))
 
+(defun rm/welcome-commands ()
+  "Show the Commands cheatsheet (welcome-commands.org) full-window, in place of
+the splash; any key returns to the splash.  This is a clean buffer SWAP in the
+same window -- so NOTHING resizes or moves (a side-window, a tall echo area, or
+a posframe all disturb the splash / re-fit the logo).  A non-dismiss key then
+runs its normal splash binding (so `c' then `t' still captures a task)."
+  (interactive)
+  (let* ((dir  (file-name-directory user-init-file))
+         (file (expand-file-name "welcome-commands.org" dir))
+         (buf  (get-buffer-create "*commands*"))
+         (prev (current-buffer)))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t)) (erase-buffer) (insert-file-contents file))
+      (setq default-directory dir)
+      (let ((org-mode-hook nil)) (org-mode))       ; monospace, no prose hooks
+      (setq-local mode-line-format nil header-line-format nil cursor-type nil)
+      (font-lock-add-keywords nil
+                              '(("^Commands\\b" 0 'bold)
+                                ("C = Ctrl.*$" 0 'italic)
+                                ("any key to dismiss" 0 'italic)
+                                ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
+                              t)
+      (font-lock-flush) (font-lock-ensure)
+      (when (fboundp 'olivetti-mode)
+        (setq-local olivetti-body-width 80)
+        (olivetti-mode 1))
+      (read-only-mode 1)
+      (goto-char (point-min)))
+    (switch-to-buffer buf)
+    (unwind-protect
+        (let ((ev (read-key)))
+          (unless (memq ev '(?c ?q ?\e escape return ?\r))
+            (push ev unread-command-events)))
+      (when (buffer-live-p prev) (switch-to-buffer prev)))))
+
 (defun rm/welcome (&optional force)
   "Show the welcome screen (welcome.org) unless a file was opened at launch.
 Interactive calls and a non-nil FORCE always show it; the guard below is
@@ -1900,10 +2102,17 @@ so the startup hook stays quiet when a frame opens on a file."
           (let ((org-mode-hook nil)) (org-mode))   ; Org WITHOUT the prose hooks
           (setq-local org-hide-emphasis-markers t
                       org-image-align 'center)     ; logo pixel-centered (org 9.7+)
-          ;; colour [bracketed keys] salient; the [^][()] class avoids matching
-          ;; inside [[elisp:(...)]] links (which contain parens)
+          ;; Style with font-lock, NOT org emphasis (whose marker-hiding is
+          ;; unreliable on a fresh daemon frame -- it showed raw *asterisks*):
+          ;; section headers bold, the Vault filename hint italic, and
+          ;; [bracketed keys] salient (the [^][()] class skips [[elisp:(...)]]).
           (font-lock-add-keywords nil
-                                  '(("\\[[^][()]*\\]" 0 'nano-face-salient prepend)) t)
+                                  '(("^\\(?:Tasks\\|find\\|Vault\\)\\b" 0 'bold)
+                                    ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
+                                    ("^ *GNU Emacs$" 0 'bold)
+                                    ("^Vault  \\(file = .*\\)$" 1 'italic)
+                                    ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
+                                  t)
           (font-lock-flush) (font-lock-ensure)
           (setq-local mode-line-format nil         ; clean of nano's status bars
                       header-line-format nil
@@ -1926,6 +2135,7 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'rm/denote-list)         ; list by words
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
+            (define-key map (kbd "c") #'rm/welcome-commands)    ; peek commands
             (use-local-map map))
           (read-only-mode 1)
           (goto-char (point-min)))
@@ -1938,7 +2148,7 @@ so the startup hook stays quiet when a frame opens on a file."
           (org-display-inline-images)
           (add-hook 'window-size-change-functions #'rm/welcome--refit nil t)
           (when (fboundp 'olivetti-mode)
-            (setq-local olivetti-body-width 80)    ; 2 cols slack over the 78-col block
+            (setq-local olivetti-body-width 70)    ; 1 col slack over the 69-col block
             (olivetti-mode 1))
           ;; olivetti turns on visual-line-mode; in a narrowed window (sidebar
           ;; open) that word-wraps the aligned cheat-sheet by a hair.  Truncate
@@ -2155,7 +2365,18 @@ dismisses the splash."
       ;; only frame -> (re)render the splash; the interactive path skips
       ;; rm/welcome's bare-launch guards, and rendering happens on THIS
       ;; graphic frame, so the logo inlines and auto-dismiss re-arms
-      (funcall-interactively #'rm/welcome)))
+      (progn
+        (funcall-interactively #'rm/welcome)
+        ;; On a freshly-started daemon the emphasis-marker hiding can miss on
+        ;; this first frame (font-lock runs before the frame fully settles),
+        ;; leaving raw *asterisks*.  Re-fontify once idle to fix it.
+        (run-with-idle-timer
+         0.2 nil
+         (lambda ()
+           (when-let ((b (get-buffer "*welcome*")))
+             (with-current-buffer b
+               (font-lock-flush)
+               (font-lock-ensure))))))))
   (add-hook 'server-after-make-frame-hook #'rm/welcome-on-new-frame))
 
 ;; --- Notes + papers sidebar (dired-sidebar) ------------------------------

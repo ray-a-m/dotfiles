@@ -12,3 +12,7 @@
 /url/
 *.elc
 custom.el
+/oauth2-auto.plist
+/oauth2.plstore
+/.org-generic-id-locations
+/org-generic-id-locations
