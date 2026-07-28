@@ -97,14 +97,22 @@ confirm() {
 }
 
 # Prepend Style to omarchy's stock System menu; preserve the rest of its
-# items (Screensaver/Lock/Suspend/Hibernate/Logout/Restart/Shutdown) verbatim.
+# items (Screensaver/Lock/Suspend/Hibernate/Restart/Shutdown) verbatim.
 # Restart and Shutdown go through confirm() to avoid accidental triggers
 # (l after misclicking the menu item shuts down without it).
+#
+# Logout is deliberately omitted. Securing this machine = Lock (hyprlock),
+# never Logout — a logout drops to the SDDM Wayland greeter, which renders
+# the plain white login theme instead of the ThinkPad Plymouth screen (and
+# can wedge un-repainted on a re-negotiated output). Relogin=true only
+# auto-recovers from that; it still flashes. No Hyprland keybind reaches
+# logout, so removing this entry closes the only GUI path. The rare
+# intentional logout is still available as `omarchy logout` from a terminal.
 show_system_menu() {
   local options="Style\nScreensaver\nLock"
   ! omarchy-toggle-enabled suspend-off && options="$options\nSuspend"
   omarchy-hibernation-available && options="$options\nHibernate"
-  options="$options\nLogout\nRestart\nShutdown"
+  options="$options\nRestart\nShutdown"
 
   case $(menu "System" "$options") in
     *Style*)       show_style_menu ;;
@@ -112,7 +120,6 @@ show_system_menu() {
     *Lock*)        omarchy-system-lock ;;
     *Suspend*)     systemctl suspend ;;
     *Hibernate*)   systemctl hibernate ;;
-    *Logout*)      confirm "Log out?"  && omarchy-system-logout   || show_system_menu ;;
     *Restart*)     confirm "Restart?"  && omarchy-system-reboot   || show_system_menu ;;
     *Shutdown*)    confirm "Shut down?" && omarchy-system-shutdown || show_system_menu ;;
     *)             show_main_menu ;;
