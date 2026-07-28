@@ -1565,7 +1565,9 @@ the entry at point."
                             (cons form matter) 'keep-current 'keep-current
                             'keep-current)))
      ((and (derived-mode-p 'org-mode)
-           buffer-file-name                      ; not the splash/scratch
+           (or buffer-file-name (buffer-base-buffer)) ; a file OR a capture
+                                        ; buffer (indirect: file-name nil,
+                                        ; base-buffer set) -- not the scratch
            (not (org-before-first-heading-p)))
       (org-set-tags-command))
      (t (user-error "Nothing here to classify"))))
