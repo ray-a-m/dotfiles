@@ -862,8 +862,15 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   ;; Dispatcher `m' = todos by tag (the stock m is a headline-tag match
   ;; that filetag inheritance floods with note sections -- dead weight
   ;; in this grammar; stock M behavior takes its key).
+  ;; `p' = todos grouped into project sections (rm/agenda-projects drives it,
+  ;; splash `a').  A custom block, not a bare let over org-todo-list, so the
+  ;; grouping setting is re-applied on every redo -- a/y/p rebuild the list
+  ;; and must keep the sections.
   (setq org-agenda-custom-commands
-        '(("m" "Todos, by tag" (lambda (_) (org-tags-view t)))))
+        '(("m" "Todos, by tag" (lambda (_) (org-tags-view t)))
+          ("p" "Todos, by project"
+           todo ""
+           ((org-super-agenda-groups '((:auto-parent t)))))))
   (setq org-capture-templates
         '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "Tasks")
            "* TODO %?\n  %U\n" :empty-lines 1)
@@ -1094,7 +1101,9 @@ a bullet (make/delete loop, 2026-07-24).  Everywhere else, stock
   ;; select: SPC toggles the mark on the current line, v starts a native
   ;; visual region that j/k extend, v again marks every entry inside it.
   ;; Marked entries then take a bulk action via B (B + tag to group, B s
-  ;; schedule, B r refile, ...); u / U unmark.
+  ;; schedule, B r refile, ...); u / U unmark.  Yazi-style create/move:
+  ;; a adds a todo (name ending `/' adds a project instead), y grabs an
+  ;; entry, p moves it under a project -- see rm/agenda-new and friends.
   (defvar-local rm/edit-origin nil
     "The agenda buffer an `e' edit clone restores on ESC (see `rm/escape').")
   (defun rm/agenda-edit-entry ()
@@ -1131,6 +1140,137 @@ entry inside it for a bulk action (see `org-agenda-bulk-action', on B)."
       (set-mark (point))
       (activate-mark)
       (message "visual: move j/k, v to mark the range")))
+  ;; Yazi-style create and move, straight from the agenda.  Projects are
+  ;; top-level `*' inbox headings (containers, no TODO keyword); todos are
+  ;; their `** TODO' children -- the shape rm/agenda-projects groups on.  a
+  ;; makes a todo (a trailing `/' makes a project instead, like yazi mkdir);
+  ;; y grabs an entry and p moves it under a project.  All creation lands in
+  ;; inbox.org; a move refiles the real subtree (heading + notes), then the
+  ;; agenda rebuilds so the change shows.
+  (defvar rm/agenda-yank nil
+    "Marker on the subtree `y' grabbed, for `p' to move (see agenda keymap).")
+  (defun rm/inbox--file ()
+    (expand-file-name "~/Dropbox/org/inbox.org"))
+  (defun rm/inbox--buffer ()
+    (find-file-noselect (rm/inbox--file)))
+  (defun rm/inbox--project-headings ()
+    "Alist of (NAME . MARKER) for every top-level `*' heading but Notes."
+    (with-current-buffer (rm/inbox--buffer)
+      (org-with-wide-buffer
+       (goto-char (point-min))
+       (let (acc)
+         (while (re-search-forward "^\\* \\(.+\\)$" nil t)
+           (let ((name (string-trim (match-string-no-properties 1))))
+             (unless (string= name "Notes")
+               (push (cons name (copy-marker (line-beginning-position))) acc))))
+         (nreverse acc)))))
+  (defun rm/inbox--project-at (marker)
+    "Marker on the inbox top-level ancestor of MARKER, or nil if not in inbox."
+    (when (and marker (marker-buffer marker)
+               (buffer-file-name (marker-buffer marker))
+               (file-equal-p (buffer-file-name (marker-buffer marker))
+                             (rm/inbox--file)))
+      (org-with-point-at marker
+        (org-back-to-heading t)
+        (while (and (org-current-level) (> (org-current-level) 1))
+          (org-up-heading-safe))
+        (copy-marker (line-beginning-position)))))
+  (defun rm/inbox--add-project (name)
+    "Add a top-level `* NAME' project to the inbox; return its marker.
+Placed before the Notes section (or at end of file)."
+    (with-current-buffer (rm/inbox--buffer)
+      (org-with-wide-buffer
+       (goto-char (point-min))
+       (if (re-search-forward "^\\* Notes\\b" nil t)
+           (goto-char (match-beginning 0))
+         (goto-char (point-max)))
+       (unless (bolp) (insert "\n"))
+       (let ((pos (point)))
+         (insert "* " name "\n")
+         (save-buffer)
+         (copy-marker pos)))))
+  (defun rm/inbox--add-todo (project-marker title)
+    "Append `** TODO TITLE' as the last child of PROJECT-MARKER's subtree."
+    (with-current-buffer (marker-buffer project-marker)
+      (org-with-wide-buffer
+       (goto-char project-marker)
+       (org-back-to-heading t)
+       (let ((child (make-string (1+ (org-current-level)) ?*)))
+         (org-end-of-subtree t t)         ; -> bol of next heading, or eob
+         (unless (bolp) (insert "\n"))
+         (insert child " TODO " title "\n")
+         (save-buffer)))))
+  (defun rm/inbox--read-project (&optional default-marker)
+    "Pick an inbox project by name (completion), creating it if the name is new.
+Returns a marker on the chosen `*' heading; DEFAULT-MARKER seeds the default."
+    (let* ((alist (rm/inbox--project-headings))
+           (default (and default-marker (marker-buffer default-marker)
+                         (org-with-point-at default-marker
+                           (org-get-heading t t t t))))
+           (name (string-trim
+                  (completing-read
+                   (format "Project%s: " (if default (format " (%s)" default) ""))
+                   (mapcar #'car alist) nil nil nil nil default)))
+           (hit (assoc name alist)))
+      (cond ((string-empty-p name) (user-error "No project chosen"))
+            (hit (cdr hit))
+            (t (rm/inbox--add-project name)))))
+  (defun rm/agenda-new (name)
+    "Create an inbox item from the agenda (yazi `a').
+NAME ending in \"/\" makes a top-level project; otherwise a `** TODO' under
+the project at point (or a chosen project when point isn't in one).  Rebuilds
+the agenda so the item appears."
+    (interactive "sNew (end with / for a project): ")
+    (setq name (string-trim name))
+    (cond
+     ((string-empty-p name) (message "Cancelled"))
+     ((string-suffix-p "/" name)
+      (let ((pname (string-trim (substring name 0 -1))))
+        (when (string-empty-p pname) (user-error "Empty project name"))
+        (rm/inbox--add-project pname)
+        (org-agenda-redo)
+        (message "Project %s created -- add a todo with a, or move one in with y/p"
+                 pname)))
+     (t
+      (let ((proj (or (rm/inbox--project-at
+                       (or (org-get-at-bol 'org-hd-marker)
+                           (org-get-at-bol 'org-marker)))
+                      (rm/inbox--read-project))))
+        (rm/inbox--add-todo proj name)
+        (org-agenda-redo)
+        (message "Added under %s"
+                 (org-with-point-at proj (org-get-heading t t t t)))))))
+  (defun rm/agenda-yank ()
+    "Grab the entry at point for a later `p' move (yazi `y')."
+    (interactive)
+    (let ((m (or (org-get-at-bol 'org-hd-marker)
+                 (org-get-at-bol 'org-marker)
+                 (user-error "No entry to yank on this line"))))
+      (setq rm/agenda-yank (copy-marker m))
+      (message "Yanked: %s -- move it with p"
+               (org-with-point-at m (org-get-heading t t t t)))))
+  (defun rm/agenda-paste ()
+    "Move the yanked entry under a project (yazi `p').
+Refiles the `y'-grabbed subtree -- heading and its notes -- into a project
+chosen by name (default: the project at point).  Rebuilds the agenda."
+    (interactive)
+    (unless (and rm/agenda-yank (marker-buffer rm/agenda-yank))
+      (user-error "Nothing yanked -- press y on an entry first"))
+    (let* ((at-point (rm/inbox--project-at
+                      (or (org-get-at-bol 'org-hd-marker)
+                          (org-get-at-bol 'org-marker))))
+           (dest (rm/inbox--read-project at-point))
+           (src (marker-buffer rm/agenda-yank))
+           (file (buffer-file-name (marker-buffer dest)))
+           (head (org-with-point-at dest (org-get-heading t t t t)))
+           (rfloc (list head file nil (marker-position dest))))
+      (org-with-point-at rm/agenda-yank
+        (org-refile nil nil rfloc))
+      (when (buffer-live-p src) (with-current-buffer src (save-buffer)))
+      (with-current-buffer (marker-buffer dest) (save-buffer))
+      (setq rm/agenda-yank nil)
+      (org-agenda-redo)
+      (message "Moved under %s" head)))
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
     (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
@@ -1139,6 +1279,9 @@ entry inside it for a bulk action (see `org-agenda-bulk-action', on B)."
     (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)
     (keymap-set org-agenda-mode-map "d" #'org-agenda-kill)
     (keymap-set org-agenda-mode-map "e" #'rm/agenda-edit-entry)
+    (keymap-set org-agenda-mode-map "a" #'rm/agenda-new)
+    (keymap-set org-agenda-mode-map "y" #'rm/agenda-yank)
+    (keymap-set org-agenda-mode-map "p" #'rm/agenda-paste)
     (keymap-set org-agenda-mode-map "V" #'org-agenda-view-mode-dispatch)
     (keymap-set org-agenda-mode-map "SPC" #'org-agenda-bulk-toggle)
     (keymap-set org-agenda-mode-map "v" #'rm/agenda-visual-toggle))
@@ -1177,7 +1320,7 @@ entry inside it for a bulk action (see `org-agenda-bulk-action', on B)."
                                    org-tag-alist)
                        "  ")))
   (defconst rm/agenda-footer-text
-    (concat " hjkl move \u00b7 e edit \u00b7 r progress \u00b7 d delete \u00b7 SPC/v select \u00b7 B bulk \u00b7 s save\n"
+    (concat " hjkl move \u00b7 e edit \u00b7 a new \u00b7 y/p move \u00b7 r progress \u00b7 d delete \u00b7 SPC/v select \u00b7 B bulk \u00b7 s save\n"
             (rm/agenda-tag-line)))
   (defun rm/agenda-footer ()
     ;; Idempotent by CONTENT: agenda redraws strip text properties, so
@@ -1459,6 +1602,27 @@ frame lands on this session."
         ;; tag/keyword pills look best unaligned (no trailing-whitespace columns)
         org-auto-align-tags nil
         org-tags-column 0))
+
+;; org-super-agenda (alphapapa): groups the otherwise-flat todo list into
+;; titled sections.  Wired for ONE view -- the splash `a' (rm/agenda-projects)
+;; -- to cluster todos under their parent `*' heading, so a one-level project
+;; container (Philosophy, Technology, ...) becomes a header with its `** TODO'
+;; children beneath.  The mode is global but INERT unless
+;; `org-super-agenda-groups' is non-nil, which only the `p' custom block sets
+;; (see org-agenda-custom-commands), so the date agenda and `m' view stay flat.
+(use-package org-super-agenda
+  :init
+  (with-eval-after-load 'org-agenda (org-super-agenda-mode 1)))
+(defun rm/agenda-projects ()
+  "Todo list grouped into project sections by parent heading (splash `a').
+Each one-level `*' container becomes a section header with its `** TODO'
+children beneath; loose top-level todos fall to the last section.  Runs the
+`p' custom block (not a bare let over org-todo-list) so a redo -- after a/y/p
+edit the list -- keeps the grouping.  Move with j/k/h/l; a adds, y/p move,
+e/r/d act on the entry at point."
+  (interactive)
+  (require 'org-super-agenda)
+  (org-agenda nil "p"))
 
 ;; org-margin (rougier, vendored like nano): headline stars render IN the
 ;; left margin as the level glyphs, so headline text starts at column 0 --
@@ -2332,8 +2496,8 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
             (define-key map (kbd "f") #'rm/denote-find)         ; the note picker
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
-            (define-key map (kbd "a") #'org-todo-list)          ; todos, all -- what
-                                        ; he actually uses (agenda views: C-c a)
+            (define-key map (kbd "a") #'rm/agenda-projects)     ; todos, grouped by
+                                        ; project heading (agenda views: C-c a)
             (define-key map (kbd "t") #'rm/capture-task)        ; new todo, directly
                                         ; (no c/capture menu: t and n ARE capture)
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
