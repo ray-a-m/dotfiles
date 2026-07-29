@@ -2657,17 +2657,21 @@ so the startup hook stays quiet when a frame opens on a file."
    ;; an excursion window -- the agenda `a' popped, which `e' reuses for a
    ;; narrowed edit view.  What ESC does depends on what the window shows:
    ;; on an `e' edit clone it restores the agenda IN PLACE (discarding the
-   ;; clone; its edits live on in the base file) -- so `e' ESC lands back on
-   ;; the agenda, and `e' again repeats the trip; on the agenda itself it
-   ;; closes the window, back to wherever `a' launched.  Guarded so the
-   ;; frame's last real window is never deleted -- that walks back / floors.
+   ;; clone; its edits live on in the base file) then REDRAWS it, so a renamed
+   ;; heading or a new note shows at once without closing and reopening -- `e'
+   ;; ESC lands back on the fresh agenda, and `e' again repeats the trip; on
+   ;; the agenda itself it closes the window, back to wherever `a' launched.
+   ;; Guarded so the frame's last real window is never deleted -- that walks
+   ;; back / floors.
    ((window-parameter (selected-window) 'rm-excursion)
     (let ((origin (and (local-variable-p 'rm/edit-origin) rm/edit-origin)))
       (cond
        ((buffer-live-p origin)
         (let ((clone (current-buffer)))
           (switch-to-buffer origin)
-          (kill-buffer clone)))
+          (kill-buffer clone)
+          (when (derived-mode-p 'org-agenda-mode)
+            (org-agenda-redo))))    ; redo keeps the project grouping + sort
        ((not (rm/escape--last-real-window-p)) (delete-window))
        (t (rm/escape--back)))))
    (t (rm/escape--back))))
