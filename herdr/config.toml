@@ -1,0 +1,15 @@
+# herdr user config — overrides merged over the built-in defaults.
+# See `herdr --default-config` for every option and its documentation.
+
+[ui]
+# Stop the flicker when the outer terminal regains focus. Default is true,
+# which forces a full repaint on every focus-in; false skips it.
+# Trade-off (per herdr docs): rare host-terminal surface corruption may
+# persist until the next full redraw — harmless, and a manual redraw clears it.
+redraw_on_focus_gained = false
+
+[keys]
+# Prefix on Alt+Space to match the tmux prefix (M-Space) for one muscle memory.
+# Safe because herdr runs in a bare terminal OUTSIDE tmux — if ever nested,
+# tmux would grab Alt+Space first.
+prefix = "alt+space"
