@@ -844,35 +844,20 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-list-indent-offset 2
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
-        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
-        ;; Task MATTER tags (the TODO keyword is the form, the tag is the
-        ;; matter it concerns): fast-select on M-c / C-c C-c -- one letter
-        ;; tags and exits.  `expert' keeps the whole exchange in the
-        ;; minibuffer (the stock grid WINDOW jarred against M-c's other
-        ;; contexts, all tiny prompts -- his rule, 2026-07-24); C-c inside
-        ;; the prompt still summons the grid.  Orthogonal to location:
-        ;; C-c a m gathers a tag's TODOs from inbox.org, the technology
-        ;; hub, anywhere the agenda scans.  Distinct namespace from the
-        ;; vault's note-matter (that names research programs; these name
-        ;; the legs of the job).
-        org-fast-tag-selection-single-key 'expert
-        org-tag-alist '(("technology" . ?t) ("teaching" . ?e)
-                        ("service" . ?s) ("research" . ?r)))
+        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED")))
   :config
-  ;; Dispatcher `m' = todos by tag (the stock m is a headline-tag match
-  ;; that filetag inheritance floods with note sections -- dead weight
-  ;; in this grammar; stock M behavior takes its key).
   ;; `p' = todos grouped into project sections (rm/agenda-projects drives it,
   ;; splash `a').  A custom block, not a bare let over org-todo-list, so the
-  ;; grouping setting is re-applied on every redo -- a/y/p rebuild the list
-  ;; and must keep the sections.
+  ;; grouping and the sort re-apply on every redo -- a/y/p rebuild the list and
+  ;; must keep the sections.  :auto-parent already emits the project groups in
+  ;; alphabetical order; alpha-up sorts the todos within each group.
   (setq org-agenda-custom-commands
-        '(("m" "Todos, by tag" (lambda (_) (org-tags-view t)))
-          ("p" "Todos, by project"
+        '(("p" "Todos, by project"
            todo ""
-           ((org-super-agenda-groups '((:auto-parent t)))))))
+           ((org-super-agenda-groups '((:auto-parent t)))
+            (org-agenda-sorting-strategy '((todo alpha-up)))))))
   (setq org-capture-templates
-        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "Tasks")
+        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "tasks")
            "* TODO %?\n  %U\n" :empty-lines 1)
           ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
            "* %?\n  %U\n" :empty-lines 1)))
@@ -1363,20 +1348,9 @@ chosen by name (default: the project at point).  Rebuilds the agenda."
   ;; Empty projects (depth 80): after the real groups, before the footer (90).
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-empty-projects 80)
   ;; The agenda's own keys, printed where they apply (footer of every
-  ;; agenda view) rather than on the splash.  A second line reminds him of
-  ;; the fast-select TODO tags, derived from org-tag-alist so it can't drift
-  ;; from the actual bindings the `:' / `B +' prompt reads.
-  (defun rm/agenda-tag-line ()
-    (concat " tags \u00b7 "
-            (mapconcat (lambda (e) (format "%s(%c)" (car e) (cdr e)))
-                       (seq-filter (lambda (e)
-                                     (and (consp e) (stringp (car e))
-                                          (characterp (cdr e))))
-                                   org-tag-alist)
-                       "  ")))
+  ;; agenda view) rather than on the splash.
   (defconst rm/agenda-footer-text
-    (concat " hjkl move \u00b7 e edit \u00b7 a new \u00b7 y/p move \u00b7 r progress \u00b7 d delete \u00b7 SPC/v select \u00b7 B bulk \u00b7 s save\n"
-            (rm/agenda-tag-line)))
+    " hjkl move \u00b7 e edit \u00b7 a new \u00b7 y/p move \u00b7 r progress \u00b7 d delete \u00b7 SPC/v select \u00b7 B bulk \u00b7 s save")
   (defun rm/agenda-footer ()
     ;; Idempotent by CONTENT: agenda redraws strip text properties, so
     ;; sweep the literal footer line (and its leading blank) wherever it
