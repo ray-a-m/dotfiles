@@ -804,23 +804,21 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
          ("C-<tab>" . rm/org-untab))
   :init
   (setq org-directory "~/Dropbox/org/"    ; agenda + capture home (synced, NOT the vault)
-        ;; Agenda scans the dedicated org dir, the whole notes vault, *and* the
-        ;; research documents tree, so a TODO jotted in any note -- or mid-paper
-        ;; in a paper.org -- surfaces.  Recursive (the trees are nested) and
-        ;; filtered to skip Emacs lock/temp files.  New files need a restart
-        ;; (or re-eval) to join the agenda; the org dir itself rescans live.
+        ;; Agenda scans the dedicated org dir *and* the research documents
+        ;; tree, so a TODO jotted in the inbox -- or mid-paper in a paper.org
+        ;; -- surfaces.  The notes vault is deliberately NOT scanned: it held
+        ;; 421 files with zero TODOs and cost ~11s to visit on the first `a'
+        ;; of a session (vs ~0.4s without it); thought-notes aren't task
+        ;; lists.  Recursive (the trees are nested) and filtered to skip
+        ;; Emacs lock/temp files.  New files need a restart (or re-eval) to
+        ;; join the agenda; the org dir itself rescans live.
         org-agenda-files
-        (append
-         (cons "~/Dropbox/org/"
-               (when (file-directory-p "~/Dropbox/notes/")
-                 (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
-                             (directory-files-recursively
-                              (expand-file-name "~/Dropbox/notes/") "\\.org\\'"))))
-         (when (file-directory-p "~/scholarship/research-wip/documents/")
-           (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
-                       (directory-files-recursively
-                        (expand-file-name "~/scholarship/research-wip/documents/")
-                        "\\.org\\'"))))
+        (cons "~/Dropbox/org/"
+              (when (file-directory-p "~/scholarship/research-wip/documents/")
+                (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
+                            (directory-files-recursively
+                             (expand-file-name "~/scholarship/research-wip/documents/")
+                             "\\.org\\'"))))
         ;; The default 'reorganize-frame DELETES the other windows on C-c a --
         ;; the agenda hijacks the frame and there's nothing left to resize
         ;; against.  'other-window keeps the buffer you launched from
@@ -1080,14 +1078,70 @@ a bullet (make/delete loop, 2026-07-24).  Everywhere else, stock
   ;; pick), d deletes the entry from its source file (his flow: fixed
   ;; frictions get deleted, not archived).  Stock keys displaced: refresh
   ;; stays on `g', goto-date via M-x org-agenda-goto-date, capture via
-  ;; C-c c, log mode via `v l', day view via `v d'.
+  ;; C-c c; the view-switch prefix (log mode, day/week view, ...) moves off
+  ;; `v' to `V' -- V l log mode, V d day view -- because plain v is now
+  ;; visual selection (below).
+  ;;
+  ;; e opens the entry at point as a capture-like view -- an indirect buffer
+  ;; NARROWED to just this subtree (heading on top, body below for notes),
+  ;; not the whole file with every other todo.  It REUSES the agenda's own
+  ;; window (the agenda buffer slides into that window's history), which is
+  ;; tagged 'rm-excursion (see rm/escape, rm/agenda-mark-excursion).  So ESC
+  ;; on an edit view restores the agenda in place; ESC on the agenda closes
+  ;; the window back to wherever `a' launched.  `e' again just opens the next
+  ;; entry the same way -- ESC still walks edit -> agenda -> closed.
+  ;; (Displaces the unused org-agenda-set-effort on `e'.)  Yazi-style bulk
+  ;; select: SPC toggles the mark on the current line, v starts a native
+  ;; visual region that j/k extend, v again marks every entry inside it.
+  ;; Marked entries then take a bulk action via B (B + tag to group, B s
+  ;; schedule, B r refile, ...); u / U unmark.
+  (defvar-local rm/edit-origin nil
+    "The agenda buffer an `e' edit clone restores on ESC (see `rm/escape').")
+  (defun rm/agenda-edit-entry ()
+    "Open the agenda entry at point as a capture-like, narrowed edit view.
+Reuses the agenda's own window: an indirect buffer narrowed to the entry's
+subtree replaces the agenda (heading on top, body below).  ESC restores the
+agenda in this window; ESC again closes it (see `rm/escape')."
+    (interactive)
+    (let* ((marker (or (org-get-at-bol 'org-hd-marker)
+                       (org-get-at-bol 'org-marker)
+                       (user-error "No agenda entry on this line")))
+           (base (marker-buffer marker))
+           (name (org-with-point-at marker (org-get-heading t t t t)))
+           (agenda (current-buffer))
+           (edit (make-indirect-buffer
+                  base
+                  (generate-new-buffer-name (format "*edit: %s*" (or name "todo")))
+                  t)))                          ; clone => inherits org-mode
+      (with-current-buffer edit
+        (goto-char marker)
+        (org-narrow-to-subtree)
+        (goto-char (point-min))
+        (setq-local rm/edit-origin agenda))
+      (switch-to-buffer edit)))                 ; reuse the agenda's window
+  (defun rm/agenda-visual-toggle ()
+    "Yazi-style visual select in the agenda.
+First press anchors a region; j/k extend it; a second press marks every
+entry inside it for a bulk action (see `org-agenda-bulk-action', on B)."
+    (interactive)
+    (if (region-active-p)
+        (progn (org-agenda-bulk-mark)     ; marks every entry in the region
+               (deactivate-mark)
+               (message "range marked — B for bulk action, u to unmark"))
+      (set-mark (point))
+      (activate-mark)
+      (message "visual: move j/k, v to mark the range")))
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
     (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
     (keymap-set org-agenda-mode-map "h" #'org-agenda-earlier)
     (keymap-set org-agenda-mode-map "l" #'org-agenda-later)
     (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)
-    (keymap-set org-agenda-mode-map "d" #'org-agenda-kill))
+    (keymap-set org-agenda-mode-map "d" #'org-agenda-kill)
+    (keymap-set org-agenda-mode-map "e" #'rm/agenda-edit-entry)
+    (keymap-set org-agenda-mode-map "V" #'org-agenda-view-mode-dispatch)
+    (keymap-set org-agenda-mode-map "SPC" #'org-agenda-bulk-toggle)
+    (keymap-set org-agenda-mode-map "v" #'rm/agenda-visual-toggle))
   ;; Quieter agenda dressing.  The todo/match views insert a "Press 'N r'
   ;; ..." hint under the header, whose keyword list wraps onto indented
   ;; "(4)NEXT (5)TODO" continuation lines -- strip the whole block (real
@@ -1102,10 +1156,29 @@ a bullet (make/delete loop, 2026-07-24).  Everywhere else, stock
                   "^Press .*\n\\(?:[ \t]+([0-9]+)[^\n]*\n?\\)*" nil t)
             (delete-region (match-beginning 0) (match-end 0)))))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-strip-hints)
+  ;; Tag the agenda's window an excursion so ESC closes it (back to where
+  ;; `a' launched) instead of walking its buffer history into the file
+  ;; underneath.  Runs on every finalize (current-buffer is the agenda);
+  ;; idempotent.
+  (defun rm/agenda-mark-excursion ()
+    (let ((win (get-buffer-window (current-buffer))))
+      (when win (set-window-parameter win 'rm-excursion t))))
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-mark-excursion)
   ;; The agenda's own keys, printed where they apply (footer of every
-  ;; agenda view) rather than on the splash.
+  ;; agenda view) rather than on the splash.  A second line reminds him of
+  ;; the fast-select TODO tags, derived from org-tag-alist so it can't drift
+  ;; from the actual bindings the `:' / `B +' prompt reads.
+  (defun rm/agenda-tag-line ()
+    (concat " tags \u00b7 "
+            (mapconcat (lambda (e) (format "%s(%c)" (car e) (cdr e)))
+                       (seq-filter (lambda (e)
+                                     (and (consp e) (stringp (car e))
+                                          (characterp (cdr e))))
+                                   org-tag-alist)
+                       "  ")))
   (defconst rm/agenda-footer-text
-    " hjkl move \u00b7 r progress \u00b7 d delete \u00b7 s save")
+    (concat " hjkl move \u00b7 e edit \u00b7 r progress \u00b7 d delete \u00b7 SPC/v select \u00b7 B bulk \u00b7 s save\n"
+            (rm/agenda-tag-line)))
   (defun rm/agenda-footer ()
     ;; Idempotent by CONTENT: agenda redraws strip text properties, so
     ;; sweep the literal footer line (and its leading blank) wherever it
@@ -2355,6 +2428,22 @@ so the startup hook stays quiet when a frame opens on a file."
    ;; a sidebar is a popup whatever its window history says (it re-roots
    ;; and follows files, so its history wanders): ESC dismisses it
    ((derived-mode-p 'dired-sidebar-mode) (dired-sidebar-hide-sidebar))
+   ;; an excursion window -- the agenda `a' popped, which `e' reuses for a
+   ;; narrowed edit view.  What ESC does depends on what the window shows:
+   ;; on an `e' edit clone it restores the agenda IN PLACE (discarding the
+   ;; clone; its edits live on in the base file) -- so `e' ESC lands back on
+   ;; the agenda, and `e' again repeats the trip; on the agenda itself it
+   ;; closes the window, back to wherever `a' launched.  Guarded so the
+   ;; frame's last real window is never deleted -- that walks back / floors.
+   ((window-parameter (selected-window) 'rm-excursion)
+    (let ((origin (and (local-variable-p 'rm/edit-origin) rm/edit-origin)))
+      (cond
+       ((buffer-live-p origin)
+        (let ((clone (current-buffer)))
+          (switch-to-buffer origin)
+          (kill-buffer clone)))
+       ((not (rm/escape--last-real-window-p)) (delete-window))
+       (t (rm/escape--back)))))
    (t (rm/escape--back))))
 (defun rm/escape--interesting-p (buf)
   "Non-nil for stops HE made: files, dired, scratch, the agenda.
