@@ -1257,6 +1257,15 @@ carries its project marker, so a/p on that line file or move straight in."
               (insert (propertize (concat " " (car p) "\n")
                                   'face 'org-super-agenda-header
                                   'rm-project-marker (nth 1 p)))))))))
+  (defun rm/agenda-rebuild ()
+    "Rebuild the agenda in place, reliably, after an a/y/p/classify edit.
+org-agenda-redo reads its rebuild parameters (org-lprops: the project
+grouping and sort) from the text properties of the line at point.  On an
+inserted empty-project header that line carries none, so the redo comes
+back STALE -- the move landed in the file but the view still shows the old
+grouping.  Move to a real agenda line (the top) first, then redo."
+    (goto-char (point-min))
+    (org-agenda-redo))
   (defun rm/agenda-new (name)
     "Create an inbox item from the agenda (yazi `a').
 NAME ending in \"/\" makes a top-level project; otherwise a `** TODO' under
@@ -1270,14 +1279,14 @@ the agenda so the item appears."
       (let ((pname (string-trim (substring name 0 -1))))
         (when (string-empty-p pname) (user-error "Empty project name"))
         (rm/inbox--add-project pname)
-        (org-agenda-redo)
+        (rm/agenda-rebuild)
         (message "Project %s created -- add a todo with a, or move one in with y/p"
                  pname)))
      (t
       (let ((proj (or (rm/agenda--project-at-point)
                       (rm/inbox--read-project))))
         (rm/inbox--add-todo proj name)
-        (org-agenda-redo)
+        (rm/agenda-rebuild)
         (message "Added under %s"
                  (org-with-point-at proj (org-get-heading t t t t)))))))
   (defun rm/agenda-yank ()
@@ -1307,7 +1316,7 @@ chosen by name (default: the project at point).  Rebuilds the agenda."
       (when (buffer-live-p src) (with-current-buffer src (save-buffer)))
       (with-current-buffer (marker-buffer dest) (save-buffer))
       (setq rm/agenda-yank nil)
-      (org-agenda-redo)
+      (rm/agenda-rebuild)
       (message "Moved under %s" head)))
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
@@ -1839,7 +1848,7 @@ heading at point."
             (org-with-point-at marker (org-refile nil nil rfloc))
             (when (buffer-live-p src) (with-current-buffer src (save-buffer)))
             (with-current-buffer (marker-buffer dest) (save-buffer))
-            (org-agenda-redo))
+            (rm/agenda-rebuild))
         (org-refile nil nil rfloc))
       (message "Filed under %s" head)))
   (defun rm/denote-classify ()
@@ -2671,7 +2680,7 @@ so the startup hook stays quiet when a frame opens on a file."
           (switch-to-buffer origin)
           (kill-buffer clone)
           (when (derived-mode-p 'org-agenda-mode)
-            (org-agenda-redo))))    ; redo keeps the project grouping + sort
+            (rm/agenda-rebuild))))    ; redo keeps the project grouping + sort
        ((not (rm/escape--last-real-window-p)) (delete-window))
        (t (rm/escape--back)))))
    (t (rm/escape--back))))
