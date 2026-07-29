@@ -1146,7 +1146,11 @@ entry inside it for a bulk action (see `org-agenda-bulk-action', on B)."
   ;; makes a todo (a trailing `/' makes a project instead, like yazi mkdir);
   ;; y grabs an entry and p moves it under a project.  All creation lands in
   ;; inbox.org; a move refiles the real subtree (heading + notes), then the
-  ;; agenda rebuilds so the change shows.
+  ;; agenda rebuilds so the change shows.  A just-made, still-empty project
+  ;; shows as its own header (rm/agenda-empty-projects) that a/p target
+  ;; positionally -- navigate onto it and p drops the yanked todo straight
+  ;; in, no prompt (the prompt is only the fallback when point names no
+  ;; project).
   (defvar rm/agenda-yank nil
     "Marker on the subtree `y' grabbed, for `p' to move (see agenda keymap).")
   (defun rm/inbox--file ()
@@ -1215,6 +1219,53 @@ Returns a marker on the chosen `*' heading; DEFAULT-MARKER seeds the default."
       (cond ((string-empty-p name) (user-error "No project chosen"))
             (hit (cdr hit))
             (t (rm/inbox--add-project name)))))
+  (defun rm/inbox--projects-status ()
+    "List of (NAME MARKER HAS-TODO) for each top-level inbox project but Notes.
+HAS-TODO is non-nil when the project's subtree holds an open todo (TODO,
+NEXT or WAITING) -- i.e. something the project agenda would already show."
+    (with-current-buffer (rm/inbox--buffer)
+      (org-with-wide-buffer
+       (goto-char (point-min))
+       (let (out)
+         (while (re-search-forward "^\\* \\(.+\\)$" nil t)
+           (let ((name (string-trim (match-string-no-properties 1)))
+                 (beg (line-beginning-position)))
+             (unless (string= name "Notes")
+               (let ((end (save-excursion (goto-char beg)
+                                          (org-end-of-subtree t t) (point))))
+                 (push (list name (copy-marker beg)
+                             (save-excursion
+                               (goto-char beg) (forward-line 1)
+                               (and (re-search-forward
+                                     "^\\*\\{2,\\} \\(?:TODO\\|NEXT\\|WAITING\\) "
+                                     end t)
+                                    t)))
+                       out)))))
+         (nreverse out)))))
+  (defun rm/agenda--project-at-point ()
+    "Project marker for the agenda line at point.
+An empty-project header carries its marker as a text property; otherwise
+resolve the inbox project ancestor of the entry at point.  Nil if neither."
+    (or (get-text-property (line-beginning-position) 'rm-project-marker)
+        (rm/inbox--project-at (or (org-get-at-bol 'org-hd-marker)
+                                  (org-get-at-bol 'org-marker)))))
+  (defun rm/agenda-empty-projects ()
+    "Show projects with no open todos as their own (empty) section headers.
+The stock todo list only renders a group once it has an entry, so a project
+freshly made with `a/' would stay invisible.  Runs on finalize but only in
+the project view (`org-super-agenda-groups' is let-bound there); each header
+carries its project marker, so a/p on that line file or move straight in."
+    (when (bound-and-true-p org-super-agenda-groups)
+      (let ((empties (seq-remove (lambda (p) (nth 2 p))
+                                 (rm/inbox--projects-status)))
+            (inhibit-read-only t))
+        (when empties
+          (save-excursion
+            (goto-char (point-max))
+            (dolist (p empties)
+              (insert (propertize (concat " " (car p) "\n")
+                                  'face 'org-super-agenda-header
+                                  'rm-project-marker (nth 1 p)))))))))
   (defun rm/agenda-new (name)
     "Create an inbox item from the agenda (yazi `a').
 NAME ending in \"/\" makes a top-level project; otherwise a `** TODO' under
@@ -1232,9 +1283,7 @@ the agenda so the item appears."
         (message "Project %s created -- add a todo with a, or move one in with y/p"
                  pname)))
      (t
-      (let ((proj (or (rm/inbox--project-at
-                       (or (org-get-at-bol 'org-hd-marker)
-                           (org-get-at-bol 'org-marker)))
+      (let ((proj (or (rm/agenda--project-at-point)
                       (rm/inbox--read-project))))
         (rm/inbox--add-todo proj name)
         (org-agenda-redo)
@@ -1256,10 +1305,8 @@ chosen by name (default: the project at point).  Rebuilds the agenda."
     (interactive)
     (unless (and rm/agenda-yank (marker-buffer rm/agenda-yank))
       (user-error "Nothing yanked -- press y on an entry first"))
-    (let* ((at-point (rm/inbox--project-at
-                      (or (org-get-at-bol 'org-hd-marker)
-                          (org-get-at-bol 'org-marker))))
-           (dest (rm/inbox--read-project at-point))
+    (let* ((dest (or (rm/agenda--project-at-point)
+                     (rm/inbox--read-project)))
            (src (marker-buffer rm/agenda-yank))
            (file (buffer-file-name (marker-buffer dest)))
            (head (org-with-point-at dest (org-get-heading t t t t)))
@@ -1307,6 +1354,8 @@ chosen by name (default: the project at point).  Rebuilds the agenda."
     (let ((win (get-buffer-window (current-buffer))))
       (when win (set-window-parameter win 'rm-excursion t))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-mark-excursion)
+  ;; Empty projects (depth 80): after the real groups, before the footer (90).
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-empty-projects 80)
   ;; The agenda's own keys, printed where they apply (footer of every
   ;; agenda view) rather than on the splash.  A second line reminds him of
   ;; the fast-select TODO tags, derived from org-tag-alist so it can't drift
