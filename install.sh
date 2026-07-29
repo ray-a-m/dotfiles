@@ -36,7 +36,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq quickshell eza \
+                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza \
                 pandoc-cli qpdf obsidian aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
@@ -178,6 +178,103 @@ if [ -d "$DOTFILES_DIR/claude/skills" ]; then
     for src in "$DOTFILES_DIR"/claude/skills/*/; do
         [ -d "$src" ] || continue
         ln -sfn "${src%/}" ~/.claude/skills/"$(basename "$src")"
+    done
+fi
+
+# Claude Code subagents (e.g. the deep-research web-search-agent + its
+# strategy modules). Per-entry symlink so both the *.md agent files and the
+# web-search-modules/ dir land in ~/.claude/agents/.
+if [ -d "$DOTFILES_DIR/claude/agents" ]; then
+    echo "==> Symlinking Claude Code agents"
+    mkdir -p ~/.claude/agents
+    for src in "$DOTFILES_DIR"/claude/agents/*; do
+        [ -e "$src" ] || continue
+        ln -sfn "$src" ~/.claude/agents/"$(basename "$src")"
+    done
+fi
+
+# context-mode: the pi MCP-bridge extension (a pi package in settings.json)
+# shells out to the global `context-mode` binary. mise doesn't auto-shim npm
+# globals, so reshim after install so `context-mode` resolves on PATH.
+if command -v npm &>/dev/null && ! command -v context-mode &>/dev/null; then
+    echo "==> Installing context-mode global binary (pi MCP bridge)"
+    npm install -g context-mode
+    command -v mise &>/dev/null && mise reshim &>/dev/null || true
+fi
+
+# pi coding agent. The binary is Omarchy-provided (install/packaging/npx.sh),
+# as are the 'omarchy' skill and omarchy-system-theme extension — so we track
+# only what's ours. Per-file symlinks because ~/.pi/agent/ also holds
+# auth.json (secrets), npm/ (installed packages), and those Omarchy defaults,
+# none of which belong in git. settings.json declares the pi-rlm package,
+# which pi installs on first launch; run /login once to authenticate.
+if [ -d "$DOTFILES_DIR/pi" ]; then
+    echo "==> Symlinking pi config"
+    mkdir -p ~/.pi/agent/skills
+    if [ -e ~/.pi/agent/settings.json ] && [ ! -L ~/.pi/agent/settings.json ]; then
+        mv ~/.pi/agent/settings.json "$HOME/.pi/agent/settings.json.bak.$(date +%s)"
+    fi
+    ln -sfn "$DOTFILES_DIR/pi/settings.json" ~/.pi/agent/settings.json
+    # pi rewrites lastChangelogVersion (on update) and theme (via the
+    # omarchy-system-theme extension), so ignore that churn — same reasoning
+    # as claude/settings.json's skip-worktree above.
+    git -C "$DOTFILES_DIR" update-index --skip-worktree pi/settings.json 2>/dev/null || true
+    # rlm.json: the pi-rlm package ships default enabled=true (persistent RLM
+    # mode ON at startup); override to false so plain prompts don't route
+    # through the RLM engine until explicitly toggled (/rlm). Toggling persists
+    # here, so skip-worktree the churn like settings.json.
+    if [ -e ~/.pi/agent/rlm.json ] && [ ! -L ~/.pi/agent/rlm.json ]; then
+        mv ~/.pi/agent/rlm.json "$HOME/.pi/agent/rlm.json.bak.$(date +%s)"
+    fi
+    ln -sfn "$DOTFILES_DIR/pi/rlm.json" ~/.pi/agent/rlm.json
+    git -C "$DOTFILES_DIR" update-index --skip-worktree pi/rlm.json 2>/dev/null || true
+    # Global memory: pi loads AGENTS.md at startup — point it at the shared
+    # CLAUDE.md so pi and Claude Code read the same instructions.
+    ln -sfn "$DOTFILES_DIR/claude/CLAUDE.md" ~/.pi/agent/AGENTS.md
+    # MCP servers for pi — the context-mode bridge extension reads this and
+    # spawns the `context-mode` binary (installed globally below).
+    ln -sfn "$DOTFILES_DIR/pi/mcp.json" ~/.pi/agent/mcp.json
+    if [ -d "$DOTFILES_DIR/pi/skills" ]; then
+        for src in "$DOTFILES_DIR"/pi/skills/*/; do
+            [ -d "$src" ] || continue
+            ln -sfn "${src%/}" ~/.pi/agent/skills/"$(basename "$src")"
+        done
+    fi
+    # Custom theme + theme-sync extension override (per-file, backing up any
+    # stock Omarchy file we replace). Our extension retargets dark mode to the
+    # raymond-dark theme — built-ins can't be overridden by name, and the stock
+    # extension force-loads built-in dark every 2s, washing out under kitty's
+    # background_opacity.
+    for res in themes extensions; do
+        src_dir="$DOTFILES_DIR/pi/$res"
+        [ -d "$src_dir" ] || continue
+        mkdir -p ~/.pi/agent/"$res"
+        for src in "$src_dir"/*; do
+            [ -e "$src" ] || continue
+            dst="$HOME/.pi/agent/$res/$(basename "$src")"
+            if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+                mv "$dst" "$dst.bak.$(date +%s)"
+                echo "Backed up $dst"
+            fi
+            ln -sfn "$src" "$dst"
+        done
+    done
+fi
+
+# herdr config. Per-file (not dir-level) because ~/.config/herdr/ also holds
+# runtime state — sockets, logs, session.json — that must stay machine-local.
+if [ -d "$DOTFILES_DIR/herdr" ]; then
+    echo "==> Symlinking herdr config"
+    mkdir -p ~/.config/herdr
+    for src in "$DOTFILES_DIR"/herdr/*; do
+        [ -e "$src" ] || continue
+        name="$(basename "$src")"
+        dst="$HOME/.config/herdr/$name"
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+            mv "$dst" "$dst.bak.$(date +%s)"
+            echo "Backed up $dst"
+        fi
+        ln -sfn "$src" "$dst"
     done
 fi
 
@@ -410,6 +507,14 @@ if [ "$OS" = "Linux" ]; then
     if command -v yay &>/dev/null && ! pacman -Q beeper-bin &>/dev/null; then
         echo "==> Installing Beeper from AUR"
         yay -S --noconfirm beeper-bin
+    fi
+    # herdr: agent-aware terminal multiplexer, evaluated as firstmate's
+    # pane backend and a standalone tool. The pi coding agent itself is
+    # Omarchy-provided (install/packaging/npx.sh), so it needs no install
+    # here; only its packages (pi-rlm) and config are dotfiles-tracked.
+    if command -v yay &>/dev/null && ! pacman -Q herdr-bin &>/dev/null; then
+        echo "==> Installing herdr from AUR"
+        yay -S --noconfirm herdr-bin
     fi
     # firefox-pwa hosts the subset of omarchy-menu PWAs whose upstreams
     # publish a manifest and don't block non-Chromium browsers (currently
