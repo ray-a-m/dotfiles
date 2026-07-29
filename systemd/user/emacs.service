@@ -1,0 +1,20 @@
+[Unit]
+Description=Emacs text editor daemon
+Documentation=info:emacs man:emacs(1) https://gnu.org/software/emacs/
+# Tie the daemon to the Wayland session.  uwsm exports WAYLAND_DISPLAY (and the
+# rest of the graphical env) into the systemd user manager, so the daemon starts
+# with a display and opens GUI frames.  PartOf + graphical-session.target also
+# stops the daemon on logout, instead of leaving an orphan process.
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/emacs --fg-daemon
+# SIGTERM makes Emacs exit with status 15.  Treat that as a clean stop, so a
+# `systemctl restart' does not trip Restart=on-failure.
+SuccessExitStatus=15
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

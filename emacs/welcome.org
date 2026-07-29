@@ -29,3 +29,6 @@ Vault  file = ID--title__form_matter                    (none = misc)
   Classify: note / task ........ [M-c]
   Insert link ............ [M-SPC d k]
   Promote / rename ....... [M-SPC d r]
+
+
+{{bookmarks}}

@@ -109,7 +109,8 @@
         command-history                  ; M-: / M-! history
         search-ring regexp-search-ring   ; / and ? search history
         query-replace-history
-        read-expression-history)
+        read-expression-history
+        rm/bookmarks)                    ; the 9 splash bookmark slots
       history-length 250
       kill-ring-max 25)
 ;; Kill-ring entries can carry text properties (faces/overlays); strip them so
@@ -1335,17 +1336,18 @@ POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
   (define-key org-mode-map (kbd "C-c M-S")   #'org-schedule)
   (define-key org-mode-map (kbd "C-c S-M-s") #'org-schedule))
 
-;; Restart the systemd Emacs daemon (super+w only closes the frame).  Detached
-;; via systemd-run so the restart survives THIS process being killed.
+;; Restart the Emacs daemon and reopen a frame (Super+W only closes the frame).
+;; `emacs.service' (dotfiles/systemd/user/emacs.service, bound to
+;; graphical-session.target) is the daemon.  The restart runs in a detached
+;; `systemd-run' unit, so it outlives the daemon it stops.  A child in the
+;; emacs.service cgroup would be killed with the daemon, hence the detachment.
 (defun rm/restart-emacs ()
-  "Restart the systemd user Emacs daemon (`emacs.service') AND reopen a frame.
-Restarting the daemon alone brings it back headless -- your window is an
-`emacsclient' frame that must be re-created.  Both steps run in a detached
-`systemd-run' transient unit so they survive this process's death (a child in
-the emacs.service cgroup would be SIGTERMed with the daemon).  `emacs.service'
-is Type=notify, so `systemctl restart' only returns once the new daemon is
-ready to accept the client.  Display vars are forwarded so the frame lands on
-this session."
+  "Restart the `emacs.service' daemon and open a fresh frame.
+Save the buffers first.  A detached `systemd-run' helper restarts the service
+and creates a frame.  The helper runs outside the service cgroup, so it
+survives the daemon's death.  `emacs.service' is Type=notify, so the restart
+returns only once the new daemon is ready.  Display vars are forwarded so the
+frame lands on this session."
   (interactive)
   (when (yes-or-no-p "Restart the Emacs daemon (buffers are saved first)? ")
     (save-some-buffers t)
@@ -1964,6 +1966,113 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
                    #'rm/nano-refresh-on-first-frame)))
   (add-hook 'server-after-make-frame-hook #'rm/nano-refresh-on-first-frame))
 
+;; --- Bookmarks: nine file slots, shown on the splash --------------------
+;; A tiny numbered registry, distinct from stock bookmark.el: nine slots,
+;; each an absolute file path.  Set the current file into a slot with
+;; `rm/bookmark-set' (M-SPC B), then jump with M-SPC 1..9 (= C-c 1..9) from
+;; anywhere, or the bare digit on the splash (its keymap adds 1..9 there).
+;; The vector rides in `savehist-additional-variables', so slots persist.
+(defvar rm/bookmarks (make-vector 9 nil)
+  "Nine bookmark slots for the splash; each nil or an absolute file path.
+Set with `rm/bookmark-set', opened with `rm/bookmark-open'.  Persisted via
+savehist (see `savehist-additional-variables').")
+
+;; Guard against a stale savehist value of the wrong shape (older length, or
+;; not a vector) clobbering the accessors.
+(unless (and (vectorp rm/bookmarks) (= (length rm/bookmarks) 9))
+  (setq rm/bookmarks (make-vector 9 nil)))
+
+(defun rm/bookmark--slot (n)
+  "Return the 0-based index for user-facing slot N, or signal for a bad N."
+  (unless (and (integerp n) (<= 1 n 9))
+    (user-error "Bookmark slots run 1-9"))
+  (1- n))
+
+(defun rm/bookmark--detex (s)
+  "Strip common LaTeX title markup from S, leaving plain text.
+Drop wrappers such as \\textbf{...}, then any stray braces and bare macros."
+  (let ((s s))
+    (setq s (replace-regexp-in-string "\\\\[a-zA-Z]+\\*?{" "" s)) ; drop \macro{
+    (setq s (replace-regexp-in-string "[{}]" "" s))               ; drop stray braces
+    (setq s (replace-regexp-in-string "\\\\[a-zA-Z]+" "" s))      ; drop bare \macro
+    (string-trim (replace-regexp-in-string "[ \t]+" " " s))))     ; collapse spaces
+
+(defun rm/bookmark--title (file)
+  "Return a display title for FILE, reading only its head so it stays cheap.
+Prefer the Org #+title.  Else take a LaTeX \\title{...}, which a paper carries
+in an export block, with its markup stripped.  Else fall back to the base name."
+  (or (ignore-errors
+        (with-temp-buffer
+          (let ((case-fold-search t))          ; #+TITLE / \Title both match
+            (insert-file-contents file nil 0 4096)
+            (or (progn (goto-char (point-min))
+                       (and (re-search-forward "^#\\+title:[ \t]*\\(.+?\\)[ \t]*$" nil t)
+                            (match-string 1)))
+                (progn (goto-char (point-min))
+                       (and (re-search-forward "\\\\title{\\(.*\\)}" nil t)
+                            (rm/bookmark--detex (match-string 1))))))))
+      (file-name-base (directory-file-name file))))
+
+(defun rm/bookmark--line (n)
+  "Return the splash line for set slot N: the title, a dot leader, then [N].
+The line copies the Tasks block, so [N] lands in the same column (38).
+A title wider than 29 characters gets an ellipsis."
+  (let* ((title (rm/bookmark--title (aref rm/bookmarks (1- n))))
+         (title (if (> (length title) 29)
+                    (concat (substring title 0 28) "…")
+                  title))
+         (dots  (make-string (max 2 (- 31 (length title))) ?.)))
+    (format "  %s %s [%d]" title dots n)))
+
+(defun rm/bookmark--panel ()
+  "Return the splash Bookmarks block: a header, then the set slots only.
+An empty slot does not appear.  With no slot set, the header stands alone."
+  (let* ((hint "set = [M-SPC B]")
+         ;; Right-flush the hint so [M-SPC B] ends in the [N] key column (38).
+         (header (concat "Bookmarks"
+                         (make-string (max 1 (- 38 (length "Bookmarks") (length hint)))
+                                      ?\s)
+                         hint))
+         (taken (seq-filter (lambda (n) (aref rm/bookmarks (1- n)))
+                            (number-sequence 1 9))))
+    (concat header
+            (when taken
+              (concat "\n\n" (mapconcat #'rm/bookmark--line taken "\n"))))))
+
+(defun rm/bookmark-open (n)
+  "Open the file in bookmark slot N (1-9).
+From the splash the bare digit calls this; elsewhere M-SPC N (= C-c N) does."
+  (interactive (list (or (and current-prefix-arg (prefix-numeric-value
+                                                  current-prefix-arg))
+                         (read-number "Open bookmark (1-9): "))))
+  (let ((file (aref rm/bookmarks (rm/bookmark--slot n))))
+    (cond
+     ((null file)
+      (message "Bookmark %d is empty -- set it with M-SPC B from a file" n))
+     ((file-exists-p file) (find-file file))
+     (t (message "Bookmark %d: file is gone -- %s" n file)))))
+
+(defun rm/bookmark-set ()
+  "Assign the current file to a bookmark slot.  Reads the slot digit (1-9)."
+  (interactive)
+  (let ((file (or buffer-file-name
+                  (user-error "This buffer is not visiting a file"))))
+    (let* ((ch (read-char-choice
+                (format "Set bookmark to %s -- slot (1-9): "
+                        (file-name-nondirectory file))
+                (number-sequence ?1 ?9)))
+           (n  (- ch ?0)))
+      (aset rm/bookmarks (rm/bookmark--slot n) (expand-file-name file))
+      (message "Bookmark %d = %s" n (file-name-nondirectory file)))))
+
+;; M-SPC B (= C-c B) sets; M-SPC 1..9 (= C-c 1..9) open.  Each digit gets a
+;; closure over its own N (lexical-binding makes the capture per-iteration).
+(keymap-global-set "C-c B" #'rm/bookmark-set)
+(dotimes (k 9)
+  (let ((n (1+ k)))
+    (keymap-global-set (format "C-c %d" n)
+                       (lambda () (interactive) (rm/bookmark-open n)))))
+
 ;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
 ;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
 ;; (`welcome.org' beside this init) rendered read-only -- the pixel-centered
@@ -2104,7 +2213,16 @@ so the startup hook stays quiet when a frame opens on a file."
         (with-current-buffer buf                   ; we let-bind it below (else, under
           (let ((inhibit-read-only t))             ; lexical-binding, it errors)
             (erase-buffer)
-            (insert-file-contents file))
+            (insert-file-contents file)
+            ;; Swap the {{bookmarks}} token for the live slot list, before
+            ;; org-mode + font-lock run so it styles like the rest.  Build the
+            ;; panel FIRST: rm/bookmark--title runs its own search, so calling
+            ;; it between the token match and replace-match would clobber the
+            ;; match data and drop the panel at the wrong place.
+            (let ((panel (rm/bookmark--panel)))
+              (goto-char (point-min))
+              (when (re-search-forward "^{{bookmarks}}$" nil t)
+                (replace-match panel t t))))
           (setq default-directory dir)             ; so [[file:welcome-logo.svg]] resolves
           (let ((org-mode-hook nil)) (org-mode))   ; Org WITHOUT the prose hooks
           (setq-local org-hide-emphasis-markers t
@@ -2114,7 +2232,7 @@ so the startup hook stays quiet when a frame opens on a file."
           ;; section headers bold, the Vault filename hint italic, and
           ;; [bracketed keys] salient (the [^][()] class skips [[elisp:(...)]]).
           (font-lock-add-keywords nil
-                                  '(("^\\(?:Tasks\\|find\\|Vault\\)\\b" 0 'bold)
+                                  '(("^\\(?:Tasks\\|find\\|Vault\\|Bookmarks\\)\\b" 0 'bold)
                                     ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
                                     ("^ *GNU Emacs$" 0 'bold)
                                     ("^Vault  \\(file = .*\\)$" 1 'italic)
@@ -2130,6 +2248,12 @@ so the startup hook stays quiet when a frame opens on a file."
           (let ((map (make-sparse-keymap)))
             (set-keymap-parent map org-mode-map)
             (define-key map (kbd "q")        #'rm/welcome-kill)
+
+            ;; Bare digits open bookmark slots 1-9 (M-SPC N works globally).
+            (dotimes (k 9)
+              (let ((n (1+ k)))
+                (define-key map (kbd (number-to-string n))
+                            (lambda () (interactive) (rm/bookmark-open n)))))
 
             (define-key map (kbd "n") #'rm/denote-note)         ; new note
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
