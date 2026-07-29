@@ -844,7 +844,16 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-list-indent-offset 2
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
-        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED")))
+        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
+        ;; Keyword highlight by progress (org buffers AND the agenda).  NEXT and
+        ;; WAITING take the Emacs-logo red and blue (welcome-logo.svg); DONE is
+        ;; green, CANCELLED amber.  TODO is left off the list on purpose -- it
+        ;; keeps the theme's org-todo face, which reads purple.
+        org-todo-keyword-faces
+        '(("NEXT"      . "#c64e3b")
+          ("WAITING"   . "#2076c1")
+          ("DONE"      . "#3a9e57")
+          ("CANCELLED" . "#c99a1f")))
   :config
   ;; `p' = todos grouped into project sections (rm/agenda-projects drives it,
   ;; splash `a').  A custom block, not a bare let over org-todo-list, so the
