@@ -1818,18 +1818,42 @@ and matter are assigned in the note with C-c d c (rm/denote-classify)."
     (interactive)
     (require 'denote)
     (denote nil nil))
+  (defun rm/task-classify-project (&optional agenda)
+    "File the task at hand under a project chosen by name.
+Projects are the top-level `*' headings in inbox.org -- the replacement
+for the old task tags, now that the agenda groups by project.  With
+AGENDA non-nil, refile the agenda entry at point and rebuild the view
+(default project = the one under point); otherwise refile the org
+heading at point."
+    (let* ((marker (when agenda
+                     (or (org-get-at-bol 'org-hd-marker)
+                         (org-get-at-bol 'org-marker)
+                         (user-error "No entry on this line"))))
+           (dest (rm/inbox--read-project
+                  (and agenda (rm/agenda--project-at-point))))
+           (file (buffer-file-name (marker-buffer dest)))
+           (head (org-with-point-at dest (org-get-heading t t t t)))
+           (rfloc (list head file nil (marker-position dest))))
+      (if agenda
+          (let ((src (marker-buffer marker)))
+            (org-with-point-at marker (org-refile nil nil rfloc))
+            (when (buffer-live-p src) (with-current-buffer src (save-buffer)))
+            (with-current-buffer (marker-buffer dest) (save-buffer))
+            (org-agenda-redo))
+        (org-refile nil nil rfloc))
+      (message "Filed under %s" head)))
   (defun rm/denote-classify ()
     "Classify the thing at hand -- one gesture, context decides.
 Vault note: form + matter, renames in place (identifier kept,
-re-runnable).  Org heading elsewhere (capture buffer, inbox, any
-TODO): the task tags via the fast-select menu.  Agenda view: tags for
-the entry at point."
+re-runnable).  Task (agenda entry, inbox heading, or capture buffer):
+file it under a project, chosen by name -- projects replaced the task
+tags, and the agenda groups by them."
     (interactive)
     (cond
      ((derived-mode-p 'org-agenda-mode)
-      (call-interactively #'org-agenda-set-tags))
+      (rm/task-classify-project t))
      ;; require, not featurep: M-c on a raw-opened vault note in a fresh
-     ;; session must still classify, not fall through to task tags
+     ;; session must still classify, not fall through to the task branch
      ((and buffer-file-name
            (progn (require 'denote) (denote-file-is-note-p buffer-file-name)))
       (let ((form (rm/denote--form-prompt))
@@ -1846,7 +1870,7 @@ the entry at point."
                                         ; buffer (indirect: file-name nil,
                                         ; base-buffer set) -- not the scratch
            (not (org-before-first-heading-p)))
-      (org-set-tags-command))
+      (rm/task-classify-project))
      (t (user-error "Nothing here to classify"))))
   ;; --- The note picker: f (titles), l (titles+keywords), g (content) ----
   ;; Type-to-narrow completion, displayed BIG: vertico-multiform routes
@@ -2726,7 +2750,7 @@ and strand ESC."
 ;; ...and its opposite: M-ESC leaps forward to any buffer (previewing
 ;; list, most recent first -- the one-gesture return after an ESC).
 (keymap-global-set "M-<escape>" #'consult-buffer)
-;; M-c: classify the thing at hand (note -> form/matter, task -> tags).
+;; M-c: classify the thing at hand (note -> form/matter, task -> project).
 ;; Used constantly, so it earns home-row Meta; capitalize-word yields
 ;; (M-u / M-l cover the rare case).
 (keymap-global-set "M-c" #'rm/denote-classify)
