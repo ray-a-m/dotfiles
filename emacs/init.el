@@ -1662,6 +1662,15 @@ frame lands on this session."
 (use-package org-super-agenda
   :init
   (with-eval-after-load 'org-agenda (org-super-agenda-mode 1)))
+;; org-super-agenda pins a keymap onto its group-header lines, built once with
+;; (copy-keymap org-agenda-mode-map) at load -- a SNAPSHOT that can predate our
+;; j/k/a/p rebindings, so headers kept the stock keys (j = goto-date, a =
+;; archive).  Re-point it at a parent-linked map with no own bindings, so a
+;; header line always resolves through the live org-agenda-mode-map (our keys,
+;; and a/p onto a project header file or move straight in).
+(with-eval-after-load 'org-super-agenda
+  (setq org-super-agenda-header-map
+        (make-composed-keymap nil org-agenda-mode-map)))
 (defun rm/agenda-projects ()
   "Todo list grouped into project sections by parent heading (splash `a').
 Each one-level `*' container becomes a section header with its `** TODO'
