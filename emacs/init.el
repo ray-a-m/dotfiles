@@ -857,7 +857,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
            ((org-super-agenda-groups '((:auto-parent t)))
             (org-agenda-sorting-strategy '((todo alpha-up)))))))
   (setq org-capture-templates
-        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "tasks")
+        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "miscellaneous")
            "* TODO %?\n  %U\n" :empty-lines 1)
           ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
            "* %?\n  %U\n" :empty-lines 1)))
