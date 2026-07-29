@@ -1243,10 +1243,16 @@ NEXT or WAITING) -- i.e. something the project agenda would already show."
                        out)))))
          (nreverse out)))))
   (defun rm/agenda--project-at-point ()
-    "Project marker for the agenda line at point.
-An empty-project header carries its marker as a text property; otherwise
-resolve the inbox project ancestor of the entry at point.  Nil if neither."
+    "Project marker for the agenda line at point, or nil.
+Resolves three line kinds: an empty-project header by its marker property,
+any project section header (ours or org-super-agenda's) by its visible name,
+and an entry line by its inbox project ancestor.  The name match is what lets
+a/p act on a header line without a prompt -- the property alone did not
+survive org-agenda's finalize."
     (or (get-text-property (line-beginning-position) 'rm-project-marker)
+        (cdr (assoc (string-trim (buffer-substring-no-properties
+                                  (line-beginning-position) (line-end-position)))
+                    (rm/inbox--project-headings)))
         (rm/inbox--project-at (or (org-get-at-bol 'org-hd-marker)
                                   (org-get-at-bol 'org-marker)))))
   (defun rm/agenda-empty-projects ()
