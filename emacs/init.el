@@ -1299,6 +1299,32 @@ a shorter path -- an ancestor -- sorts before its descendants."
 project, so a sub-todo nests under its parent (org-agenda-prefix-format)."
     (let ((lvl (org-current-level)))
       (if (and lvl (> lvl 2)) (make-string (* 2 (- lvl 2)) ?\s) "")))
+  (defun rm/agenda--has-children-p (marker)
+    "Non-nil when the heading at MARKER has a child heading (a sub-todo)."
+    (org-with-point-at marker
+      (org-back-to-heading t)
+      (let ((lvl (org-current-level)))
+        (save-excursion
+          (outline-next-heading)
+          (and (org-at-heading-p) (> (org-current-level) lvl))))))
+  (defun rm/agenda-bold-parents ()
+    "In the project tree, bold a todo's heading when it has sub-todos.
+The bold marks it as a container the nested notes sit under.  Tree view only
+(guarded on `org-super-agenda-groups', which only the `p' block sets)."
+    (when (bound-and-true-p org-super-agenda-groups)
+      (let ((inhibit-read-only t))
+        (save-excursion
+          (goto-char (point-min))
+          (while (not (eobp))
+            (let ((m (org-get-at-bol 'org-hd-marker)))
+              (when (and m (rm/agenda--has-children-p m))
+                (let ((title (org-with-point-at m (org-get-heading t t t t))))
+                  (beginning-of-line)
+                  (when (and (stringp title) (not (string-empty-p title))
+                             (search-forward title (line-end-position) t))
+                    (add-face-text-property (match-beginning 0) (match-end 0)
+                                            'bold)))))
+            (forward-line 1))))))
   (defun rm/agenda-empty-projects ()
     "Show projects with no open todos as their own (empty) section headers.
 The stock todo list only renders a group once it has an entry, so a project
@@ -1459,6 +1485,8 @@ a project with todos is left alone (empty it with y/p or d first)."
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-mark-excursion)
   ;; Empty projects (depth 80): after the real groups, before the footer (90).
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-empty-projects 80)
+  ;; Bold parent todos (depth 85): after entries exist, before the footer.
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-bold-parents 85)
   ;; The agenda's own keys, printed where they apply (footer of every
   ;; agenda view) rather than on the splash.
   (defconst rm/agenda-footer-text
