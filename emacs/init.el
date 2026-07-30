@@ -845,13 +845,14 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
         '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
-        ;; Keyword highlight by progress (org buffers AND the agenda).  NEXT and
-        ;; WAITING take the Emacs-logo red and blue (welcome-logo.svg); DONE is
-        ;; green, CANCELLED amber.  TODO is left off the list on purpose -- it
-        ;; keeps the theme's org-todo face, which reads purple.
+        ;; Keyword highlight by progress (org buffers AND the agenda).  TODO --
+        ;; the default state -- takes the Emacs-logo blue (welcome-logo.svg);
+        ;; NEXT the logo red; WAITING the purple TODO used to wear; DONE green;
+        ;; CANCELLED amber.
         org-todo-keyword-faces
-        '(("NEXT"      . "#c64e3b")
-          ("WAITING"   . "#2076c1")
+        '(("TODO"      . "#2076c1")
+          ("NEXT"      . "#c64e3b")
+          ("WAITING"   . "#8b5fbf")
           ("DONE"      . "#3a9e57")
           ("CANCELLED" . "#c99a1f")))
   :config
@@ -1648,7 +1649,19 @@ frame lands on this session."
         org-modern-block-fringe nil       ; fringe markers sit wrong next to olivetti
         ;; tag/keyword pills look best unaligned (no trailing-whitespace columns)
         org-auto-align-tags nil
-        org-tags-column 0))
+        org-tags-column 0
+        ;; Colour the keyword pills by progress -- org-modern draws these labels
+        ;; in org buffers AND the agenda, so org-todo-keyword-faces alone can't
+        ;; reach them; these must match it.  inverse-video makes each foreground
+        ;; the pill fill (org-modern's own look).  TODO = Emacs-logo blue (the
+        ;; default state), NEXT = logo red, WAITING purple, DONE green,
+        ;; CANCELLED amber.
+        org-modern-todo-faces
+        '(("TODO"      . (:foreground "#2076c1" :inverse-video t :weight semibold))
+          ("NEXT"      . (:foreground "#c64e3b" :inverse-video t :weight semibold))
+          ("WAITING"   . (:foreground "#8b5fbf" :inverse-video t :weight semibold))
+          ("DONE"      . (:foreground "#3a9e57" :inverse-video t :weight semibold))
+          ("CANCELLED" . (:foreground "#c99a1f" :inverse-video t :weight semibold)))))
 
 ;; org-super-agenda (alphapapa): groups the otherwise-flat todo list into
 ;; titled sections.  Wired for ONE view -- the splash `a' (rm/agenda-projects)
