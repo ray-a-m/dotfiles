@@ -35,6 +35,14 @@
 
 (require 'ox-latex)
 
+;; A heading with a :CUSTOM_ID: emits \label{<id>} instead of a random
+;; \label{sec:orgNNN}, so raw \ref{<id>} in a body resolves to that
+;; section.  Safe alongside rm/org-paper--strip-section-labels: the strip
+;; filter only removes the auto sec:org[0-9a-f]+ form, so a named user
+;; label survives.  Headings WITHOUT a CUSTOM_ID still get the random
+;; label (and are still stripped) -- behaviour there is unchanged.
+(setq org-latex-prefer-user-labels t)
+
 ;; Let `$G$-action' parse as math: org's fragment parser demands
 ;; punctuation-SYNTAX after the closing $, and org classes `-' as symbol.
 ;; Reclassifying it as punctuation (arguably correct for prose) makes the
