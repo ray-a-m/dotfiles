@@ -1276,20 +1276,32 @@ grouping.  Move to a real agenda line (the top) first, then redo."
     (org-agenda-redo))
   (defun rm/agenda-new (name)
     "Create an inbox item from the agenda (yazi `a').
-NAME ending in \"/\" makes a top-level project; otherwise a `** TODO' under
-the project at point (or a chosen project when point isn't in one).  Rebuilds
-the agenda so the item appears."
-    (interactive "sNew (end with / for a project): ")
+A plain NAME adds a `** TODO' under the project at point (or a chosen project
+when point isn't in one).  A NAME ending in \"/\" makes a container, one level
+in from where point sits: on a todo it adds a child sub-todo under that todo;
+anywhere else it makes a top-level project.  Rebuilds the agenda so the item
+appears."
+    (interactive "sNew (end with / to nest a sub-todo / project): ")
     (setq name (string-trim name))
     (cond
      ((string-empty-p name) (message "Cancelled"))
      ((string-suffix-p "/" name)
-      (let ((pname (string-trim (substring name 0 -1))))
-        (when (string-empty-p pname) (user-error "Empty project name"))
-        (rm/inbox--add-project pname)
-        (rm/agenda-rebuild)
-        (message "Project %s created -- add a todo with a, or move one in with y/p"
-                 pname)))
+      (let ((pname (string-trim (substring name 0 -1)))
+            (todo (or (org-get-at-bol 'org-hd-marker)
+                      (org-get-at-bol 'org-marker))))
+        (when (string-empty-p pname) (user-error "Empty name"))
+        (if todo
+            ;; on a todo: a sub-todo nested under it
+            (progn
+              (rm/inbox--add-todo todo pname)
+              (rm/agenda-rebuild)
+              (message "Sub-todo added under %s"
+                       (org-with-point-at todo (org-get-heading t t t t))))
+          ;; elsewhere: a new top-level project
+          (rm/inbox--add-project pname)
+          (rm/agenda-rebuild)
+          (message "Project %s created -- add a todo with a, or move one in with y/p"
+                   pname))))
      (t
       (let ((proj (or (rm/agenda--project-at-point)
                       (rm/inbox--read-project))))
