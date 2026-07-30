@@ -844,17 +844,15 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         org-list-indent-offset 2
         org-log-done 'time                ; stamp the time when a TODO -> DONE
         org-todo-keywords
-        '((sequence "TODO" "NEXT" "WAITING" "|" "DONE" "CANCELLED"))
-        ;; Keyword highlight by progress (org buffers AND the agenda).  TODO --
-        ;; the default state -- takes the Emacs-logo blue (welcome-logo.svg);
-        ;; NEXT the logo red; WAITING the purple TODO used to wear; DONE green;
-        ;; CANCELLED amber.
+        '((sequence "TODO" "NEXT" "CONTINUING" "|" "DONE"))
+        ;; Keyword highlight by progress (org buffers AND the agenda).  TODO is
+        ;; purple; NEXT the Emacs-logo red; CONTINUING the logo blue
+        ;; (welcome-logo.svg); DONE green.
         org-todo-keyword-faces
-        '(("TODO"      . "#2076c1")
-          ("NEXT"      . "#c64e3b")
-          ("WAITING"   . "#8b5fbf")
-          ("DONE"      . "#3a9e57")
-          ("CANCELLED" . "#c99a1f")))
+        '(("TODO"       . "#8b5fbf")
+          ("NEXT"       . "#c64e3b")
+          ("CONTINUING" . "#2076c1")
+          ("DONE"       . "#3a9e57")))
   :config
   ;; `p' = todos grouped into project sections (rm/agenda-projects drives it,
   ;; splash `a').  A custom block, not a bare let over org-todo-list, so the
@@ -1217,7 +1215,7 @@ Returns a marker on the chosen `*' heading; DEFAULT-MARKER seeds the default."
   (defun rm/inbox--projects-status ()
     "List of (NAME MARKER HAS-TODO) for each top-level inbox project but Notes.
 HAS-TODO is non-nil when the project's subtree holds an open todo (TODO,
-NEXT or WAITING) -- i.e. something the project agenda would already show."
+NEXT or CONTINUING) -- i.e. something the project agenda would already show."
     (with-current-buffer (rm/inbox--buffer)
       (org-with-wide-buffer
        (goto-char (point-min))
@@ -1232,7 +1230,7 @@ NEXT or WAITING) -- i.e. something the project agenda would already show."
                              (save-excursion
                                (goto-char beg) (forward-line 1)
                                (and (re-search-forward
-                                     "^\\*\\{2,\\} \\(?:TODO\\|NEXT\\|WAITING\\) "
+                                     "^\\*\\{2,\\} \\(?:TODO\\|NEXT\\|CONTINUING\\) "
                                      end t)
                                     t)))
                        out)))))
@@ -1653,15 +1651,13 @@ frame lands on this session."
         ;; Colour the keyword pills by progress -- org-modern draws these labels
         ;; in org buffers AND the agenda, so org-todo-keyword-faces alone can't
         ;; reach them; these must match it.  inverse-video makes each foreground
-        ;; the pill fill (org-modern's own look).  TODO = Emacs-logo blue (the
-        ;; default state), NEXT = logo red, WAITING purple, DONE green,
-        ;; CANCELLED amber.
+        ;; the pill fill (org-modern's own look).  TODO purple, NEXT logo red,
+        ;; CONTINUING logo blue, DONE green.
         org-modern-todo-faces
-        '(("TODO"      . (:foreground "#2076c1" :inverse-video t :weight semibold))
-          ("NEXT"      . (:foreground "#c64e3b" :inverse-video t :weight semibold))
-          ("WAITING"   . (:foreground "#8b5fbf" :inverse-video t :weight semibold))
-          ("DONE"      . (:foreground "#3a9e57" :inverse-video t :weight semibold))
-          ("CANCELLED" . (:foreground "#c99a1f" :inverse-video t :weight semibold)))))
+        '(("TODO"       . (:foreground "#8b5fbf" :inverse-video t :weight semibold))
+          ("NEXT"       . (:foreground "#c64e3b" :inverse-video t :weight semibold))
+          ("CONTINUING" . (:foreground "#2076c1" :inverse-video t :weight semibold))
+          ("DONE"       . (:foreground "#3a9e57" :inverse-video t :weight semibold)))))
 
 ;; org-super-agenda (alphapapa): groups the otherwise-flat todo list into
 ;; titled sections.  Wired for ONE view -- the splash `a' (rm/agenda-projects)
