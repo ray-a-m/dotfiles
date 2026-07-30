@@ -854,16 +854,21 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
           ("CONTINUING" . "#2076c1")
           ("DONE"       . "#3a9e57")))
   :config
-  ;; `p' = todos grouped into project sections (rm/agenda-projects drives it,
+  ;; `p' = todos as an indented project TREE (rm/agenda-projects drives it,
   ;; splash `a').  A custom block, not a bare let over org-todo-list, so the
-  ;; grouping and the sort re-apply on every redo -- a/y/p rebuild the list and
-  ;; must keep the sections.  :auto-parent already emits the project groups in
-  ;; alphabetical order; alpha-up sorts the todos within each group.
-  (setq org-agenda-custom-commands
+  ;; grouping and sort re-apply on every redo -- a/y/p rebuild the list and must
+  ;; keep it.  :auto-map groups by the top-level `*' ancestor, so a todo and its
+  ;; sub-todos share one project section (projects come out alphabetical).  The
+  ;; user-defined sort (rm/agenda--cmp-tree) walks each section as a tree --
+  ;; parent before its children, siblings A-Z -- and rm/agenda-indent (in
+  ;; org-agenda-prefix-format) steps each level in, so children nest under their
+  ;; parent.
+  (setq org-agenda-cmp-user-defined #'rm/agenda--cmp-tree
+        org-agenda-custom-commands
         '(("p" "Todos, by project"
            todo ""
-           ((org-super-agenda-groups '((:auto-parent t)))
-            (org-agenda-sorting-strategy '((todo alpha-up)))))))
+           ((org-super-agenda-groups '((:auto-map rm/agenda--item-project)))
+            (org-agenda-sorting-strategy '((todo user-defined-up)))))))
   (setq org-capture-templates
         '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "miscellaneous")
            "* TODO %?\n  %U\n" :empty-lines 1)
@@ -1248,6 +1253,52 @@ survive org-agenda's finalize."
                     (rm/inbox--project-headings)))
         (rm/inbox--project-at (or (org-get-at-bol 'org-hd-marker)
                                   (org-get-at-bol 'org-marker)))))
+  ;; --- Project TREE view (the `p' block): group by project, order as an
+  ;; outline, indent by depth.  These read the marker each org-super-agenda
+  ;; entry string carries.
+  (defun rm/agenda--item-marker (item)
+    "The org marker an org-super-agenda ITEM string carries."
+    (or (get-text-property 0 'org-hd-marker item)
+        (get-text-property 0 'org-marker item)))
+  (defun rm/agenda--item-project (item)
+    "Group key for :auto-map -- ITEM's top-level `*' ancestor heading.
+A todo and all its descendants map to the same project, so they share a
+section instead of splitting off (which :auto-parent did)."
+    (when-let ((m (rm/agenda--item-marker item)))
+      (org-with-point-at m
+        (org-back-to-heading t)
+        (while (and (org-current-level) (> (org-current-level) 1))
+          (org-up-heading-safe))
+        (org-get-heading t t t t))))
+  (defun rm/agenda--outline-path (item)
+    "ITEM's heading titles from its project down to itself, each lowercased."
+    (when-let ((m (rm/agenda--item-marker item)))
+      (org-with-point-at m
+        (org-back-to-heading t)
+        (let ((path (list (downcase (org-get-heading t t t t)))))
+          (while (org-up-heading-safe)
+            (push (downcase (org-get-heading t t t t)) path))
+          path))))
+  (defun rm/agenda--cmp-tree (a b)
+    "Order two entries as a pre-order tree walk (parent first, siblings A-Z).
+For `org-agenda-cmp-user-defined': compare outline paths segment by segment;
+a shorter path -- an ancestor -- sorts before its descendants."
+    (let ((pa (rm/agenda--outline-path a))
+          (pb (rm/agenda--outline-path b)))
+      (catch 'done
+        (while (or pa pb)
+          (let ((sa (car pa)) (sb (car pb)))
+            (cond ((null sa) (throw 'done -1))
+                  ((null sb) (throw 'done +1))
+                  ((string-lessp sa sb) (throw 'done -1))
+                  ((string-lessp sb sa) (throw 'done +1))
+                  (t (setq pa (cdr pa) pb (cdr pb))))))
+        nil)))
+  (defun rm/agenda-indent ()
+    "Prefix indent for a project-view line: two spaces per level below the
+project, so a sub-todo nests under its parent (org-agenda-prefix-format)."
+    (let ((lvl (org-current-level)))
+      (if (and lvl (> lvl 2)) (make-string (* 2 (- lvl 2)) ?\s) "")))
   (defun rm/agenda-empty-projects ()
     "Show projects with no open todos as their own (empty) section headers.
 The stock todo list only renders a group once it has an entry, so a project
@@ -1447,7 +1498,7 @@ a project with todos is left alone (empty it with y/p or d first)."
       (truncate-string-to-width (or s "") 18 nil ?\s "…")))
   (setq org-agenda-prefix-format
         '((agenda . " %i %(rm/agenda-category) %?-12t% s")
-          (todo   . " %i %(rm/agenda-category) ")
+          (todo   . " %i %(rm/agenda-category) %(rm/agenda-indent)")
           (tags   . " %i %(rm/agenda-category) ")
           (search . " %i %(rm/agenda-category) ")))
   ;; The agenda always gets its own window: reuse one already showing it,
@@ -1723,12 +1774,12 @@ frame lands on this session."
   (setq org-super-agenda-header-map
         (make-composed-keymap nil org-agenda-mode-map)))
 (defun rm/agenda-projects ()
-  "Todo list grouped into project sections by parent heading (splash `a').
-Each one-level `*' container becomes a section header with its `** TODO'
-children beneath; loose top-level todos fall to the last section.  Runs the
-`p' custom block (not a bare let over org-todo-list) so a redo -- after a/y/p
-edit the list -- keeps the grouping.  Move with j/k/h/l; a adds, y/p move,
-e/r/d act on the entry at point."
+  "Todos as an indented project tree (splash `a').
+Each top-level `*' project is a section; within it, todos nest as an outline
+-- a sub-todo indents under its parent, siblings sorted A-Z.  Runs the `p'
+custom block (not a bare let over org-todo-list) so a redo -- after a/y/p edit
+the list -- keeps the tree.  Move with j/k/h/l; a adds (a/ nests a sub-todo),
+y/p move, e/r/d act on the entry at point."
   (interactive)
   (require 'org-super-agenda)
   (org-agenda nil "p"))
