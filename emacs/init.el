@@ -1338,13 +1338,45 @@ chosen by name (default: the project at point).  Rebuilds the agenda."
       (setq rm/agenda-yank nil)
       (rm/agenda-rebuild)
       (message "Moved under %s" head)))
+  (defun rm/inbox--project-empty-p (marker)
+    "Non-nil when the project heading at MARKER has no child heading."
+    (org-with-point-at marker
+      (org-back-to-heading t)
+      (let ((end (save-excursion (org-end-of-subtree t t) (point))))
+        (save-excursion
+          (forward-line 1)
+          (not (re-search-forward "^\\*\\{2,\\} " end t))))))
+  (defun rm/inbox--delete-heading (marker)
+    "Delete the heading and its subtree at MARKER, then save the file."
+    (with-current-buffer (marker-buffer marker)
+      (org-with-wide-buffer
+       (goto-char marker)
+       (org-back-to-heading t)
+       (delete-region (point) (progn (org-end-of-subtree t t) (point)))
+       (save-buffer))))
+  (defun rm/agenda-delete ()
+    "Delete the thing at point: a todo, or an empty project.
+On a todo entry, hand off to org-agenda-kill.  On a project header, remove
+its `*' heading from the inbox -- but only when the project holds no todos;
+a project with todos is left alone (empty it with y/p or d first)."
+    (interactive)
+    (if (org-get-at-bol 'org-hd-marker)
+        (call-interactively #'org-agenda-kill)   ; a real todo entry
+      (let ((proj (rm/agenda--project-at-point)))
+        (unless proj (user-error "Nothing to delete on this line"))
+        (let ((name (org-with-point-at proj (org-get-heading t t t t))))
+          (if (rm/inbox--project-empty-p proj)
+              (progn (rm/inbox--delete-heading proj)
+                     (rm/agenda-rebuild)
+                     (message "Deleted project %s" name))
+            (user-error "Project \"%s\" still has todos -- clear them first" name))))))
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
     (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
     (keymap-set org-agenda-mode-map "h" #'org-agenda-earlier)
     (keymap-set org-agenda-mode-map "l" #'org-agenda-later)
     (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)
-    (keymap-set org-agenda-mode-map "d" #'org-agenda-kill)
+    (keymap-set org-agenda-mode-map "d" #'rm/agenda-delete)
     (keymap-set org-agenda-mode-map "e" #'rm/agenda-edit-entry)
     (keymap-set org-agenda-mode-map "a" #'rm/agenda-new)
     (keymap-set org-agenda-mode-map "y" #'rm/agenda-yank)
