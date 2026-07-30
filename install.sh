@@ -36,7 +36,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza \
+                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd \
                 pandoc-cli qpdf obsidian aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
@@ -344,6 +344,20 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/udev" ]; then
     echo "==> Reloading udev rules"
     sudo udevadm control --reload-rules
     sudo udevadm trigger --subsystem-match=usb --action=add
+fi
+
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/keyd" ] && command -v keyd >/dev/null 2>&1; then
+    # keyd config: copy (not symlink) into /etc/keyd/, same reasoning as the
+    # systemd units below -- the root daemon starts before /home is guaranteed,
+    # so it must not depend on a symlink into the home tree. The dotfile is
+    # authoritative; re-run install.sh (or `sudo keyd reload`) after editing.
+    echo "==> Installing keyd config and enabling the service"
+    for src in "$DOTFILES_DIR"/keyd/*.conf; do
+        [ -e "$src" ] || continue
+        sudo install -Dm644 "$src" "/etc/keyd/$(basename "$src")"
+    done
+    sudo systemctl enable --now keyd 2>/dev/null || true
+    sudo keyd reload 2>/dev/null || true
 fi
 
 if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/bin" ]; then
