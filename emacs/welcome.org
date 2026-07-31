@@ -7,19 +7,19 @@
 
 
 
-tasks                                     form          matter
+find                                      form          matter
 
-  todo ........................... [t]    hub           aesthetics
-  push ..................... [M-SPC G]    idea          concepts
-  schedule ............... [M-SPC M-s]    lit           fun
-  todos .......................... [a]    log           hegel
+  by content ..................... [g]    hub           aesthetics
+  by name ........................ [f]    idea          concepts
+  by tag ......................... [l]    lit           fun
+  commands ....................... [c]    log           hegel
                                           meeting       history
-find                                      musing        kant
+tasks                                     musing        kant
                                           paperidea     math
-  by content ..................... [g]    poetry        neo-kantian
-  by name ........................ [f]    presentation  phenomenology
-  by tag ......................... [l]    talk          physics
-  commands ....................... [c]    wip           science
+  push ..................... [M-SPC G]    poetry        neo-kantian
+  schedule ............... [M-SPC M-s]    presentation  phenomenology
+  todo ........................... [t]    talk          physics
+  todos .......................... [a]    wip           science
                                                         teaching
 vault  file = ID--title__form_matter                    (none = misc)
 

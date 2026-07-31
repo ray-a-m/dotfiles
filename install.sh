@@ -37,7 +37,7 @@ install_linux_deps() {
         pacman)
             sudo pacman -S --needed --noconfirm \
                 neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd \
-                pandoc-cli qpdf obsidian aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation \
+                pandoc-cli qpdf obsidian aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation ttf-roboto-mono \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
             ;;
@@ -65,8 +65,9 @@ case "$OS" in
     *)      echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
-# Vendored fonts: DepartureMono isn't packaged by any distro. JetBrainsMono
-# Nerd Font comes from the package manager (ttf-jetbrains-mono-nerd) above.
+# Vendored fonts: DepartureMono and Atkinson Hyperlegible (Next = Emacs prose
+# proportional; Mono) aren't packaged by any distro. JetBrainsMono Nerd Font
+# comes from the package manager (ttf-jetbrains-mono-nerd) above.
 if [ -d "$DOTFILES_DIR/fonts" ]; then
     echo "==> Installing vendored fonts"
     mkdir -p ~/.local/share/fonts

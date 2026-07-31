@@ -148,13 +148,13 @@
              (expand-file-name "nano" (file-name-directory user-init-file)))
 
 ;; Fonts must be set BEFORE nano-faces reads them.  Both are installed under
-;; ~/.local/share/fonts.  GOTCHA on ET Book: the family Emacs wants is
-;; "ETBembo", *not* "et-book" (that's only the CSS @font-face alias; the TTF's
-;; internal family is ETBembo -- verify with `fc-list | grep -i etbembo').
-;; Setting it as the proportional family routes it through `variable-pitch',
-;; which mixed-pitch swaps in for prose while code/tables stay Roboto Mono.
+;; ~/.local/share/fonts.  Prose runs Atkinson Hyperlegible Next (the family
+;; Emacs wants is the human name "Atkinson Hyperlegible Next", verify with
+;; `fc-list | grep -i atkinson').  Setting it as the proportional family routes
+;; it through `variable-pitch', which mixed-pitch swaps in for prose while
+;; code/tables stay Roboto Mono.  (Was ETBembo/ET Book through 2026-07-31.)
 (setq nano-font-family-monospaced "Roboto Mono"
-      nano-font-family-proportional "ETBembo"
+      nano-font-family-proportional "Atkinson Hyperlegible Next"
       nano-font-size 12)              ; whole-UI size knob; bump/drop by 1 to taste
 
 (require 'nano-layout)          ; frame margins, no chrome, pretty wrap/truncate glyphs
@@ -854,7 +854,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
           ("CONTINUING" . "#2076c1")
           ("DONE"       . "#3a9e57")))
   :config
-  ;; `p' = todos as an indented project TREE (rm/agenda-projects drives it,
+  ;; `agenda' = todos as an indented project TREE (rm/agenda-projects drives it,
   ;; splash `a').  A custom block, not a bare let over org-todo-list, so the
   ;; grouping and sort re-apply on every redo -- a/y/p rebuild the list and must
   ;; keep it.  :auto-map groups by the top-level `*' ancestor, so a todo and its
@@ -865,10 +865,14 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   ;; parent.
   (setq org-agenda-cmp-user-defined #'rm/agenda--cmp-tree
         org-agenda-custom-commands
-        '(("p" "Todos, by project"
+        '(("agenda" "Todos, by project"
            todo ""
            ((org-super-agenda-groups '((:auto-map rm/agenda--item-project)))
-            (org-agenda-sorting-strategy '((todo user-defined-up)))))))
+            (org-agenda-sorting-strategy '((todo user-defined-up)))
+            ;; Suppress org-todo-list's "Global list of TODO items of type:
+            ;; ALL / Press N..." banner; "" makes the overriding-header macro
+            ;; insert nothing (the project group headers are label enough).
+            (org-agenda-overriding-header "")))))
   (setq org-capture-templates
         '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "miscellaneous")
            "* TODO %?\n  %U\n" :empty-lines 1)
@@ -1253,7 +1257,7 @@ survive org-agenda's finalize."
                     (rm/inbox--project-headings)))
         (rm/inbox--project-at (or (org-get-at-bol 'org-hd-marker)
                                   (org-get-at-bol 'org-marker)))))
-  ;; --- Project TREE view (the `p' block): group by project, order as an
+  ;; --- Project TREE view (the `agenda' block): group by project, order as an
   ;; outline, indent by depth.  These read the marker each org-super-agenda
   ;; entry string carries.
   (defun rm/agenda--item-marker (item)
@@ -1310,7 +1314,7 @@ project, so a sub-todo nests under its parent (org-agenda-prefix-format)."
   (defun rm/agenda-bold-parents ()
     "In the project tree, bold a todo's heading when it has sub-todos.
 The bold marks it as a container the nested notes sit under.  Tree view only
-(guarded on `org-super-agenda-groups', which only the `p' block sets)."
+(guarded on `org-super-agenda-groups', which only the `agenda' block sets)."
     (when (bound-and-true-p org-super-agenda-groups)
       (let ((inhibit-read-only t))
         (save-excursion
@@ -1354,8 +1358,8 @@ property); the real keyword and marker stay, so `r' progresses as normal."
           (forward-line 1)))))
   (defun rm/agenda-dedup-keyword ()
     "Finalize-hook entry: run the dedup pass in the tree view.
-Guarded like the sibling hooks on `org-super-agenda-groups', which the `p'
-block let-binds during a full build.  A state change re-finalizes without
+Guarded like the sibling hooks on `org-super-agenda-groups', which the
+`agenda' block let-binds during a full build.  A state change re-finalizes without
 that binding, so `rm/agenda-todo' covers that path instead."
     (when (bound-and-true-p org-super-agenda-groups)
       (rm/agenda--dedup-keyword-1)))
@@ -1888,7 +1892,7 @@ frame lands on this session."
 ;; -- to cluster todos under their parent `*' heading, so a one-level project
 ;; container (Philosophy, Technology, ...) becomes a header with its `** TODO'
 ;; children beneath.  The mode is global but INERT unless
-;; `org-super-agenda-groups' is non-nil, which only the `p' custom block sets
+;; `org-super-agenda-groups' is non-nil, which only the `agenda' custom block sets
 ;; (see org-agenda-custom-commands), so the date agenda and `m' view stay flat.
 (use-package org-super-agenda
   :init
@@ -1905,13 +1909,14 @@ frame lands on this session."
 (defun rm/agenda-projects ()
   "Todos as an indented project tree (splash `a').
 Each top-level `*' project is a section; within it, todos nest as an outline
--- a sub-todo indents under its parent, siblings sorted A-Z.  Runs the `p'
-custom block (not a bare let over org-todo-list) so a redo -- after a/y/p edit
-the list -- keeps the tree.  Move with j/k/h/l; a adds (a/ nests a sub-todo),
+-- a sub-todo indents under its parent, siblings sorted A-Z.  Runs the
+`agenda' custom block (not a bare let over org-todo-list) so a redo -- after
+a/y/p edit the list -- keeps the tree.  Move with j/k/h/l; a adds (a/ nests a
+sub-todo),
 y/p move, e/r/d act on the entry at point."
   (interactive)
   (require 'org-super-agenda)
-  (org-agenda nil "p"))
+  (org-agenda nil "agenda"))
 
 ;; org-margin (rougier, vendored like nano): headline stars render IN the
 ;; left margin as the level glyphs, so headline text starts at column 0 --
@@ -2206,7 +2211,16 @@ tags, and the agenda groups by them."
                 (f (cdr (assoc cand rm/note-pick--alist))))
       (unless (equal f rm/note-pick--pfile)
         (setq rm/note-pick--pfile f)
-        (let ((buf (find-file-noselect f)))
+        ;; find-file-noselect runs find-file-hook, which carries the splash's
+        ;; one-shot auto-dismiss -- but vertico-buffer has swapped *welcome*
+        ;; off-window here, so the dismiss check sees it "gone" and KILLS it.
+        ;; vertico-buffer's teardown then can't restore the killed splash
+        ;; ("selecting deleted buffer", landing on the agenda).  A preview is
+        ;; not a real visit: keep the dismiss hook out of it so the splash
+        ;; survives to be restored, and the real RET open dismisses it.
+        (let ((buf (let ((find-file-hook
+                          (remq 'rm/welcome--auto-dismiss find-file-hook)))
+                     (find-file-noselect f))))
           (if (window-live-p rm/note-pick--pwin)
               (set-window-buffer rm/note-pick--pwin buf)
             (setq rm/note-pick--pwin
@@ -2404,9 +2418,10 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
-;;   * the body font is ET Book (ETBembo), supplied via nano's proportional
-;;     family above; mixed-pitch swaps `variable-pitch' in for prose while
-;;     keeping code / tables / verbatim / math in Roboto Mono so they align
+;;   * the body font is Atkinson Hyperlegible Next, supplied via nano's
+;;     proportional family above; mixed-pitch swaps `variable-pitch' in for
+;;     prose while keeping code / tables / verbatim / math in Roboto Mono so
+;;     they align
 ;;   * olivetti centers the text in a comfortable measure
 ;; Line numbers are already off in these modes (only prog-mode turns them on).
 ;; (The old blank-header-line top-padding was removed -- nano-modeline now owns
@@ -2470,6 +2485,25 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
        (when (buffer-local-value 'olivetti-mode (window-buffer w))
          (set-window-parameter w 'min-margins '(0 . 0))))
      'no-minibuf t)))
+
+;; --- Prose layout: centered vs justified (M-t) ---------------------------
+;; Two reading widths for a prose buffer, toggled with M-t:
+;;   centered   -- olivetti centres the text in a 72-col measure (the default,
+;;                 set on the org/markdown/LaTeX hooks above)
+;;   justified  -- olivetti off, so the text spans the full window, no centering
+;; Turning olivetti off also drops the visual-line-mode it switched on, so we
+;; re-assert soft-wrap in the justified branch -- long prose lines still wrap at
+;; the window edge, they just aren't centered.  M-t is transpose-words by
+;; default (unused here -- Meta carries the vim motions), so we claim it.
+(defun rm/prose-layout-toggle ()
+  "Toggle the current buffer's prose layout: centered (olivetti) vs justified."
+  (interactive)
+  (if (bound-and-true-p olivetti-mode)
+      (progn
+        (olivetti-mode -1)
+        (visual-line-mode 1))
+    (olivetti-mode 1)))
+(keymap-global-set "M-t" #'rm/prose-layout-toggle)
 
 ;; Face tweaks layered over nano's theme (must run after it, so they win):
 ;;   * darker prose -- nano's body colour is a soft blue-grey (#37474F); the
