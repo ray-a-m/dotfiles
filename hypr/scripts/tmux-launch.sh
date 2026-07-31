@@ -15,6 +15,11 @@
 set -euo pipefail
 
 if ! tmux has-session -t Work 2>/dev/null; then
+  # The server is gone, but the scope can still be pinned "active" by a
+  # resident wl-copy that a copy inside tmux left holding the clipboard.
+  # That stale unit makes systemd-run fail on the name below (window flashes
+  # shut). We only reach here with no Work session, so stopping it is safe.
+  systemctl --user stop tmux-server.scope 2>/dev/null || true
   systemd-run --user --scope --collect --quiet --unit=tmux-server \
     tmux new-session -d -s Work
 fi
