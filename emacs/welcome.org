@@ -4,16 +4,15 @@
 
 [[file:welcome-logo.svg]]
 
-                              GNU Emacs
 
 
 
-Tasks                                     form          matter
+tasks                                     form          matter
 
-  Capture a task (todo) .......... [t]    hub           aesthetics
-  Push to calendar ......... [M-SPC G]    idea          concepts
-  Schedule task .......... [M-SPC M-s]    lit           fun
-  Todos, all ..................... [a]    log           hegel
+  todo ........................... [t]    hub           aesthetics
+  push ..................... [M-SPC G]    idea          concepts
+  schedule ............... [M-SPC M-s]    lit           fun
+  todos .......................... [a]    log           hegel
                                           meeting       history
 find                                      musing        kant
                                           paperidea     math
@@ -22,7 +21,7 @@ find                                      musing        kant
   by tag ......................... [l]    talk          physics
   commands ....................... [c]    wip           science
                                                         teaching
-Vault  file = ID--title__form_matter                    (none = misc)
+vault  file = ID--title__form_matter                    (none = misc)
 
   Attach: file → Files/ .. [M-SPC d a]
   Backlinks .............. [M-SPC d b]

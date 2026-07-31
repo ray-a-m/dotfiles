@@ -1325,6 +1325,57 @@ The bold marks it as a container the nested notes sit under.  Tree view only
                     (add-face-text-property (match-beginning 0) (match-end 0)
                                             'bold)))))
             (forward-line 1))))))
+  (defun rm/agenda--dedup-keyword-1 ()
+    "Dedup pass over the accessible region: hide a sub-todo's TODO keyword
+when it equals its outline parent's, and SHOW it (drop any prior hide) when
+it differs.  Being self-correcting is what lets a re-run after a state change
+settle every case -- a child cycled back to its parent's state, and a child
+whose parent moved out from under it.  Only the glyph is masked (a `display'
+property); the real keyword and marker stay, so `r' progresses as normal."
+    (let ((inhibit-read-only t))
+      (save-excursion
+        (goto-char (point-min))
+        (while (not (eobp))
+          (when-let ((m (org-get-at-bol 'org-hd-marker)))
+            (let ((kw  (org-with-point-at m (org-get-todo-state)))
+                  (pkw (org-with-point-at m
+                         (org-back-to-heading t)
+                         (and (org-up-heading-safe) (org-get-todo-state)))))
+              (when kw
+                (beginning-of-line)
+                (when (re-search-forward
+                       (concat "\\_<" (regexp-quote kw) "\\_> ")
+                       (line-end-position) t)
+                  (if (equal kw pkw)
+                      (put-text-property (match-beginning 0) (match-end 0)
+                                         'display "")
+                    (remove-text-properties (match-beginning 0) (match-end 0)
+                                            '(display nil)))))))
+          (forward-line 1)))))
+  (defun rm/agenda-dedup-keyword ()
+    "Finalize-hook entry: run the dedup pass in the tree view.
+Guarded like the sibling hooks on `org-super-agenda-groups', which the `p'
+block let-binds during a full build.  A state change re-finalizes without
+that binding, so `rm/agenda-todo' covers that path instead."
+    (when (bound-and-true-p org-super-agenda-groups)
+      (rm/agenda--dedup-keyword-1)))
+  (defun rm/agenda-todo ()
+    "Progress the entry at point (agenda `r'), then re-settle keyword dedup.
+`org-agenda-todo' rewrites only the changed line and re-finalizes it narrowed,
+with the tree's grouping no longer bound -- so the finalize-hook dedup can't
+re-fire.  When the line is a project-tree line (its `org-lprops' carry the
+grouping), re-run the pass over the whole buffer: the cycled entry re-hides
+if it now matches its parent, and any child whose parent just changed shows
+its keyword again."
+    (interactive)
+    (let ((tree (assq 'org-super-agenda-groups
+                      (get-text-property (line-beginning-position) 'org-lprops))))
+      (call-interactively #'org-agenda-todo)
+      (when tree
+        (save-excursion
+          (save-restriction
+            (widen)
+            (rm/agenda--dedup-keyword-1))))))
   (defun rm/agenda-empty-projects ()
     "Show projects with no open todos as their own (empty) section headers.
 The stock todo list only renders a group once it has an entry, so a project
@@ -1431,29 +1482,74 @@ chosen by name (default: the project at point).  Rebuilds the agenda."
        (org-back-to-heading t)
        (delete-region (point) (progn (org-end-of-subtree t t) (point)))
        (save-buffer))))
+  (defvar rm/agenda--deleted nil
+    "Snapshot of the last `d' deletion, consumed by `rm/agenda-undo-delete'.
+A plist :file/:pos/:text/:heading, or nil once nothing is pending.")
+  (defun rm/agenda--snapshot (marker)
+    "A restore plist for the subtree at MARKER -- its file, start position,
+full text (heading + body + children) and heading title.  Plain values, so
+it outlives the agenda rebuild that a delete triggers."
+    (org-with-point-at marker
+      (org-back-to-heading t)
+      (let ((beg (point))
+            (heading (org-get-heading t t t t)))
+        (list :file (buffer-file-name (marker-buffer marker))
+              :pos beg
+              :text (buffer-substring-no-properties
+                     beg (save-excursion (org-end-of-subtree t t) (point)))
+              :heading heading))))
   (defun rm/agenda-delete ()
-    "Delete the thing at point: a todo, or an empty project.
-On a todo entry, hand off to org-agenda-kill.  On a project header, remove
-its `*' heading from the inbox -- but only when the project holds no todos;
-a project with todos is left alone (empty it with y/p or d first)."
+    "Delete the thing at point: a todo, or an empty project.  Undo with `u'.
+On a todo entry, remove its subtree; on a project header, remove its `*'
+heading -- but only when the project holds no todos (a project with todos is
+left alone; empty it with y/p or d first).  Either deletion is snapshotted,
+so `rm/agenda-undo-delete' (u) restores the last one.  No confirm prompt --
+u is the safety net."
     (interactive)
-    (if (org-get-at-bol 'org-hd-marker)
-        (call-interactively #'org-agenda-kill)   ; a real todo entry
-      (let ((proj (rm/agenda--project-at-point)))
-        (unless proj (user-error "Nothing to delete on this line"))
-        (let ((name (org-with-point-at proj (org-get-heading t t t t))))
-          (if (rm/inbox--project-empty-p proj)
-              (progn (rm/inbox--delete-heading proj)
-                     (rm/agenda-rebuild)
-                     (message "Deleted project %s" name))
-            (user-error "Project \"%s\" still has todos -- clear them first" name))))))
+    (let ((m (org-get-at-bol 'org-hd-marker)))
+      (if m
+          (let ((name (org-with-point-at m (org-get-heading t t t t))))
+            (setq rm/agenda--deleted (rm/agenda--snapshot m))
+            (rm/inbox--delete-heading m)         ; generic subtree delete + save
+            (rm/agenda-rebuild)
+            (message "Deleted %s -- u to undo" name))
+        (let ((proj (rm/agenda--project-at-point)))
+          (unless proj (user-error "Nothing to delete on this line"))
+          (let ((name (org-with-point-at proj (org-get-heading t t t t))))
+            (if (rm/inbox--project-empty-p proj)
+                (progn
+                  (setq rm/agenda--deleted (rm/agenda--snapshot proj))
+                  (rm/inbox--delete-heading proj)
+                  (rm/agenda-rebuild)
+                  (message "Deleted project %s -- u to undo" name))
+              (user-error "Project \"%s\" still has todos -- clear them first" name)))))))
+  (defun rm/agenda-undo-delete ()
+    "Restore the todo or project last deleted with `d' (agenda `u').
+Re-inserts the snapshotted subtree at the position it came from, saves the
+file, and rebuilds the agenda.  One level deep -- it undoes the most recent
+delete only."
+    (interactive)
+    (let ((s (or rm/agenda--deleted (user-error "Nothing to undo"))))
+      (let ((file (plist-get s :file)))
+        (unless (and file (file-exists-p file))
+          (user-error "Can't undo -- source file is gone"))
+        (with-current-buffer (find-file-noselect file)
+          (org-with-wide-buffer
+           (goto-char (min (plist-get s :pos) (point-max)))
+           (unless (bolp) (insert "\n"))
+           (insert (plist-get s :text))
+           (save-buffer)))
+        (setq rm/agenda--deleted nil)
+        (rm/agenda-rebuild)
+        (message "Restored %s" (plist-get s :heading)))))
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
     (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
     (keymap-set org-agenda-mode-map "h" #'org-agenda-earlier)
     (keymap-set org-agenda-mode-map "l" #'org-agenda-later)
-    (keymap-set org-agenda-mode-map "r" #'org-agenda-todo)
+    (keymap-set org-agenda-mode-map "r" #'rm/agenda-todo)
     (keymap-set org-agenda-mode-map "d" #'rm/agenda-delete)
+    (keymap-set org-agenda-mode-map "u" #'rm/agenda-undo-delete)
     (keymap-set org-agenda-mode-map "e" #'rm/agenda-edit-entry)
     (keymap-set org-agenda-mode-map "a" #'rm/agenda-new)
     (keymap-set org-agenda-mode-map "y" #'rm/agenda-yank)
@@ -1487,10 +1583,12 @@ a project with todos is left alone (empty it with y/p or d first)."
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-empty-projects 80)
   ;; Bold parent todos (depth 85): after entries exist, before the footer.
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-bold-parents 85)
+  ;; Hide a sub-todo's keyword when it repeats its parent's (depth 84).
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-dedup-keyword 84)
   ;; The agenda's own keys, printed where they apply (footer of every
   ;; agenda view) rather than on the splash.
   (defconst rm/agenda-footer-text
-    " hjkl move \u00b7 e edit \u00b7 a new \u00b7 y/p move \u00b7 r progress \u00b7 d delete \u00b7 SPC/v select \u00b7 B bulk \u00b7 s save")
+    " hjkl move \u00b7 e edit \u00b7 a new \u00b7 y/p move \u00b7 r progress \u00b7 d delete \u00b7 u undo \u00b7 s save")
   (defun rm/agenda-footer ()
     ;; Idempotent by CONTENT: agenda redraws strip text properties, so
     ;; sweep the literal footer line (and its leading blank) wherever it
@@ -1523,6 +1621,9 @@ a project with todos is left alone (empty it with y/p or d first)."
                           (if (match-string 2 base)
                               (concat " " (match-string 2 base)) ""))
                 (org-get-category))))
+      ;; inbox.org's file-derived category is "inbox" -- redundant with the
+      ;; project group header, and just repeats down the whole column.  Blank it.
+      (when (equal s "inbox") (setq s ""))
       (truncate-string-to-width (or s "") 18 nil ?\s "…")))
   (setq org-agenda-prefix-format
         '((agenda . " %i %(rm/agenda-category) %?-12t% s")
@@ -2681,10 +2782,9 @@ so the startup hook stays quiet when a frame opens on a file."
           ;; section headers bold, the Vault filename hint italic, and
           ;; [bracketed keys] salient (the [^][()] class skips [[elisp:(...)]]).
           (font-lock-add-keywords nil
-                                  '(("^\\(?:Tasks\\|find\\|Vault\\|Bookmarks\\)\\b" 0 'bold)
+                                  '(("^\\(?:tasks\\|find\\|vault\\|Bookmarks\\)\\b" 0 'bold)
                                     ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
-                                    ("^ *GNU Emacs$" 0 'bold)
-                                    ("^Vault  \\(file = .*\\)$" 1 'italic)
+                                    ("^vault  \\(file = .*\\)$" 1 'italic)
                                     ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
                                   t)
           (font-lock-flush) (font-lock-ensure)
