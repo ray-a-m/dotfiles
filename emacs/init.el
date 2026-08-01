@@ -157,6 +157,21 @@
       nano-font-family-proportional "Atkinson Hyperlegible Next"
       nano-font-size 12)              ; whole-UI size knob; bump/drop by 1 to taste
 
+;; Atkinson Hyperlegible Next ships no U+0060 (grave/backtick) glyph, so LaTeX
+;; opening quotes (``) show up as tofu rectangles.  set-fontset-font CANNOT fix
+;; this -- Emacs refuses to set a font for a single ASCII codepoint ("Can't set
+;; a font for partial ASCII range").  Instead remap the backtick's DISPLAY to a
+;; glyph drawn in a Roboto Mono face (Roboto Mono has the glyph; Atkinson Mono
+;; lacks it too).  Code buffers already run Roboto Mono, so this is a no-op
+;; there; only prose (variable-pitch Atkinson) changes.  The real curly quotes
+;; U+2018..U+201D ARE present in Atkinson, so smart-quote display is unaffected.
+(defface rm/backtick-face '((t :inherit default :family "Roboto Mono"))
+  "Draw the backtick, which Atkinson Hyperlegible Next has no glyph for.")
+(unless standard-display-table
+  (setq standard-display-table (make-display-table)))
+(aset standard-display-table ?`
+      (vector (make-glyph-code ?` 'rm/backtick-face)))
+
 (require 'nano-layout)          ; frame margins, no chrome, pretty wrap/truncate glyphs
 (require 'nano-faces)           ; the semantic faces (default/strong/faded/salient/...)
 (require 'nano-theme)
@@ -640,7 +655,8 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 (use-package hl-todo
   :hook ((prog-mode     . hl-todo-mode)
          (LaTeX-mode    . hl-todo-mode)
-         (markdown-mode . hl-todo-mode)))
+         (markdown-mode . hl-todo-mode)
+         (org-mode      . hl-todo-mode)))   ; papers are org-authored now
 
 ;; --- Git (:tools magit) -------------------------------------------------
 
@@ -650,6 +666,18 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   ;; at first boot but errors on every rm/reload-init once end-of-init
   ;; makes plain C-x a non-prefix (same class as the old C-x k bug).
   :bind (:map ctl-x-map ("g" . magit-status)))
+
+;; --- Project-wide comment TODOs (magit-todos) --------------------------
+;; Collect every hl-todo keyword (TODO/FIXME/NOTE/HACK) from `# TODO:' comments
+;; across a repo into a TODOs section at the top of `magit-status'.  For
+;; research-wip this is the "all my paper TODOs in one place" list: inline
+;; comment notes -- which never reach the PDF -- surface here automatically,
+;; with no org headline and no agenda entry.  `C-a g' in the repo shows the
+;; section; RET on an item jumps to its source line.  Plain `# TODO: ...' is
+;; enough; the keyword is what magit-todos scans for (the `***' is not needed).
+(use-package magit-todos
+  :after magit
+  :config (magit-todos-mode 1))
 
 ;; C-c g: the `save' shell function, from inside -- save the buffer, then
 ;; git add -A / commit / push its repo, async, verdict in the echo area.
@@ -2921,6 +2949,7 @@ so the startup hook stays quiet when a frame opens on a file."
         ;; inline the logo image, and centre with olivetti (re-flows on resize).
         (with-current-buffer buf
           (setq-local org-image-actual-width (rm/welcome--logo-width))
+          (org-remove-inline-images)          ; drop any stale overlay from a prior render
           (org-display-inline-images)
           (add-hook 'window-size-change-functions #'rm/welcome--refit nil t)
           (when (fboundp 'olivetti-mode)
@@ -2932,7 +2961,19 @@ so the startup hook stays quiet when a frame opens on a file."
           (visual-line-mode -1)
           (setq-local truncate-lines t))))))
 
-(add-hook 'window-setup-hook #'rm/welcome)
+;; In a daemon, `window-setup-hook' fires on the non-graphic startup frame
+;; (F1, ~25px tall): the splash would build THERE, floor its logo to the 250px
+;; minimum, and never reach the GUI client frames you actually open (the reason
+;; the logo "went missing" after a daemon restart).  Defer to the first GUI
+;; frame instead, one-shot.  A plain (non-daemon) Emacs keeps the direct path.
+(defun rm/welcome--on-first-gui-frame ()
+  "Show the splash once the first graphical client frame exists, then unhook."
+  (when (display-graphic-p)
+    (remove-hook 'server-after-make-frame-hook #'rm/welcome--on-first-gui-frame)
+    (rm/welcome)))
+(if (daemonp)
+    (add-hook 'server-after-make-frame-hook #'rm/welcome--on-first-gui-frame)
+  (add-hook 'window-setup-hook #'rm/welcome))
 ;; Summon the splash on demand -- "go home" (interactive calls always show it).
 ;; C-c s: the *scratch* buffer, from anywhere (s on the splash too).
 ;; C-c SPC: straight home in the CURRENT window -- the teleport ESC's
