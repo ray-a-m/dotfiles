@@ -874,7 +874,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
             ;; insert nothing (the project group headers are label enough).
             (org-agenda-overriding-header "")))))
   (setq org-capture-templates
-        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "miscellaneous")
+        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "miscellany")
            "* TODO %?\n  %U\n" :empty-lines 1)
           ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
            "* %?\n  %U\n" :empty-lines 1)))
@@ -1196,15 +1196,30 @@ Placed before the Notes section (or at end of file)."
          (save-buffer)
          (copy-marker pos)))))
   (defun rm/inbox--add-todo (project-marker title)
-    "Append `** TODO TITLE' as the last child of PROJECT-MARKER's subtree."
+    "Insert `** TODO TITLE' among PROJECT-MARKER's direct children, keeping them
+alphabetical by heading text (case-insensitive); appends when TITLE sorts last.
+Used for a project's todos and, on a todo, its sub-todos -- so every level stays
+in the A-Z order the agenda tree already displays."
     (with-current-buffer (marker-buffer project-marker)
       (org-with-wide-buffer
        (goto-char project-marker)
        (org-back-to-heading t)
-       (let ((child (make-string (1+ (org-current-level)) ?*)))
-         (org-end-of-subtree t t)         ; -> bol of next heading, or eob
+       (let* ((clevel (1+ (org-current-level)))            ; direct-child level
+              (stars (make-string clevel ?*))
+              (key (downcase title))
+              (end (save-excursion (org-end-of-subtree t t) (point)))  ; next heading/eob
+              (insert-at nil))
+         ;; first direct child whose title sorts after TITLE -> insert before it
+         (save-excursion
+           (while (and (not insert-at)
+                       (outline-next-heading)
+                       (< (point) end))
+             (when (and (= (org-current-level) clevel)
+                        (string-lessp key (downcase (org-get-heading t t t t))))
+               (setq insert-at (line-beginning-position)))))
+         (goto-char (or insert-at end))
          (unless (bolp) (insert "\n"))
-         (insert child " TODO " title "\n")
+         (insert stars " TODO " title "\n")
          (save-buffer)))))
   (defun rm/inbox--read-project (&optional default-marker)
     "Pick an inbox project by name (completion), creating it if the name is new.
@@ -1380,23 +1395,45 @@ its keyword again."
           (save-restriction
             (widen)
             (rm/agenda--dedup-keyword-1))))))
+  (defun rm/agenda--group-header-pos (name)
+    "Where to insert an empty-project header for NAME so the project group
+headers stay alphabetical.  Returns the bol of the first existing group header
+\(populated or already-inserted) that sorts after NAME, else `point-max'."
+    (let ((projects (mapcar #'car (rm/inbox--project-headings))))
+      (save-excursion
+        (goto-char (point-min))
+        (catch 'pos
+          (while (not (eobp))
+            (let ((line (string-trim (buffer-substring-no-properties
+                                      (line-beginning-position)
+                                      (line-end-position)))))
+              ;; a group-header line: carries no entry marker, and its text is
+              ;; one of the project names (org-super-agenda renders them plain)
+              (when (and (not (org-get-at-bol 'org-hd-marker))
+                         (member line projects)
+                         (string-lessp (downcase name) (downcase line)))
+                (throw 'pos (line-beginning-position))))
+            (forward-line 1))
+          (point-max)))))
   (defun rm/agenda-empty-projects ()
     "Show projects with no open todos as their own (empty) section headers.
 The stock todo list only renders a group once it has an entry, so a project
 freshly made with `a/' would stay invisible.  Runs on finalize but only in
 the project view (`org-super-agenda-groups' is let-bound there); each header
-carries its project marker, so a/p on that line file or move straight in."
+carries its project marker, so a/p on that line file or move straight in.
+Each empty header lands in its ALPHABETICAL slot among the group headers (not
+dumped at the end), so a project keeps its place whether or not it holds
+todos -- populating one never reshuffles the view."
     (when (bound-and-true-p org-super-agenda-groups)
       (let ((empties (seq-remove (lambda (p) (nth 2 p))
                                  (rm/inbox--projects-status)))
             (inhibit-read-only t))
-        (when empties
+        (dolist (p empties)
           (save-excursion
-            (goto-char (point-max))
-            (dolist (p empties)
-              (insert (propertize (concat " " (car p) "\n")
-                                  'face 'org-super-agenda-header
-                                  'rm-project-marker (nth 1 p)))))))))
+            (goto-char (rm/agenda--group-header-pos (car p)))
+            (insert (propertize (concat " " (car p) "\n")
+                                'face 'org-super-agenda-header
+                                'rm-project-marker (nth 1 p))))))))
   (defun rm/agenda-rebuild ()
     "Rebuild the agenda in place, reliably, after an a/y/p/classify edit.
 org-agenda-redo reads its rebuild parameters (org-lprops: the project
@@ -1451,18 +1488,32 @@ appears."
       (message "Yanked: %s -- move it with p"
                (org-with-point-at m (org-get-heading t t t t)))))
   (defun rm/agenda-paste ()
-    "Move the yanked entry under a project (yazi `p').
-Refiles the `y'-grabbed subtree -- heading and its notes -- into a project
-chosen by name (default: the project at point).  Rebuilds the agenda."
+    "Move the yanked entry under the heading at point (yazi `p').
+Refiles the `y'-grabbed subtree -- heading, sub-todos, and notes -- as a
+child of whatever the cursor sits on: an ENTRY (so it nests under that todo,
+e.g. under `Website'), a project HEADER, or -- off any entry -- a project
+chosen by name.  Land on a project's header line to file at its top level.
+Rebuilds the agenda."
     (interactive)
     (unless (and rm/agenda-yank (marker-buffer rm/agenda-yank))
       (user-error "Nothing yanked -- press y on an entry first"))
-    (let* ((dest (or (rm/agenda--project-at-point)
+    (let* ((dest (or (org-get-at-bol 'org-hd-marker)   ; on an entry -> nest under it
+                     (org-get-at-bol 'org-marker)
+                     (rm/agenda--project-at-point)      ; on a project header -> under it
                      (rm/inbox--read-project)))
            (src (marker-buffer rm/agenda-yank))
            (file (buffer-file-name (marker-buffer dest)))
            (head (org-with-point-at dest (org-get-heading t t t t)))
            (rfloc (list head file nil (marker-position dest))))
+      ;; Refiling a subtree into itself (paste onto the yanked entry or one of
+      ;; its own descendants) is what org would signal a cryptic error on.
+      (when (and (eq (marker-buffer dest) (marker-buffer rm/agenda-yank))
+                 (org-with-point-at rm/agenda-yank
+                   (org-back-to-heading t)
+                   (<= (point)
+                       (marker-position dest)
+                       (progn (org-end-of-subtree t t) (point)))))
+        (user-error "Can't paste an entry into itself"))
       (org-with-point-at rm/agenda-yank
         (org-refile nil nil rfloc))
       (when (buffer-live-p src) (with-current-buffer src (save-buffer)))
@@ -1628,10 +1679,21 @@ delete only."
       ;; inbox.org's file-derived category is "inbox" -- redundant with the
       ;; project group header, and just repeats down the whole column.  Blank it.
       (when (equal s "inbox") (setq s ""))
-      (truncate-string-to-width (or s "") 18 nil ?\s "…")))
+      ;; A blank category (inbox todos) used to still pad to 18 columns, which
+      ;; pushed every todo far to the right of its project header.  Emit nothing
+      ;; when blank so todos don't sit at the old far-right 18-col gutter.  But
+      ;; flush-left reads as no nesting, so hang inbox todos to the END OF THE
+      ;; LONGEST PROJECT NAME -- a tidy column just past the headers that
+      ;; self-adjusts if projects are renamed.  Real categories (research-wip
+      ;; denote names) still align at 18.
+      (if (string-empty-p (or s ""))
+          (make-string (apply #'max 1 (mapcar (lambda (p) (length (car p)))
+                                              (rm/inbox--project-headings)))
+                       ?\s)
+        (truncate-string-to-width s 18 nil ?\s "…"))))
   (setq org-agenda-prefix-format
         '((agenda . " %i %(rm/agenda-category) %?-12t% s")
-          (todo   . " %i %(rm/agenda-category) %(rm/agenda-indent)")
+          (todo   . " %(rm/agenda-category)%(rm/agenda-indent)")
           (tags   . " %i %(rm/agenda-category) ")
           (search . " %i %(rm/agenda-category) ")))
   ;; The agenda always gets its own window: reuse one already showing it,
