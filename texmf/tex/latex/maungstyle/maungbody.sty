@@ -19,6 +19,23 @@
 \RequirePackage{physics2}
 \usephysicsmodule{braket}
 
+% amssymb's \mathbb -- and libertinust1math's, which overrides it under the
+% maungstyle (paper) look -- has no double-struck DIGIT glyphs, so \mathbb{1},
+% the identity operator, renders as a missing character. Route just the digit 1
+% to dsfont's double-struck \mathds{1}; letters keep their blackboard face.
+% Deferred to \AtEndPreamble so it patches whichever \mathbb is active after
+% every font package has loaded (libertinust1math in papers, amssymb in the
+% dissertation), and runs before the begin-document math finalization that an
+% \AtBeginDocument patch collides with (\mathbb allowed only in math mode).
+\RequirePackage{dsfont}
+\RequirePackage{etoolbox}
+\AtEndPreamble{%
+  \let\maung@orig@mathbb\mathbb
+  \renewcommand{\mathbb}[1]{{%
+    \def\maung@mathbb@arg{#1}\def\maung@mathbb@one{1}%
+    \ifx\maung@mathbb@arg\maung@mathbb@one \mathds{1}\else\maung@orig@mathbb{#1}\fi}}%
+}
+
 % ── Figures ───────────────────────────────────────────────────────────────────
 \RequirePackage{graphicx}
 \RequirePackage{float}
