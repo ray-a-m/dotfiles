@@ -285,6 +285,17 @@ hid real sections). Reminder text that must not reach the PDF goes in `#`
 org comments. Citations stay raw LaTeX
 (`\cite`/`\textcite`/`\parencite`), passed through verbatim.
 
+One cross-document token: `\papertitle{<slug>}` resolves at export time to
+`documents/papers/<slug>/paper.org`'s real `\title` (peeling the `\textbf`
+the titles carry), so one document can name another's title without
+restating it — the CV's Works-in-Progress list uses it, and it stays in
+sync as papers are retitled. It rides inside a `#+begin_export latex` block
+(which org never parses), so a `:filter-final-output` string pass swaps the
+token after export, and the source dir is bound around the export so the
+slug resolves relative to it. Each consuming preamble carries a
+`\providecommand{\papertitle}[1]{[#1]}` fallback so a stray/unresolved token
+degrades to `[slug]` rather than erroring.
+
 Every migration step was gated: generated artifacts byte-identical to the
 previously committed files where applicable, and each document verified
 `pdftotext`-identical and pixel-identical (`pdftoppm -r 150` + ImageMagick

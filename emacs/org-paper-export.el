@@ -99,11 +99,76 @@ parse-tree filters run."
       (org-element-extract-element hl)))
   tree)
 
+;; --- \papertitle{slug}: reuse a paper's real title in another document ---
+;; The CV's Works-in-Progress list names papers by slug so each entry can
+;; track the paper's actual \title instead of restating it (and drifting).
+;; A \papertitle{slug} token in an export block survives verbatim into
+;; body.tex; the final-output filter below swaps it for the referenced
+;; paper.org's \title, peeling the \textbf the titles carry.
+
+(defvar rm/org-paper--source-dir nil
+  "Directory of the org file currently exporting.
+Bound around `org-export-to-file' so output filters can resolve sibling
+documents (papers live at ../papers/<slug>/paper.org relative to it).")
+
+(defun rm/org-paper--brace-content ()
+  "Content of the brace group whose opening { point sits just after.
+Leaves point past the matching }.  Counts nesting, so \\textbf{...} is safe."
+  (let ((start (point)) (depth 1))
+    (while (and (> depth 0) (not (eobp)))
+      (pcase (char-after)
+        (?{ (setq depth (1+ depth)))
+        (?} (setq depth (1- depth))))
+      (forward-char 1))
+    (buffer-substring-no-properties start (1- (point)))))
+
+(defun rm/org-paper--paper-title (slug)
+  "The plain-text LaTeX \\title of documents/papers/SLUG/paper.org.
+Resolved relative to `rm/org-paper--source-dir'; one enclosing
+\\textbf{...} (which the titles use) is peeled off."
+  (let ((file (expand-file-name (format "../papers/%s/paper.org" slug)
+                                rm/org-paper--source-dir)))
+    (unless (file-readable-p file)
+      (user-error "\\papertitle{%s}: no paper.org at %s" slug file))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (unless (re-search-forward "\\\\title[ \t]*{" nil t)
+        (user-error "\\papertitle{%s}: no \\title in %s" slug file))
+      (let ((inner (string-trim (rm/org-paper--brace-content))))
+        (if (string-match "\\`\\\\textbf[ \t]*{" inner)
+            (with-temp-buffer
+              (insert inner)
+              (goto-char (point-min))
+              (re-search-forward "\\\\textbf[ \t]*{")
+              (string-trim (rm/org-paper--brace-content)))
+          inner)))))
+
+(defun rm/org-paper--expand-papertitles (output _backend _info)
+  "Replace every \\papertitle{slug} in OUTPUT with that paper's real title."
+  (replace-regexp-in-string
+   "\\\\papertitle{\\([^{}]+\\)}"
+   (lambda (whole)
+     ;; save-match-data: the outer replace relies on match-data to place the
+     ;; splice; the inner string-match (and paper-title's search) would clobber it.
+     (save-match-data
+       (string-match "{\\([^{}]+\\)}" whole)
+       (rm/org-paper--paper-title (match-string 1 whole))))
+   output t t))
+
+(defun rm/org-paper--filter-final-output (output backend info)
+  "The backend's single final-output pass, so the order is explicit rather
+than hidden in duplicate :filters-alist keys: expand \\papertitle{slug}
+tokens, then normalise the trailing blank line."
+  (rm/org-paper--final-newlines
+   (rm/org-paper--expand-papertitles output backend info)
+   backend info))
+
 (org-export-define-derived-backend 'paper-latex 'latex
   :translate-alist '((latex-math-block . rm/org-paper--math-block))
   :filters-alist '((:filter-parse-tree . rm/org-paper--splice-todo-headlines)
                    (:filter-headline . rm/org-paper--strip-section-labels)
-                   (:filter-final-output . rm/org-paper--final-newlines)))
+                   (:filter-final-output . rm/org-paper--filter-final-output)))
 
 (defun rm/org-paper--doc-type ()
   "Which org-authored research document the current buffer is, or nil."
@@ -180,7 +245,8 @@ latexmk -pvc doesn't rebuild for nothing)."
 the body (through the paper-latex backend) and, for driver'd types,
 the driver."
   (interactive)
-  (org-export-to-file 'paper-latex (rm/org-paper--output-name) nil nil nil t)
+  (let ((rm/org-paper--source-dir (file-name-directory buffer-file-name)))
+    (org-export-to-file 'paper-latex (rm/org-paper--output-name) nil nil nil t))
   (rm/org-paper--write-driver))
 
 (defun rm/org-paper-export-file (file)
