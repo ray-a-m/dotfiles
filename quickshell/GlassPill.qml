@@ -15,7 +15,7 @@ import QtQuick
 Rectangle {
     id: root
 
-    // Defaults match the committed baseline (Catppuccin Latte, per RICING):
+    // Defaults match the committed baseline (Catppuccin Latte):
     // `#eff1f5` = Catppuccin `base`; `#4c4f69` = Catppuccin `text`. Callers
     // that bind `tint`/`borderTint` from the live palette override these;
     // the defaults exist so a panel with a mid-boot palette-read race

@@ -205,7 +205,7 @@ grammar (all custom, in init.el's Denote section):
   (`idea → paperidea → wip`, promoted by `denote-rename-file`, `C-c d r` —
   the ID is immutable so links survive; a live `wip` exits to research-wip).
   `lit` = reading notes; `talk` = talks attended; `presentation` = notes
-  for Raymond's own talks; `hub` = curated standing notes (e.g. the
+  for my own talks; `hub` = curated standing notes (e.g. the
   Technology hub, whose `TODO` headings the agenda picks up).
 - **Remaining keywords = matter** (research programs):
   `physics hegel kant math aesthetics science concepts history neo-kantian
@@ -235,7 +235,7 @@ grammar (all custom, in init.el's Denote section):
   assigns form + matter from the curated lists and renames in place —
   re-runnable, identifier stable. Per-form commands
   (`C-c d i/p/m/o/w/s/t/e/h/n`) still create with a form directly,
-  prompting only for matter. (Terminology is Raymond's hylomorphic pair:
+  prompting only for matter. (Terminology is my hylomorphic pair:
   **form** = the act of writing, **matter** = the research program it
   serves; vocabulary growth is deliberate, not drift.)
 

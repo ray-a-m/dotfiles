@@ -80,10 +80,8 @@ show_files_menu() {
 }
 
 show_portals_menu() {
-  case $(menu "Portals" "  Canvas\nAdmin\nEditor\n  GitHub") in
+  case $(menu "Portals" "  Canvas\n  GitHub") in
     *Canvas*)     gtk-launch canvas ;;
-    *Admin*)      gtk-launch wordpress-admin ;;
-    *Editor*)     gtk-launch wordpress-editor ;;
     *GitHub*)     gtk-launch github ;;
     *)            show_main_menu ;;
   esac

@@ -1,4 +1,4 @@
-;;; init.el --- Raymond's Emacs configuration  -*- lexical-binding: t; -*-
+;;; init.el --- Emacs configuration  -*- lexical-binding: t; -*-
 ;;
 ;; A hand-written config layered on rougier/nano-emacs for the *look* only.
 ;; nano supplies the visual base (elegant light theme, generous frame margins,
