@@ -785,7 +785,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         TeX-master nil                     ; prompt for the master file
         TeX-save-query nil                 ; C-c C-c saves without asking -> 1-gesture compile
         reftex-plug-into-AUCTeX t
-        ;; Shared dissertation bibliography (see CLAUDE.md conventions).
+        ;; Shared dissertation bibliography (the one-master-bib convention).
         reftex-default-bibliography
         '("~/scholarship/research-wip/documents/dissertation/references.bib"))
   ;; org-like folding in LaTeX: with cycle on, TAB on a \section/\subsection
