@@ -5,7 +5,7 @@ Personal configuration files for macOS and Linux.
 ## Contents
 
 - **`nvim/`** — Neovim config (LazyVim-based, with LaTeX workflow)
-- **`emacs/`** — hand-rolled vanilla Emacs config (not Doom; `use-package`, learning-first). LaTeX (AUCTeX/cdlatex/latexmk/zathura) + Org notes vault (`~/Dropbox/notes`, migrated from Obsidian) + live math (xenops) + prose look (variable-pitch/olivetti). See `emacs/README.md`.
+- **`emacs/`** — hand-rolled vanilla Emacs config (not Doom; `use-package`, learning-first). LaTeX (AUCTeX/cdlatex/latexmk/zathura) + Org notes vault (`~/Dropbox/notes`, migrated from Obsidian) + live math (xenops) + prose look (variable-pitch/olivetti). Also the org export engines: `org-paper-export.el` (papers/CV/dissertation → LaTeX) and `org-site-export.el` (raymondmaung.com pages → HTML into research-public). See `emacs/README.md`.
 - **`kitty/`** — Kitty terminal config
 - **`hypr/`** — Hyprland window manager config (Omarchy; per-file symlinks, machine-specific `monitors.conf` and `local.conf` stay local). Includes `hypr/scripts/` for dock/lid policy.
 - **`walker/`**, **`swayosd/`** — Omarchy launcher/OSD configs. Waybar retired; Quickshell is the top bar (see `RICING.md`).
@@ -18,7 +18,7 @@ Personal configuration files for macOS and Linux.
 - **`pacman-hooks/`** — Pacman hooks (deployed to `/etc/pacman.d/hooks/`). Currently: `firefox-userchrome.hook` re-copies the Firefox autoconfig files after `firefox` package upgrades (since pacman wipes `/usr/lib/firefox/` on upgrade).
 - **`systemd/`** — Linux systemd units and sleep hooks. `system/` units land in `/etc/systemd/system/` (root-owned; currently `usb-wakeup.service`); `system-sleep/` scripts land in `/usr/lib/systemd/system-sleep/` (currently `usb-wakeup`, the resume-side companion to the boot-time service); `user/` units land in `~/.config/systemd/user/` and run under the per-user systemd manager (currently `monitor-watcher.service`, the dock-policy daemon — `Restart=always`, journal logging, replaces the prior `exec-once` wiring so a one-time exit no longer silently kills the policy). All copied (not symlinked) by `install.sh` since the system loader rejects symlinks resolving into `/home/`.
 - **`xdg/`** — preferred-terminal list and default-application MIME mappings
-- **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init
+- **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init. `publish` covers the documents (`cv`, `dissertation`, `<paper-slug>`) and the website (`site`)
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
 - **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
 - **`TODO.md`** — outstanding work (cross-platform parity) + dock/lid diagnostics

@@ -34,6 +34,7 @@ for **notes + Org**.
 | `welcome-commands.org` | The keybinding cheat-sheet shown full-window when you press `c` on the splash. |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
 | `org-paper-export.el` | LaTeX export for the org-authored research workflow (the `paper-latex` backend + generated driver artifacts; also loaded headless by the `publish` shell function). See "Research documents in Org". |
+| `org-site-export.el` | HTML export for the org-authored website (the `site-html` backend; pages in `~/scholarship/website` export into the research-public tree GitHub Pages serves; also loaded headless by `publish site`). See "The website in Org". |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
 
 Symlinked to `~/.config/emacs` by `install.sh` (`ln -sfn`, backing up any real
@@ -147,7 +148,7 @@ At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
 read-only: the Emacs logo (pixel-centered via `org-image-align`), then the
 system map — **Tasks**, **find**, and the **Vault** grammar stacked at the
 left, the **form**/**matter** taxonomy in single columns at the right — with
-splash-local single keys (`t` `n` `a` `f` `g` `l` `p` `s` `c`). Headers, the
+splash-local single keys (`t` `n` `a` `f` `g` `l` `p` `s` `c` `w`). Headers, the
 file-name hint, and `[keys]` are coloured with font-lock faces (bold / italic /
 salient), **not** Org emphasis markers — that marker-hiding proved unreliable on
 a fresh daemon frame (it showed raw asterisks), so the markers are gone from the
@@ -302,6 +303,38 @@ previously committed files where applicable, and each document verified
 `compare`, AE=0 every page — all 31 dissertation pages included) against a
 pre-migration baseline built at `98b474f`.
 
+## The website in Org (2026-08-01)
+
+raymondmaung.com follows the same philosophy: sources in
+`~/scholarship/website` (one `.org` per page), generated HTML written
+**straight into the research-public working tree**, which GitHub Pages
+serves — no artifact ever lands in the website repo. `shared/` there is
+the hand-written presentation config: `template.html` (the page shell —
+head, nav; the exporter substitutes the double-braced TITLE/ROOT/BODY
+tokens), `style.css` (all theme decisions in a `:root` CSS-variable
+block — re-theming is a one-block edit), self-hosted fonts, and
+`org-site.setup` (shared export options; smart quotes deliberately ON
+here, opposite the LaTeX setup — in HTML that's what makes curly
+quotes).
+
+Machinery in `org-site-export.el`: a `site-html` backend derived from
+stock ox-html with the paper backend's determinism rule (ox-html's
+random `id="orgNNN"` attributes are stripped; same export twice, same
+bytes). URL mapping preserves the WordPress-era paths: `index.org` →
+`/index.html`, `<name>.org` → `/<name>/index.html`. Saving a page
+re-exports it (after-save hook, beside the paper hook); `C-c C-c` too.
+Splash `w` opens a dired of the page sources. Deploy is the shell side:
+`publish site` batch-exports every page headless, copies the assets,
+commits, pushes (the push is the deploy), and tags the website repo.
+
+The Research page auto-syncs with publishing: a
+`<!-- published-papers -->` token in `research.org` expands at export
+into a list of every PDF in `research-public/documents/papers/`, each
+titled from its `paper.org`'s `\title` (the `\papertitle` resolution,
+ported — `\emph`/escapes converted to HTML, anything else refused
+loudly). `publish <slug>` re-exports the page in the same push, so
+publishing a paper puts it on the site with zero editing.
+
 ## Keybindings
 
 Stock Emacs everywhere, with **`C-a` as the command prefix** (bound straight
@@ -346,7 +379,7 @@ land on `C-x C-c`, close-the-frame). The custom layer on top:
 | `C-c G` | push timestamped `inbox.org` TODOs to the Google "org" calendar via **org-gcal** (REST, one-way — nothing read back; visible on the phone + rencal). Scheduling a task also auto-pushes just that entry, so `C-c G` is the bulk/manual fallback. Creds live in `~/.authinfo.gpg`; Google 403s CalDAV for unverified apps, hence REST/org-gcal not org-caldav |
 | `M-x restart-emacs` | restart the systemd Emacs daemon **and** reopen a frame (Super+Q / `super+w` only close the frame; a bare daemon restart leaves you headless) |
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
-| `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds) |
+| `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds); in a website page it re-exports the HTML |
 | `S-TAB` | cycle the document outline (in `.tex`) |
 | `ESC` | universal back: abort prompt → drop region → dismiss a sidebar → one step back through this window's buffer history (machinery popups skipped; the splash counts as a stop) → when the trail ends, a popup window closes; the frame's last real window (sidebars don't count) dismisses an open sidebar first, then floors on the splash (one splash only — ESC on a duplicate closes it) |
 | `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
