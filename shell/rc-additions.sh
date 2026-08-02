@@ -68,8 +68,20 @@ _org_export_body() {
     --eval "(rm/org-paper-export-file \"$org\")"
 }
 
-# Build a research-wip doc and publish its PDF to research-public.
-# Usage: publish cv | publish dissertation | publish <paper-name>
+# Regenerate a website page's HTML into research-public from its org
+# source.  Same shape as _org_export_body: emacs -Q, no daemon, the
+# export module carries everything the batch path needs.
+_org_export_site() {
+  local org="$1"
+  [[ -f "$org" ]] || return 0
+  emacs -Q --batch \
+    -l "$HOME/.config/emacs/org-site-export.el" \
+    --eval "(rm/org-site-export-file \"$org\")"
+}
+
+# Build a research-wip doc and publish its PDF to research-public, or
+# rebuild and deploy the website (`publish site`).
+# Usage: publish cv | publish dissertation | publish site | publish <paper-name>
 publish() {
   local name="$1"
   if [[ -z "$name" ]]; then
@@ -87,6 +99,52 @@ publish() {
       src_dir="$HOME/scholarship/research-wip/documents/dissertation"
       tex_name="dissertation.tex"
       dest_pdf="$HOME/scholarship/research-public/documents/dissertation/dissertation.pdf"
+      ;;
+    site)
+      # The whole website: re-export every page (so template/nav/css
+      # changes propagate everywhere), refresh the shared assets, push.
+      # GitHub Pages serves research-public, so the push IS the deploy.
+      # `site` is a reserved name, like cv/dissertation -- a paper
+      # directory cannot use it.
+      local site_src="$HOME/scholarship/website"
+      local site_dest="$HOME/scholarship/research-public"
+      if [[ ! -d "$site_src" ]]; then
+        echo "publish: no website sources at $site_src"
+        return 1
+      fi
+      (
+        set -e
+        # Pages only -- shared/ is config.  Each page is git-added by its
+        # derived output path (mirrors rm/org-site--output-file), so the
+        # commit stays scoped to what this publish generated.
+        find "$site_src" -name '*.org' -not -path '*/shared/*' | sort |
+          while IFS= read -r org; do
+            _org_export_site "$org" || exit 1
+            rel="${org#"$site_src"/}"
+            sans="${rel%.org}"
+            if [[ "$(basename "$sans")" == index ]]; then
+              out="${sans}.html"
+            else
+              out="$sans/index.html"
+            fi
+            git -C "$site_dest" add -- "$out"
+          done
+        cp "$site_src/shared/style.css" "$site_dest/style.css"
+        mkdir -p "$site_dest/fonts"
+        cp "$site_src/shared/fonts/"*.woff2 "$site_dest/fonts/"
+        touch "$site_dest/.nojekyll"    # no Jekyll pass -- pure static
+        cd "$site_dest"
+        git add -- style.css fonts .nojekyll
+        git diff --cached --quiet || { git commit -m "." && git push; }
+        # Provenance, same as the documents: tag the website source this
+        # deploy was built from.  Same-day republish moves the tag.
+        tag="site-$(date +%F)"
+        git -C "$site_src" diff --quiet HEAD ||
+          echo "publish: note — website tree is dirty; $tag marks the last commit, not the exact built state"
+        git -C "$site_src" tag -f "$tag"
+        git -C "$site_src" push --force origin "refs/tags/$tag"
+      )
+      return $?
       ;;
     *)
       src_dir="$HOME/scholarship/research-wip/documents/papers/$name"
@@ -124,8 +182,20 @@ publish() {
     latexmk -pdf -interaction=nonstopmode -halt-on-error "$tex_name"
     mkdir -p "$(dirname "$dest_pdf")"
     cp "${tex_name%.tex}.pdf" "$dest_pdf"
+    # Website auto-sync: the Research page lists every PDF in
+    # documents/papers/, so a paper publish regenerates it -- the new
+    # paper appears on the site in the same push.  No-op for cv and
+    # dissertation (the page doesn't list them) and before the website
+    # exists.
+    if [[ "$dest_pdf" == */documents/papers/* &&
+          -f "$HOME/scholarship/website/research.org" ]]; then
+      _org_export_site "$HOME/scholarship/website/research.org"
+    fi
     cd "$HOME/scholarship/research-public"
     git add "$dest_pdf"
+    if [[ -f research/index.html ]]; then
+      git add research/index.html
+    fi
     git diff --cached --quiet || { git commit -m "." && git push; }
     # Provenance: tag the wip source this publish was built from, so every
     # public PDF traces back to its exact source. Same-day republish moves

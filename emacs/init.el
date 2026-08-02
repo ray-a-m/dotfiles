@@ -1767,6 +1767,35 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
                                            user-emacs-directory))
                 (rm/org-paper-compile)))))
 
+;; The website (~/scholarship/website -> raymondmaung.com) gets the same
+;; treatment: saving a page re-exports its HTML into the research-public
+;; working tree (uncommitted -- `publish site' in a shell commits and
+;; deploys), and C-c C-c is re-export too, matching the paper muscle
+;; memory.  Same lazy-load shape: cheap inlined path guard first, module
+;; only when it matches.
+(defun rm/org-site--maybe-export-on-save ()
+  "Regenerate the generated HTML when the saved buffer is a website page."
+  (when (and buffer-file-name
+             (string-match-p "/scholarship/website/.*\\.org\\'"
+                             buffer-file-name))
+    (require 'org-site-export
+             (expand-file-name "org-site-export.el" user-emacs-directory))
+    (when (rm/org-site-buffer-p)
+      (rm/org-site-export))))
+(add-hook 'after-save-hook #'rm/org-site--maybe-export-on-save)
+(with-eval-after-load 'org
+  (add-hook 'org-ctrl-c-ctrl-c-final-hook
+            (lambda ()
+              (when (and buffer-file-name
+                         (string-match-p "/scholarship/website/.*\\.org\\'"
+                                         buffer-file-name))
+                (require 'org-site-export
+                         (expand-file-name "org-site-export.el"
+                                           user-emacs-directory))
+                (when (rm/org-site-buffer-p)
+                  (rm/org-site-export)
+                  t)))))
+
 ;; Push timestamped Org TODOs from inbox.org to a dedicated Google Calendar
 ;; ("org") via org-gcal (REST API v3).  ONE-WAY: we only ever POST entries,
 ;; never fetch/import, so nothing is read back.  Both the phone Google
@@ -2747,6 +2776,16 @@ From the splash the bare digit calls this; elsewhere M-SPC N (= C-c N) does."
     (keymap-global-set (format "C-c %d" n)
                        (lambda () (interactive) (rm/bookmark-open n)))))
 
+;; --- Website: the pages of raymondmaung.com, one dired away -------------
+;; The site is org-authored in ~/scholarship/website (one .org per page;
+;; shared/ is presentation config).  Splash `w' lands in a dired of that
+;; directory -- every page visible, RET to edit; saving re-exports the
+;; page's HTML (hook beside the paper save-hook above).
+(defun rm/website-dired ()
+  "Dired on the website sources -- the org files behind raymondmaung.com."
+  (interactive)
+  (dired "~/scholarship/website"))
+
 ;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
 ;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
 ;; (`welcome.org' beside this init) rendered read-only -- the pixel-centered
@@ -2906,7 +2945,7 @@ so the startup hook stays quiet when a frame opens on a file."
           ;; section headers bold, the Vault filename hint italic, and
           ;; [bracketed keys] salient (the [^][()] class skips [[elisp:(...)]]).
           (font-lock-add-keywords nil
-                                  '(("^\\(?:tasks\\|find\\|vault\\|Bookmarks\\)\\b" 0 'bold)
+                                  '(("^\\(?:tasks\\|find\\|vault\\|website\\|Bookmarks\\)\\b" 0 'bold)
                                     ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
                                     ("^vault  \\(file = .*\\)$" 1 'italic)
                                     ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
@@ -2939,6 +2978,7 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'rm/denote-list)         ; list by words
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
+            (define-key map (kbd "w") #'rm/website-dired)       ; website pages
             (define-key map (kbd "c") #'rm/welcome-commands)    ; peek commands
             (use-local-map map))
           (read-only-mode 1)
