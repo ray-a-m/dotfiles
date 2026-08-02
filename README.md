@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal configuration files for macOS and Linux.
+Personal configuration files for Linux.
 
 ## Contents
 
@@ -20,7 +20,7 @@ Personal configuration files for macOS and Linux.
 - **`xdg/`** — preferred-terminal list and default-application MIME mappings
 - **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init. `publish` covers the documents (`cv`, `dissertation`, `<paper-slug>`) and the website (`site`)
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
-- **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
+- **`install.sh`** — bootstrap script for a new machine
 
 ## Setup on a new machine
 
