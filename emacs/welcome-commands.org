@@ -10,5 +10,6 @@ Commands                                       C = Ctrl (CapsLock too) · M = Al
   Move to window ......... [C-h j k l]    Switch buffer ...... [M-ESC / M-a b]
   New note ....................... [n]    Undo / redo .......... [M-z / M-S-z]
   Papers ......................... [p]    Window menu .............. [M-SPC w]
+  Publish (deploy) ......... [M-SPC P]
 
                               any key to dismiss

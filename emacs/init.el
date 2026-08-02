@@ -720,6 +720,46 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
               (t (message "Committed & pushed %s ✓" name))))))))))
 (keymap-global-set "C-c g" #'rm/save)
 
+;; C-c P: the `publish' shell function, from inside -- DEPLOY, not save.
+;; Deliberately a separate key from C-c g: committing sources (private)
+;; and publishing output (public) are different intents, and the capital
+;; makes it a considered keystroke.  The target is derived from the
+;; buffer: a website file publishes the site, cv.org the CV, a paper its
+;; slug, the dissertation itself.  Runs the real shell function (bash,
+;; rc-additions sourced) so Emacs and terminal deploys can never differ.
+(defun rm/publish ()
+  "Publish the document this buffer belongs to (shell `publish'), async."
+  (interactive)
+  (let* ((f (or buffer-file-name
+                (user-error "This buffer is not visiting a file")))
+         (target
+          (cond
+           ((string-match-p "/scholarship/website/" f) "site")
+           ((string-match-p "/documents/cv/" f) "cv")
+           ((string-match-p "/documents/dissertation/" f) "dissertation")
+           ((string-match "/documents/papers/\\([^/]+\\)/" f)
+            (match-string 1 f))
+           (t (user-error "Nothing publishable here: %s" f)))))
+    (when (buffer-modified-p) (save-buffer))
+    (with-current-buffer (get-buffer-create "*rm-publish*")
+      (erase-buffer))
+    (message "Publishing %s…" target)
+    (make-process
+     :name "rm-publish" :buffer "*rm-publish*"
+     :command
+     (list "bash" "-c"
+           (format "source ~/code/dotfiles/shell/rc-additions.sh >/dev/null 2>&1; publish %s"
+                   (shell-quote-argument target)))
+     :sentinel
+     (let ((target target))
+       (lambda (p _e)
+         (when (memq (process-status p) '(exit signal))
+           (if (zerop (process-exit-status p))
+               (message "Published %s ✓" target)
+             (message "publish %s failed — log in *rm-publish* (M-ESC reaches it)"
+                      target))))))))
+(keymap-global-set "C-c P" #'rm/publish)
+
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
 ;; existing nvim/latexmk/zathura flow.
