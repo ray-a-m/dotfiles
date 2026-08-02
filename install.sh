@@ -254,15 +254,6 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/keyd" ] && command -v keyd >/dev/n
     sudo keyd reload 2>/dev/null || true
 fi
 
-if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/bin" ]; then
-    echo "==> Installing scripts from bin/ into /usr/local/bin/"
-    for src in "$DOTFILES_DIR"/bin/*; do
-        [ -e "$src" ] || continue
-        name="$(basename "$src")"
-        sudo install -Dm 755 "$src" "/usr/local/bin/$name"
-    done
-fi
-
 if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
     if [ -d "$DOTFILES_DIR/systemd/system" ]; then
         # Copy (not symlink) the unit files. systemd's unit loader rejects
@@ -329,24 +320,6 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
     if ! loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q 'Linger=yes'; then
         echo "==> Enabling linger for $USER (tmux/user units survive logout)"
         loginctl enable-linger "$USER" 2>/dev/null || true
-    fi
-fi
-
-if [ -d "$DOTFILES_DIR/applications" ]; then
-    echo "==> Symlinking PWA .desktop files into ~/.local/share/applications/"
-    mkdir -p ~/.local/share/applications
-    for src in "$DOTFILES_DIR"/applications/*.desktop; do
-        [ -e "$src" ] || continue
-        name="$(basename "$src")"
-        dst="$HOME/.local/share/applications/$name"
-        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-            mv "$dst" "$dst.bak.$(date +%s)"
-            echo "Backed up $dst"
-        fi
-        ln -sfn "$src" "$dst"
-    done
-    if command -v update-desktop-database &>/dev/null; then
-        update-desktop-database ~/.local/share/applications &>/dev/null || true
     fi
 fi
 
@@ -424,22 +397,14 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing herdr from AUR"
         yay -S --noconfirm herdr-bin
     fi
-    # firefox-pwa hosts the subset of omarchy-menu PWAs whose upstreams
-    # publish a manifest and don't block non-Chromium browsers (currently
-    # Claude, ChatGPT, GitHub, Fastmail) so external links open in the
+    # firefox-pwa hosts the PWAs whose upstreams publish a manifest and
+    # don't block non-Chromium browsers, so external links open in the
     # default browser (LibreWolf) instead of being trapped in a Chromium
-    # app window. The
-    # rest (Gmail, Drive, WordPress, UIC services) stay on Chromium —
-    # Google blocks firefoxpwa with a 400, the others have no manifest.
-    # pwa-setup creates the Personal profile, drops userChrome+user.js,
-    # and registers each PWA. Idempotent — safe to re-run.
+    # app window. The launchers, and the pwa-setup script that registers
+    # them, live in the private overlay (run at the end of this script).
     if command -v yay &>/dev/null && ! pacman -Q firefox-pwa &>/dev/null; then
         echo "==> Installing firefox-pwa from AUR"
         yay -S --noconfirm firefox-pwa
-    fi
-    if command -v firefoxpwa &>/dev/null && command -v pwa-setup &>/dev/null; then
-        echo "==> Registering firefoxpwa profiles + PWAs"
-        pwa-setup
     fi
     if command -v yay &>/dev/null && ! pacman -Q librewolf-bin &>/dev/null; then
         echo "==> Installing LibreWolf from AUR"
