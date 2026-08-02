@@ -29,9 +29,5 @@ vault  file = ID--title__form_matter                    (none = misc)
   Insert link ............ [M-SPC d k]
   Promote / rename ....... [M-SPC d r]
 
-website  raymondmaung.com
-
-  edit pages ..................... [w]
-
 
 {{bookmarks}}

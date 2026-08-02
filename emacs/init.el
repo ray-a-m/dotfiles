@@ -2728,19 +2728,23 @@ A title wider than 29 characters gets an ellipsis."
     (format "  %s %s [%d]" title dots n)))
 
 (defun rm/bookmark--panel ()
-  "Return the splash Bookmarks block: a header, then the set slots only.
-An empty slot does not appear.  With no slot set, the header stands alone."
+  "Return the splash Bookmarks block: a header, then the entries.
+First a fixed website entry (`w' -- the raymondmaung.com sources
+sidebar, not a numbered slot), then the set slots only.  An empty slot
+does not appear."
   (let* ((hint "set = [M-SPC B]")
          ;; Right-flush the hint so [M-SPC B] ends in the [N] key column (38).
          (header (concat "Bookmarks"
                          (make-string (max 1 (- 38 (length "Bookmarks") (length hint)))
                                       ?\s)
                          hint))
+         ;; Same shape as rm/bookmark--line, so [w] lands in the [N] column.
+         (website (format "  website %s [w]" (make-string (- 31 7) ?.)))
          (taken (seq-filter (lambda (n) (aref rm/bookmarks (1- n)))
                             (number-sequence 1 9))))
-    (concat header
+    (concat header "\n\n" website
             (when taken
-              (concat "\n\n" (mapconcat #'rm/bookmark--line taken "\n"))))))
+              (concat "\n" (mapconcat #'rm/bookmark--line taken "\n"))))))
 
 (defun rm/bookmark-open (n)
   "Open the file in bookmark slot N (1-9).
@@ -2775,16 +2779,6 @@ From the splash the bare digit calls this; elsewhere M-SPC N (= C-c N) does."
   (let ((n (1+ k)))
     (keymap-global-set (format "C-c %d" n)
                        (lambda () (interactive) (rm/bookmark-open n)))))
-
-;; --- Website: the pages of raymondmaung.com, one dired away -------------
-;; The site is org-authored in ~/scholarship/website (one .org per page;
-;; shared/ is presentation config).  Splash `w' lands in a dired of that
-;; directory -- every page visible, RET to edit; saving re-exports the
-;; page's HTML (hook beside the paper save-hook above).
-(defun rm/website-dired ()
-  "Dired on the website sources -- the org files behind raymondmaung.com."
-  (interactive)
-  (dired "~/scholarship/website"))
 
 ;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
 ;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
@@ -2945,7 +2939,7 @@ so the startup hook stays quiet when a frame opens on a file."
           ;; section headers bold, the Vault filename hint italic, and
           ;; [bracketed keys] salient (the [^][()] class skips [[elisp:(...)]]).
           (font-lock-add-keywords nil
-                                  '(("^\\(?:tasks\\|find\\|vault\\|website\\|Bookmarks\\)\\b" 0 'bold)
+                                  '(("^\\(?:tasks\\|find\\|vault\\|Bookmarks\\)\\b" 0 'bold)
                                     ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
                                     ("^vault  \\(file = .*\\)$" 1 'italic)
                                     ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
@@ -2978,7 +2972,9 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'rm/denote-list)         ; list by words
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
-            (define-key map (kbd "w") #'rm/website-dired)       ; website pages
+            (define-key map (kbd "w") #'rm/website-sidebar)     ; website pages
+                                        ; (sidebar, like p; listed first in
+                                        ; the Bookmarks block)
             (define-key map (kbd "c") #'rm/welcome-commands)    ; peek commands
             (use-local-map map))
           (read-only-mode 1)
@@ -3336,6 +3332,14 @@ one `l' away instead."
     (interactive)
     (let ((default-directory
            (expand-file-name "~/scholarship/research-wip/")))
+      (dired-sidebar-toggle-sidebar)))
+  (defun rm/website-sidebar ()
+    "Toggle a dired sidebar rooted at the website sources (splash `w').
+The pages of raymondmaung.com, one .org each -- `l' visits; saving a
+page re-exports its HTML into research-public."
+    (interactive)
+    (let ((default-directory
+           (expand-file-name "~/scholarship/website/")))
       (dired-sidebar-toggle-sidebar)))
   :config
   (setq dired-sidebar-theme 'none          ; no icons -- plain names

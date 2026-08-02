@@ -323,7 +323,9 @@ random `id="orgNNN"` attributes are stripped; same export twice, same
 bytes). URL mapping preserves the WordPress-era paths: `index.org` →
 `/index.html`, `<name>.org` → `/<name>/index.html`. Saving a page
 re-exports it (after-save hook, beside the paper hook); `C-c C-c` too.
-Splash `w` opens a dired of the page sources. Deploy is the shell side:
+Splash `w` toggles a dired-sidebar rooted at the page sources (the
+`rm/papers-sidebar` twin); the entry is listed first in the splash's
+Bookmarks block, above the numbered slots. Deploy is the shell side:
 `publish site` batch-exports every page headless, copies the assets,
 commits, pushes (the push is the deploy), and tags the website repo.
 
