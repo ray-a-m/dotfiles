@@ -155,23 +155,25 @@ if [ -d "$DOTFILES_DIR/cmus" ]; then
     done
 fi
 
-echo "==> Symlinking Claude Code user instructions"
-mkdir -p ~/.claude
-if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
-    echo "Backing up existing ~/.claude/CLAUDE.md to ~/.claude/CLAUDE.md.bak"
-    mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak
-fi
-ln -sfn "$DOTFILES_DIR/claude/CLAUDE.md" ~/.claude/CLAUDE.md
+# claude/ is local-only (gitignored): the Claude Code config carries
+# personal instructions, so it stays out of the public repo. On a fresh
+# clone this whole section is a no-op until the directory is copied over
+# from a machine that has it.
+if [ -d "$DOTFILES_DIR/claude" ]; then
+    echo "==> Symlinking Claude Code user instructions"
+    mkdir -p ~/.claude
+    if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
+        echo "Backing up existing ~/.claude/CLAUDE.md to ~/.claude/CLAUDE.md.bak"
+        mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak
+    fi
+    ln -sfn "$DOTFILES_DIR/claude/CLAUDE.md" ~/.claude/CLAUDE.md
 
-if [ -e ~/.claude/settings.json ] && [ ! -L ~/.claude/settings.json ]; then
-    echo "Backing up existing ~/.claude/settings.json to ~/.claude/settings.json.bak"
-    mv ~/.claude/settings.json ~/.claude/settings.json.bak
+    if [ -e ~/.claude/settings.json ] && [ ! -L ~/.claude/settings.json ]; then
+        echo "Backing up existing ~/.claude/settings.json to ~/.claude/settings.json.bak"
+        mv ~/.claude/settings.json ~/.claude/settings.json.bak
+    fi
+    ln -sfn "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
 fi
-ln -sfn "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
-# Claude Code rewrites "model" in settings.json on every /model default
-# change, so local churn is expected — don't track it. Toggle back with
-# --no-skip-worktree when committing an intentional settings change.
-git -C "$DOTFILES_DIR" update-index --skip-worktree claude/settings.json 2>/dev/null || true
 
 if [ -d "$DOTFILES_DIR/claude/skills" ]; then
     echo "==> Symlinking Claude Code skills"
