@@ -7,27 +7,7 @@
 
 
 
-find                                      form          matter
-
-  by content ..................... [g]    hub           aesthetics
-  by name ........................ [f]    idea          concepts
-  by tag ......................... [l]    lit           fun
-  commands ....................... [c]    log           hegel
-                                          meeting       history
-tasks                                     musing        kant
-                                          paperidea     math
-  push ..................... [M-SPC G]    poetry        neo-kantian
-  schedule ............... [M-SPC M-s]    presentation  phenomenology
-  todo ........................... [t]    talk          physics
-  todos .......................... [a]    wip           science
-                                                        teaching
-vault  file = ID--title__form_matter                    (none = misc)
-
-  Attach: file → Files/ .. [M-SPC d a]
-  Backlinks .............. [M-SPC d b]
-  Classify: note / task ........ [M-c]
-  Insert link ............ [M-SPC d k]
-  Promote / rename ....... [M-SPC d r]
+                  commands ....................... [c]
 
 
 {{bookmarks}}

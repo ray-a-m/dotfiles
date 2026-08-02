@@ -30,8 +30,8 @@ for **notes + Org**.
 | `early-init.el` | Loaded before `package.el` and the first frame: startup GC / `file-name-handler-alist` tuning, UI-chrome suppression (no flash), `package-user-dir` / eln-cache redirects out of this git-tracked dir. |
 | `init.el` | Everything else. |
 | `nano/` | Vendored nano-emacs modules (the visual base). Only the visual ones are `require`d — see below. Re-pull from upstream to update. |
-| `welcome.org` | The startup screen content — an editable Org file (logo + the system map: tasks, find, vault grammar, and the form/matter taxonomy — with splash-local single keys; the full command cheat-sheet is `welcome-commands.org`, shown full-window on `c`). |
-| `welcome-commands.org` | The keybinding cheat-sheet shown full-window when you press `c` on the splash. |
+| `welcome.org` | The startup screen content — an editable Org file (logo, a `commands` line, and the bookmark slots). The splash-local single keys all still work; what they are is written down in `welcome-commands.org`. |
+| `welcome-commands.org` | The Commands page shown full-window when you press `c` on the splash: the alphabetical keybinding list **and** the system map (find, tasks, vault grammar, form/matter taxonomy). |
 | `welcome-logo.svg` | The Emacs logo shown on the welcome screen. |
 | `org-paper-export.el` | LaTeX export for the org-authored research workflow (the `paper-latex` backend + generated driver artifacts; also loaded headless by the `publish` shell function). See "Research documents in Org". |
 | `org-site-export.el` | HTML export for the org-authored website (the `site-html` backend; pages in `~/scholarship/website` export into the research-public tree GitHub Pages serves; also loaded headless by `publish site`). See "The website in Org". |
@@ -145,25 +145,33 @@ Org, Markdown and LaTeX are made to read like a page, not a terminal:
 ## Welcome screen
 
 At startup (bare `emacs`, no file argument) `rm/welcome` renders `welcome.org`
-read-only: the Emacs logo (pixel-centered via `org-image-align`), then the
-system map — **Tasks**, **find**, and the **Vault** grammar stacked at the
-left, the **form**/**matter** taxonomy in single columns at the right — with
-splash-local single keys (`t` `n` `a` `f` `g` `l` `p` `s` `c` `w`). Headers, the
-file-name hint, and `[keys]` are coloured with font-lock faces (bold / italic /
-salient), **not** Org emphasis markers — that marker-hiding proved unreliable on
-a fresh daemon frame (it showed raw asterisks), so the markers are gone from the
-file entirely. The full keybinding cheat-sheet lives in `welcome-commands.org`,
-shown full-window on `c` (any key returns). `q` / `ESC` dismiss; it also auto-dismisses the first time a real file is
+read-only: the Emacs logo (pixel-centered via `org-image-align`), a single
+`commands ... [c]` line, and the bookmark slots. It is deliberately bare
+(2026-08-02) — the system map that used to sit here (**find**, **tasks**, the
+**Vault** grammar, and the **form**/**matter** taxonomy) moved to the Commands
+page, so home is a logo and the day's files. The splash-local single keys are
+unchanged (`t` `n` `a` `f` `g` `l` `h` `p` `s` `c` `w` and `1`–`9`); `c` is the
+one that tells you the rest. `[keys]` and the Bookmarks header are coloured with
+font-lock faces (salient / bold), **not** Org emphasis markers — that
+marker-hiding proved unreliable on a fresh daemon frame (it showed raw
+asterisks), so the markers are gone from the file entirely.
+`welcome-commands.org` carries both halves of the reference — the alphabetical
+command list and the map — shown full-window on `c` (any key returns, and a key
+that isn't a dismiss key runs its normal splash binding, so `c` `t` still
+captures a task). `q` / `ESC` dismiss; it also auto-dismisses the first time a real file is
 visited, so it never lingers in the buffer list or gets split around by later
 windows. Daemon client frames (`emacsclient -c`, the launcher's "Emacs"
 entry): the *first* frame of a visit greets with the splash — closing the
 last frame (Super+Q) ends the visit, so the next open splashes again even
 though the daemon kept every buffer. A frame opened alongside a live one
-resumes your last file instead. Its lines truncate rather than
-wrap, so the cheat-sheet columns stay aligned at any window width. The logo
+resumes your last file instead. Both pages truncate their lines rather than
+wrap, so the bookmark entries and the Commands page's columns stay aligned at
+any window width. The logo
 is sized to the window — the text below it is a fixed stack of lines, so the
 logo gets the height that remains (capped at 500px wide, the external-monitor
-look; refit on resize) — so the whole page fits docked and on the laptop
+look, and at the text area's width, because olivetti centres by setting margins
+and an image wider than the measure is *clipped* there rather than scaled;
+refit on resize) — so the whole page fits docked and on the laptop
 panel alike. The cursor
 is hidden. Because it's Org, you customise the page by editing `welcome.org`.
 

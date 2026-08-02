@@ -2767,11 +2767,25 @@ A title wider than 29 characters gets an ellipsis."
          (dots  (make-string (max 2 (- 31 (length title))) ?.)))
     (format "  %s %s [%d]" title dots n)))
 
+(defconst rm/welcome--block-indent 16
+  "Left padding, in columns, that centres a splash block under the logo.
+The splash measure (`olivetti-body-width') is 70 -- kept wide for the logo,
+which olivetti clips at the margin rather than scaling -- and the blocks are
+38 columns, so (70 - 38) / 2 puts them on the logo's centre line.
+welcome.org's `commands' line carries the same indent literally.")
+
+(defun rm/welcome--centre (text)
+  "Indent every non-empty line of TEXT by `rm/welcome--block-indent' columns."
+  (let ((pad (make-string rm/welcome--block-indent ?\s)))
+    (mapconcat (lambda (line) (if (string-empty-p line) line (concat pad line)))
+               (split-string text "\n")
+               "\n")))
+
 (defun rm/bookmark--panel ()
   "Return the splash Bookmarks block: a header, then the entries.
 First a fixed website entry (`w' -- the raymondmaung.com sources
 sidebar, not a numbered slot), then the set slots only.  An empty slot
-does not appear."
+does not appear.  Centred under the logo by `rm/welcome--centre'."
   (let* ((hint "set = [M-SPC B]")
          ;; Right-flush the hint so [M-SPC B] ends in the [N] key column (38).
          (header (concat "Bookmarks"
@@ -2782,9 +2796,10 @@ does not appear."
          (website (format "  website %s [w]" (make-string (- 31 7) ?.)))
          (taken (seq-filter (lambda (n) (aref rm/bookmarks (1- n)))
                             (number-sequence 1 9))))
-    (concat header "\n\n" website
-            (when taken
-              (concat "\n" (mapconcat #'rm/bookmark--line taken "\n"))))))
+    (rm/welcome--centre
+     (concat header "\n\n" website
+             (when taken
+               (concat "\n" (mapconcat #'rm/bookmark--line taken "\n")))))))
 
 (defun rm/bookmark-open (n)
   "Open the file in bookmark slot N (1-9).
@@ -2823,9 +2838,12 @@ From the splash the bare digit calls this; elsewhere M-SPC N (= C-c N) does."
 ;; --- Welcome screen (elegant-emacs style, from welcome.org) -------------
 ;; Ported from Rougier's elegant-emacs: the startup buffer is an *Org file*
 ;; (`welcome.org' beside this init) rendered read-only -- the pixel-centered
-;; logo (`org-image-align', org 9.7+), then alphabetical *Commands* and
-;; *Help* cheat-sheets.  Because it's Org, you edit the page by editing that
-;; file.  Shown on `window-setup-hook', skipped when Emacs opens a file.
+;; logo (`org-image-align', org 9.7+), a single `commands' line, and the
+;; bookmark slots.  Everything else it used to carry -- the find / tasks /
+;; vault map and the form/matter taxonomy -- is one keystroke away on `c'
+;; (welcome-commands.org, `rm/welcome-commands').  Because it's Org, you edit
+;; the page by editing that file.  Shown on `window-setup-hook', skipped when
+;; Emacs opens a file.
 ;;
 ;; A few deliberate choices make it behave under our stack:
 ;;   * we run `org-mode' with `org-mode-hook' let-bound to nil, so the prose
@@ -2853,11 +2871,21 @@ Every line but the logo's is plain text at `default-line-height'; the
 logo gets the height left over (minus a one-line cushion), converted to
 a width via the SVG's 270:217 aspect.  Capped at 500px -- the size it
 has always rendered at on the external monitor -- and floored at 250px
-so a half-tile still shows a legible logo rather than a speck."
-  (let* ((text-px (* (count-lines (point-min) (point-max))
-                     (default-line-height)))
-         (budget  (- (window-pixel-height) text-px)))
-    (min 500 (max 250 (round (* budget (/ 270.0 217.0)))))))
+so a half-tile still shows a legible logo rather than a speck.
+
+Also capped at the window's TEXT AREA: olivetti centres by setting
+margins, and an image wider than the measure is clipped at the right
+margin, not scaled down (2026-08-02: the splash lost its wide blocks,
+the measure narrowed with them, and the logo came back sheared down its
+right-hand side).  `window-body-width' excludes the margins, so this
+reads the real room once olivetti has run."
+  (let* ((text-px   (* (count-lines (point-min) (point-max))
+                       (default-line-height)))
+         (budget    (- (window-pixel-height) text-px))
+         (by-height (round (* budget (/ 270.0 217.0))))
+         ;; one character of cushion, so a rounding hair never clips
+         (by-width  (- (window-body-width nil t) (default-font-width))))
+    (max 250 (min 500 by-height by-width))))
 
 (defun rm/welcome--refit (window)
   "Re-inline the logo at the size WINDOW now calls for.
@@ -2907,8 +2935,12 @@ displayed -- the decision is deferred a tick to
     (run-with-timer 0 nil #'rm/welcome--dismiss-check (current-buffer))))
 
 (defun rm/welcome-commands ()
-  "Show the Commands cheatsheet (welcome-commands.org) full-window, in place of
-the splash; any key returns to the splash.  This is a clean buffer SWAP in the
+  "Show the Commands page (welcome-commands.org) full-window, in place of
+the splash; any key returns to the splash.  The page carries BOTH the
+alphabetical command list and the system map -- find / tasks / vault and the
+form/matter taxonomy, which lived on the splash until 2026-08-02 (his ask:
+the splash is a logo and the bookmarks, the reference is one keystroke away).
+This is a clean buffer SWAP in the
 same window -- so NOTHING resizes or moves (a side-window, a tall echo area, or
 a posframe all disturb the splash / re-fit the logo).  A non-dismiss key then
 runs its normal splash binding (so `c' then `t' still captures a task)."
@@ -2923,8 +2955,10 @@ runs its normal splash binding (so `c' then `t' still captures a task)."
       (let ((org-mode-hook nil)) (org-mode))       ; monospace, no prose hooks
       (setq-local mode-line-format nil header-line-format nil cursor-type nil)
       (font-lock-add-keywords nil
-                              '(("^Commands\\b" 0 'bold)
+                              '(("^\\(?:Commands\\|find\\|tasks\\|vault\\)\\b" 0 'bold)
+                                ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
                                 ("C = Ctrl.*$" 0 'italic)
+                                ("^vault  \\(file = .*\\)$" 1 'italic)
                                 ("any key to dismiss" 0 'italic)
                                 ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
                               t)
@@ -2932,6 +2966,11 @@ runs its normal splash binding (so `c' then `t' still captures a task)."
       (when (fboundp 'olivetti-mode)
         (setq-local olivetti-body-width 80)
         (olivetti-mode 1))
+      ;; Same reason the splash truncates: olivetti turns on visual-line-mode,
+      ;; which word-wraps a two-column row in a narrow frame and shears the
+      ;; map's columns apart.  Truncate instead.
+      (visual-line-mode -1)
+      (setq-local truncate-lines t)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)
@@ -2976,12 +3015,13 @@ so the startup hook stays quiet when a frame opens on a file."
                       org-image-align 'center)     ; logo pixel-centered (org 9.7+)
           ;; Style with font-lock, NOT org emphasis (whose marker-hiding is
           ;; unreliable on a fresh daemon frame -- it showed raw *asterisks*):
-          ;; section headers bold, the Vault filename hint italic, and
-          ;; [bracketed keys] salient (the [^][()] class skips [[elisp:(...)]]).
+          ;; the Bookmarks header bold, [bracketed keys] salient (the [^][()]
+          ;; class skips [[elisp:(...)]]).  The find / tasks / vault and
+          ;; form/matter rules moved with those blocks to the Commands page.
+          ;; The header regex tolerates leading space: the panel is indented
+          ;; to centre it (see `rm/welcome--block-indent').
           (font-lock-add-keywords nil
-                                  '(("^\\(?:tasks\\|find\\|vault\\|Bookmarks\\)\\b" 0 'bold)
-                                    ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
-                                    ("^vault  \\(file = .*\\)$" 1 'italic)
+                                  '(("^ *Bookmarks\\b" 0 'bold)
                                     ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
                                   t)
           (font-lock-flush) (font-lock-ensure)
@@ -3029,11 +3069,16 @@ so the startup hook stays quiet when a frame opens on a file."
           (org-display-inline-images)
           (add-hook 'window-size-change-functions #'rm/welcome--refit nil t)
           (when (fboundp 'olivetti-mode)
-            (setq-local olivetti-body-width 70)    ; 1 col slack over the 69-col block
+            ;; Stays 70 even though the widest text is now 38 cols: the
+            ;; measure is what the LOGO gets to be wide (an image past it is
+            ;; clipped, see `rm/welcome--logo-width'), so narrowing it to fit
+            ;; the bookmark block sheared the logo.  The block is centred
+            ;; under the logo by its own indent instead.
+            (setq-local olivetti-body-width 70)
             (olivetti-mode 1))
           ;; olivetti turns on visual-line-mode; in a narrowed window (sidebar
-          ;; open) that word-wraps the aligned cheat-sheet by a hair.  Truncate
-          ;; instead -- the columns stay sane at any window width.
+          ;; open) that word-wraps the aligned bookmark lines by a hair.
+          ;; Truncate instead -- they stay sane at any window width.
           (visual-line-mode -1)
           (setq-local truncate-lines t))))))
 

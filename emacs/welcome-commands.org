@@ -12,4 +12,26 @@ Commands                                       C = Ctrl (CapsLock too) · M = Al
   Papers ......................... [p]    Window menu .............. [M-SPC w]
   Publish (deploy) ......... [M-SPC P]
 
+find                                      form          matter
+
+  by content ..................... [g]    hub           aesthetics
+  by name ........................ [f]    idea          concepts
+  by tag ......................... [l]    lit           fun
+  hubs ........................... [h]    log           hegel
+                                          meeting       history
+tasks                                     musing        kant
+                                          paperidea     math
+  push ..................... [M-SPC G]    poetry        neo-kantian
+  schedule ............... [M-SPC M-s]    presentation  phenomenology
+  todo ........................... [t]    talk          physics
+  todos .......................... [a]    wip           science
+                                                        teaching
+vault  file = ID--title__form_matter                    (none = misc)
+
+  Attach: file → Files/ .. [M-SPC d a]
+  Backlinks .............. [M-SPC d b]
+  Classify: note / task ........ [M-c]
+  Insert link ............ [M-SPC d k]
+  Promote / rename ....... [M-SPC d r]
+
                               any key to dismiss
