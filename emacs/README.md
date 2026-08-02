@@ -325,9 +325,11 @@ bytes). URL mapping preserves the WordPress-era paths: `index.org` →
 re-exports it (after-save hook, beside the paper hook); `C-c C-c` too.
 Splash `w` toggles a dired-sidebar rooted at the page sources (the
 `rm/papers-sidebar` twin); the entry is listed first in the splash's
-Bookmarks block, above the numbered slots. Deploy is the shell side:
-`publish site` batch-exports every page headless, copies the assets,
-commits, pushes (the push is the deploy), and tags the website repo.
+Bookmarks block, above the numbered slots. Deploy is `publish site` —
+batch-export every page headless, copy the assets, commit, push (the
+push is the deploy), tag the website repo — run from a terminal or
+from inside Emacs via `C-c P` (`rm/publish`), which runs the same
+shell function.
 
 The Research page auto-syncs with publishing: a
 `<!-- published-papers -->` token in `research.org` expands at export
