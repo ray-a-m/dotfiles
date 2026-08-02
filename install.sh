@@ -4,6 +4,39 @@ set -e
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OS="$(uname -s)"
 
+PRUNED_COUNT=0
+
+# Delete symlinks in DIR that point into REPO but no longer resolve.
+#
+# This script only ever CREATED links, so a source file that gets renamed,
+# deleted, or moved to another repo left its old link behind, pointing at
+# nothing. Those orphans fail silently, which makes them nasty: on
+# 2026-08-02, bin/ moved to dotfiles-private and ~/.local/bin/pwa-launch
+# was left dangling, so every PWA launcher did nothing when clicked.
+#
+# Deliberately narrow. A link is removed only when it is BOTH broken AND
+# owned by this repo, so a working link is never touched and neither is
+# anything another program put there. Pass "sudo" as RUNNER for root dirs;
+# sudo then runs only if there is something to delete, so no password is
+# requested on a clean pass.
+prune_orphan_links() {
+    local dir="$1" repo="$2" runner="${3:-}"
+    [ -d "$dir" ] || return 0
+    local link target
+    for link in "$dir"/* "$dir"/.[!.]*; do
+        [ -L "$link" ] || continue      # not a symlink (or an unmatched glob)
+        [ -e "$link" ] && continue      # still resolves — leave it alone
+        target="$(readlink "$link")"
+        case "$target" in
+            "$repo"/*)
+                $runner rm -f "$link"
+                echo "    pruned orphan: $link -> $target"
+                PRUNED_COUNT=$((PRUNED_COUNT + 1))
+                ;;
+        esac
+    done
+}
+
 detect_linux_pm() {
     if command -v apt-get &>/dev/null; then echo apt
     elif command -v dnf &>/dev/null; then echo dnf
@@ -489,6 +522,35 @@ if [ "$OS" = "Linux" ] && command -v zsh >/dev/null; then
         echo "    You will be prompted for your password; takes effect on next login."
         chsh -s "$ZSH_PATH" || echo "    chsh failed; run it manually."
     fi
+fi
+
+# Sweep up after ourselves. Runs LAST, so every link this script installs
+# has already been (re)created: whatever is still broken and still points
+# into this repo is genuinely an orphan of a rename or a deletion.
+# ~/.config is swept one level deep, which covers both the whole-directory
+# links (~/.config/nvim and friends) and the per-file ones, without this
+# list having to track every destination the loops above compute.
+echo "==> Pruning orphaned symlinks from earlier layouts"
+BEFORE_USER_UNITS=0
+prune_orphan_links "$HOME/.config" "$DOTFILES_DIR"
+for d in "$HOME"/.config/*/; do
+    prune_orphan_links "${d%/}" "$DOTFILES_DIR"
+done
+BEFORE_USER_UNITS=$PRUNED_COUNT
+prune_orphan_links "$HOME/.config/systemd/user" "$DOTFILES_DIR"
+USER_UNITS_PRUNED=$((PRUNED_COUNT - BEFORE_USER_UNITS))
+prune_orphan_links "$HOME/.local/bin" "$DOTFILES_DIR"
+prune_orphan_links "$HOME/.local/share/applications" "$DOTFILES_DIR"
+for d in /etc/udev/rules.d /etc/keyd /etc/systemd/system \
+         /etc/systemd/system-sleep /etc/pacman.d/hooks; do
+    prune_orphan_links "$d" "$DOTFILES_DIR" sudo
+done
+# A removed unit link leaves systemd holding the old view until it re-reads.
+if [ "$USER_UNITS_PRUNED" -gt 0 ] && command -v systemctl >/dev/null; then
+    systemctl --user daemon-reload || true
+fi
+if [ "$PRUNED_COUNT" -eq 0 ]; then
+    echo "    nothing to prune"
 fi
 
 # Private overlay: a sibling repo (not public) carries config that
