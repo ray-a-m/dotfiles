@@ -21,13 +21,9 @@ Personal configuration files for macOS and Linux.
 - **`shell/`** — zsh additions (sourced from `~/.zshrc`): `scholarship` / `wip` / `pub` / `dots` aliases, `save` / `publish` / `pdfsplit` functions, and zoxide init. `publish` covers the documents (`cv`, `dissertation`, `<paper-slug>`) and the website (`site`)
 - **`latex/`** — custom `.sty` packages installed into the user TeX tree
 - **`install.sh`** — bootstrap script for a new machine (macOS or Linux)
-- **`TODO.md`** — outstanding work (cross-platform parity) + dock/lid diagnostics
 - **`RICING.md`** — active aesthetic ricing-pass orientation
 
 ## Setup on a new machine
-
-This repo is private — the new machine needs an SSH key registered with GitHub
-(or `gh auth login` first). Then:
 
     git clone git@github.com:ray-a-m/dotfiles.git ~/code/dotfiles
     cd ~/code/dotfiles
