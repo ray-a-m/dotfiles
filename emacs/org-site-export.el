@@ -276,7 +276,8 @@ A new macro in cv.org must get a clause here before it publishes."
                   (string-trim
                    (buffer-substring-no-properties
                     (line-beginning-position) (line-end-position)))))
-    (string-trim (buffer-string))))
+    ;; the wrapper is style.css's hook for CV-wide styling (font step-down)
+    (concat "<div class=\"cv\">\n" (string-trim (buffer-string)) "\n</div>")))
 
 ;; --- the site-html backend ----------------------------------------------
 
