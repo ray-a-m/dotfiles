@@ -140,6 +140,144 @@ and the order never depends on filesystem mtime."
         pdfs "\n")
        "\n</ul>"))))
 
+;; --- CV page: the CV body, translated from its LaTeX source -------------
+
+(defconst rm/org-site--cv-org
+  (expand-file-name "~/scholarship/research-wip/documents/cv/cv.org")
+  "The CV's authored source.  The website CV page embeds this content
+as HTML, so the page cannot drift from the published PDF -- the
+\\papertitle mechanism, extended to a whole document body.")
+
+(defun rm/org-site--cv-latex ()
+  "The LaTeX body of the CV: the content of cv.org's export block."
+  (unless (file-readable-p rm/org-site--cv-org)
+    (user-error "site: no CV source at %s" rm/org-site--cv-org))
+  (with-temp-buffer
+    (insert-file-contents rm/org-site--cv-org)
+    (goto-char (point-min))
+    (unless (re-search-forward "^#\\+begin_export latex$" nil t)
+      (user-error "site: no latex export block in %s" rm/org-site--cv-org))
+    (let ((start (1+ (point))))
+      (unless (re-search-forward "^#\\+end_export" nil t)
+        (user-error "site: unterminated export block in %s" rm/org-site--cv-org))
+      (buffer-substring-no-properties start (match-beginning 0)))))
+
+(defun rm/org-site--cv-args (n)
+  "Read N brace-delimited arguments, starting at point.
+Whitespace may precede each argument (a stripped %-continuation leaves
+a newline).  Leaves point after the last closing brace."
+  (let (args)
+    (dotimes (_ n)
+      (skip-chars-forward " \t\n")
+      (unless (eq (char-after) ?{)
+        (user-error "site: CV translator expected a { argument at %d" (point)))
+      (forward-char 1)
+      (push (rm/org-site--brace-content) args))
+    (nreverse args)))
+
+(defun rm/org-site--cv-rr (regexp rep &optional literal)
+  "Replace every match of REGEXP in the buffer with REP.
+LITERAL as in `replace-match' -- pass t when REP contains & or \\."
+  (goto-char (point-min))
+  (while (re-search-forward regexp nil t)
+    (replace-match rep t literal)))
+
+(defun rm/org-site--cv-html ()
+  "The CV's LaTeX body as an HTML fragment.
+Translates exactly the vocabulary the CV is known to use -- the
+\\entry family of cv/preamble.tex plus standard inline LaTeX -- and
+refuses anything else loudly, like the title translation above: a
+silently mangled CV on the public site is worse than a failed export.
+A new macro in cv.org must get a clause here before it publishes."
+  (with-temp-buffer
+    (insert (rm/org-site--cv-latex))
+    ;; comments, including the %-continuations before wrapped arguments
+    (rm/org-site--cv-rr "\\([^\\\n]\\|^\\)%.*" "\\1")
+    ;; the centered name/contact header is print furniture: on paper the
+    ;; CV travels alone; on the site the nav and Contact page carry it,
+    ;; and the linked PDF keeps the full header
+    (rm/org-site--cv-rr "\\\\begin{center}\\(?:.\\|\n\\)*?\\\\end{center}" "" t)
+    ;; print-only formatting: page style, glue, and the
+    ;; {\setlength{\parskip}{..} .. \par} spacing groups
+    (rm/org-site--cv-rr "\\\\thispagestyle{[^{}]*}" "" t)
+    (rm/org-site--cv-rr "\\\\vspace\\*?{[^{}]*}" "" t)
+    (rm/org-site--cv-rr "\\\\medskip\\_>" "" t)
+    (rm/org-site--cv-rr "{\\\\setlength{\\\\parskip}{[^{}]*}" "" t)
+    (rm/org-site--cv-rr "\\\\par[ \t]*}" "" t)
+    ;; environments
+    (rm/org-site--cv-rr "\\\\begin{detaillist}" "<ul class=\"cv-details\">" t)
+    (rm/org-site--cv-rr "\\\\end{detaillist}" "</ul>" t)
+    ;; items; \hfill splits an item into a left part and a date column
+    (rm/org-site--cv-rr
+     "^[ \t]*\\\\item[ \t]+\\(.*?\\)[ \t]*\\\\hfill[ \t]*\\(.*\\)$"
+     "<li><span>\\1</span><span class=\"cv-date\">\\2</span></li>")
+    (rm/org-site--cv-rr "^[ \t]*\\\\item[ \t]+\\(.*\\)$" "<li>\\1</li>")
+    ;; the \entry family: brace-aware, arguments may nest braces
+    (goto-char (point-min))
+    (while (re-search-forward
+            "\\\\\\(section\\|entry\\|plainentry\\|wipentry\\|presentation\\|subline\\)\\_>"
+            nil t)
+      (let* ((cmd (match-string 1))
+             (start (match-beginning 0))
+             (args (rm/org-site--cv-args
+                    (pcase cmd ("presentation" 3)
+                          ((or "section" "subline") 1) (_ 2))))
+             (html
+              (pcase cmd
+                ("section" (format "<h2>%s</h2>" (car args)))
+                ("subline" (format "<p class=\"cv-subline\">%s</p>" (car args)))
+                ("entry"
+                 (format "<p class=\"cv-entry\"><span>%s</span><span class=\"cv-date\">%s</span></p>"
+                         (nth 0 args) (nth 1 args)))
+                ("plainentry"
+                 (format "<p class=\"cv-entry cv-sub\"><span>%s</span><span class=\"cv-date\">%s</span></p>"
+                         (nth 0 args) (nth 1 args)))
+                ("wipentry"
+                 (format "<p class=\"cv-entry cv-sub\"><span>%s</span><span class=\"cv-date\"><em>%s</em></span></p>"
+                         (nth 0 args) (nth 1 args)))
+                ("presentation"
+                 (format "<div class=\"cv-pres\"><p class=\"cv-entry\"><span>%s</span><span class=\"cv-date\">%s</span></p><p class=\"cv-venue\">%s</p></div>"
+                         (nth 0 args) (nth 1 args) (nth 2 args))))))
+        (delete-region start (point))
+        (goto-char start)
+        (insert html)))
+    ;; inline LaTeX: \papertitle resolves like the Research page titles
+    (goto-char (point-min))
+    (while (re-search-forward "\\\\papertitle[ \t]*{\\([^{}]+\\)}" nil t)
+      ;; not replace-match: the title lookup runs searches of its own,
+      ;; which clobber the match data
+      (let ((beg (match-beginning 0))
+            (end (match-end 0))
+            (title (rm/org-site--paper-title (match-string 1))))
+        (delete-region beg end)
+        (goto-char beg)
+        (insert title)))
+    (rm/org-site--cv-rr "\\\\href{\\([^{}]*\\)}{\\([^{}]*\\)}"
+                        "<a href=\"\\1\">\\2</a>")
+    (rm/org-site--cv-rr "\\\\textbf{\\([^{}]*\\)}" "<strong>\\1</strong>")
+    (rm/org-site--cv-rr "\\\\\\(?:emph\\|textit\\){\\([^{}]*\\)}" "<em>\\1</em>")
+    ;; breaks and glue -- \\ before \SPACE, or the pair matches wrong
+    (rm/org-site--cv-rr "\\\\\\\\\\(?:\\[[0-9]+pt\\]\\)?" "<br>" t)
+    (rm/org-site--cv-rr "\\\\quad\\_>" "&emsp;" t)
+    (rm/org-site--cv-rr "\\\\ " " " t)
+    (rm/org-site--cv-rr "\\\\\\([&%$#_]\\)" "\\1")
+    ;; bare {..} groups that remain are pure grouping: unwrap.  A group
+    ;; that still holds a backslash stays, so the guard names it.
+    (rm/org-site--cv-rr "{\\([^{}\\]*\\)}" "\\1")
+    ;; typography, as LaTeX would print it
+    (rm/org-site--cv-rr "---" "&mdash;" t)
+    (rm/org-site--cv-rr "--" "&ndash;" t)
+    (rm/org-site--cv-rr "``" "&ldquo;" t)
+    (rm/org-site--cv-rr "''" "&rdquo;" t)
+    ;; the loud refusal
+    (goto-char (point-min))
+    (when (search-forward "\\" nil t)
+      (user-error "site: unhandled LaTeX in CV body: %s"
+                  (string-trim
+                   (buffer-substring-no-properties
+                    (line-beginning-position) (line-end-position)))))
+    (string-trim (buffer-string))))
+
 ;; --- the site-html backend ----------------------------------------------
 
 (defun rm/org-site--strip-random-ids (output _backend _info)
@@ -158,13 +296,23 @@ don't match the org[0-9a-f]+ shape and survive."
                                 output t t)
     output))
 
+(defun rm/org-site--expand-cv-body (output _backend _info)
+  "Replace the <!-- cv-body --> token with the translated CV body."
+  (if (string-match-p "<!-- cv-body -->" output)
+      (replace-regexp-in-string "<!-- cv-body -->"
+                                (rm/org-site--cv-html)
+                                output t t)
+    output))
+
 (defun rm/org-site--filter-final-output (output backend info)
   "The backend's single final-output pass, order explicit: strip the
-random ids, expand the published-papers token, normalise to exactly
-one trailing newline."
+random ids, expand the published-papers and cv-body tokens, normalise
+to exactly one trailing newline."
   (concat (string-trim-right
-           (rm/org-site--expand-published-papers
-            (rm/org-site--strip-random-ids output backend info)
+           (rm/org-site--expand-cv-body
+            (rm/org-site--expand-published-papers
+             (rm/org-site--strip-random-ids output backend info)
+             backend info)
             backend info))
           "\n"))
 
@@ -221,10 +369,21 @@ is the gate that commits and pushes)."
   (let* ((src buffer-file-name)
          (out (rm/org-site--output-file src))
          (rm/org-site--current-root (rm/org-site--root src))
+         (rel (file-relative-name out rm/org-site-output-root))
+         ;; the page's site path: "" for the front page, "research/" ...
+         (nav-path (if (string= rel "index.html") "" (file-name-directory rel)))
          (title (or (cadr (assoc "TITLE" (org-collect-keywords '("TITLE"))))
                     (user-error "site: %s needs a #+TITLE" src)))
          (body (org-export-as 'site-html nil nil t))
          (html (rm/org-site--template)))
+    ;; mark the nav link that targets this page (before the token
+    ;; substitution, so the href still carries the ROOT token exactly);
+    ;; style.css underlines the marked link.  A subpage with no nav
+    ;; link simply matches nothing.
+    (setq html (replace-regexp-in-string
+                (concat "href=\"{{ROOT}}" (regexp-quote nav-path) "\"")
+                (concat "aria-current=\"page\" href=\"{{ROOT}}" nav-path "\"")
+                html t t))
     ;; literal substitution (t t): titles and bodies may contain \ or &
     (dolist (pair `(("{{TITLE}}" . ,title)
                     ("{{ROOT}}"  . ,rm/org-site--current-root)

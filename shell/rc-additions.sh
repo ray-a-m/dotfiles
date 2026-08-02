@@ -191,10 +191,18 @@ publish() {
           -f "$HOME/scholarship/website/research.org" ]]; then
       _org_export_site "$HOME/scholarship/website/research.org"
     fi
+    # Same for the CV: its page embeds the CV body itself (the cv-body
+    # token), so a cv publish regenerates the page in the same push.
+    if [[ "$name" == cv && -f "$HOME/scholarship/website/cv.org" ]]; then
+      _org_export_site "$HOME/scholarship/website/cv.org"
+    fi
     cd "$HOME/scholarship/research-public"
     git add "$dest_pdf"
     if [[ -f research/index.html ]]; then
       git add research/index.html
+    fi
+    if [[ -f cv/index.html ]]; then
+      git add cv/index.html
     fi
     git diff --cached --quiet || { git commit -m "." && git push; }
     # Provenance: tag the wip source this publish was built from, so every
