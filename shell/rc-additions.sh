@@ -232,30 +232,53 @@ texclear() {
 # Build a double-spaced, narrower-margin copy of a paper for handoff. Runs
 # from the paper folder; output goes to ~/Downloads so the paper folder stays
 # clean. No wrapper file persists — overrides are passed inline via \def.
-# Usage: doublespace <file.tex> [output-name]
-#   doublespace paper.tex            → ~/Downloads/paper-doublespaced.pdf
-#   doublespace paper.tex foo        → ~/Downloads/foo.pdf
-#   doublespace paper.tex foo.pdf    → ~/Downloads/foo.pdf  (trailing .pdf optional)
+# Usage: doublespace [file] [output-name]
+#   doublespace                      → the org source in $PWD → <name>-doublespaced.pdf
+#   doublespace paper.org            → ~/Downloads/<paper>/paper-doublespaced.pdf
+#   doublespace paper.org foo        → ~/Downloads/<paper>/foo.pdf
+#   doublespace paper.org foo.pdf    → ~/Downloads/<paper>/foo.pdf  (trailing .pdf optional)
+# Org is the authoring surface, so the argument is optional and names the org
+# source. A bare name or a .tex still resolves to the same document.
 doublespace() {
   local input="$1"
   local out_name="$2"
+  local org tex
   if [[ -z "$input" ]]; then
-    echo "usage: doublespace <file.tex> [output-name]"
-    return 1
+    # No argument: build whichever document this directory holds.
+    local candidate
+    for candidate in paper.org dissertation.org cv.org; do
+      [[ -f "$candidate" ]] && { org="$candidate"; break; }
+    done
+    if [[ -z "$org" ]]; then
+      echo "doublespace: no org source in $PWD (expected paper.org, dissertation.org or cv.org)"
+      return 1
+    fi
+  else
+    local base="${input%.tex}"
+    base="${base%.org}"
+    # maung_cv.tex is the driver cv.org generates; accept either name.
+    [[ "$base" == maung_cv ]] && base="cv"
+    org="${base}.org"
   fi
-  [[ "$input" != *.tex ]] && input="${input}.tex"
-  if [[ ! -f "$input" ]]; then
-    echo "doublespace: file not found: $input"
-    return 1
-  fi
-  # The .tex are generated artifacts now — refresh from the org source first
-  # so a clean tree (or stale artifact) still builds the current content.
-  case "$input" in
-    paper.tex)        _org_export_body "$PWD/paper.org" ;;
-    dissertation.tex) _org_export_body "$PWD/dissertation.org" ;;
-    maung_cv.tex)     _org_export_body "$PWD/cv.org" ;;
+  case "$org" in
+    cv.org) tex="maung_cv.tex" ;;
+    *)      tex="${org%.org}.tex" ;;
   esac
-  local jobname="${input%.tex}-doublespaced"
+  # The .tex are generated artifacts — refresh from the org source first so a
+  # clean tree (or stale artifact) still builds the current content. A .tex
+  # with no org beside it is built as-is, for one-off files outside the
+  # org-authored set.
+  if [[ -f "$org" ]]; then
+    _org_export_body "$PWD/$org" || return 1
+    if [[ ! -f "$tex" ]]; then
+      echo "doublespace: export of $org produced no $tex"
+      return 1
+    fi
+  elif [[ ! -f "$tex" ]]; then
+    echo "doublespace: file not found: $org (and no $tex to fall back on)"
+    return 1
+  fi
+  local jobname="${tex%.tex}-doublespaced"
   if [[ -n "$out_name" ]]; then
     out_name="${out_name%.pdf}"
     # Sanitize path separators: filenames with `/` would try to write into a
@@ -275,7 +298,7 @@ doublespace() {
   latexmk -pdf -interaction=nonstopmode \
     -outdir="$build_dir" -jobname="$jobname" \
     -usepretex='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in}\def\paperrightmargin{1.25in}' \
-    "$input"
+    "$tex"
   local rc=$?
   if [[ $rc -eq 0 && -f "$build_dir/${jobname}.pdf" ]]; then
     local dest="$out_dir/${out_name}.pdf"
