@@ -1,4 +1,4 @@
-personal_ws-1.1 en 93 
+personal_ws-1.1 en 104 utf-8
 Abelian
 Batterman
 Cartan
@@ -28,18 +28,19 @@ Occamist
 Omarchy
 Omaru
 Petry
-Poincar
-Poincaré
+PoincarÃ©
 QCD
 Reichenbach
+Reichenbach's
 SRI
 SRIi
 SRIs
+SSB
 SU
 SUSY
 Sandrone
 Schlick
-Schrödinger
+SchrÃ¶dinger
 Schur's
 Stromminger
 TODO
@@ -55,9 +56,14 @@ diagonalizable
 dimensionful
 dired
 disanalogous
+doxastically
 eiganoperators
 eigenoperators
+eigenspaces
+eigenstate
+eigenstates
 experimentalists
+exponentiated
 fermionic
 fn
 former's
@@ -67,11 +73,15 @@ integrable
 invariance
 invertible
 irreps
+isospin
+kinematically
 multiplet
 multiplets
+neo
 observables
 precisified
 priori
+projective
 redescribed
 relata
 rotationally
@@ -88,6 +98,7 @@ tex
 underdetermination
 underdetermined
 underdiscussed
+unrotated
 vectorial
 wavefunction
 wavefunctions
