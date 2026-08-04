@@ -61,9 +61,9 @@ show_mail_menu() {
 }
 
 show_research_menu() {
-  case $(menu "Research" "  Claude\nNotebookLM\n  UIC Library\nZotero") in
+  case $(menu "Research" "  ChatGPT\n  Claude\n  UIC Library\nZotero") in
+    *ChatGPT*)     gtk-launch chatgpt ;;
     *Claude*)      gtk-launch claude ;;
-    *NotebookLM*)  gtk-launch notebooklm ;;
     *Library*)     gtk-launch uic-library ;;
     *Zotero*)      gtk-launch zotero ;;
     *)             show_main_menu ;;
