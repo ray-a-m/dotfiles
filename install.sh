@@ -403,16 +403,13 @@ if [ "$OS" = "Linux" ]; then
         yay -S --noconfirm mpvpaper
     fi
     # Daily-driver apps that live in the AUR: Zotero (research library),
-    # basilk (task board), rencal (calendar TUI), Beeper (all non-academic
-    # messaging -- unified chat, incl. self-hosted iMessage via a bbctl bridge
-    # that runs on the Mac).
+    # rencal (calendar TUI), Beeper (all non-academic messaging -- unified
+    # chat, incl. self-hosted iMessage via a bbctl bridge that runs on the
+    # Mac). Personal task tracking is org-agenda only; basilk was removed
+    # 2026-08-04.
     if command -v yay &>/dev/null && ! pacman -Q zotero-bin &>/dev/null; then
         echo "==> Installing Zotero from AUR"
         yay -S --noconfirm zotero-bin
-    fi
-    if command -v yay &>/dev/null && ! pacman -Q basilk &>/dev/null; then
-        echo "==> Installing basilk from AUR"
-        yay -S --noconfirm basilk
     fi
     if command -v yay &>/dev/null && ! pacman -Q rencal-bin &>/dev/null; then
         echo "==> Installing rencal from AUR"
@@ -429,6 +426,15 @@ if [ "$OS" = "Linux" ]; then
     if command -v yay &>/dev/null && ! pacman -Q herdr-bin &>/dev/null; then
         echo "==> Installing herdr from AUR"
         yay -S --noconfirm herdr-bin
+    fi
+    # beads (bd): dependency-graph issue tracker and persistent memory for
+    # coding agents. Agent-facing only -- personal tasks stay in org-agenda.
+    # Each repo gets its own .beads/ database; databases stay local (no
+    # `bd dolt push`), so no cross-machine schema skew to manage. Only the
+    # binary is dotfiles-tracked. Never run `bd init` in research-public.
+    if command -v yay &>/dev/null && ! pacman -Q beads-bin &>/dev/null; then
+        echo "==> Installing beads from AUR"
+        yay -S --noconfirm beads-bin
     fi
     # firefox-pwa hosts the PWAs whose upstreams publish a manifest and
     # don't block non-Chromium browsers, so external links open in the
