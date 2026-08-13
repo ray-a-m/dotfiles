@@ -62,7 +62,7 @@
   ;; configure everything here by hand instead.
   (setq custom-file (no-littering-expand-var-file-name "custom.el"))
   (load custom-file 'noerror 'nomessage)
-  ;; Force auto-save #files# and backup file~ files out of the (Dropbox-synced)
+  ;; Force auto-save #files# and backup file~ files out of the (synced)
   ;; working tree into var/, so they don't sync as phantom "duplicates".  (Lock
   ;; files .#foo are disabled via `create-lockfiles' above.)  no-littering is
   ;; supposed to set both, but in practice it wasn't winning, so pin them here.
@@ -70,6 +70,43 @@
         `((".*" ,(no-littering-expand-var-file-name "auto-save/") t))
         backup-directory-alist
         `((".*" . ,(no-littering-expand-var-file-name "backup/")))))
+
+;; --- Platform ------------------------------------------------------------
+;; The phone runs this same file.  It loads from a small stub that lives in
+;; the Android Emacs home (see the dotfiles-android repo), and the stub binds
+;; the content locations below before loading this file.  So there is one
+;; config, not two, and a change here reaches the phone on its next launch.
+;;
+;; Emacs's own sources test for Android both ways, so test for both.  A wrong
+;; test here fails silently: the guarded sections would load on the phone and
+;; break it, or skip on the laptop and break that.
+
+(defconst rm/android-p (or (featurep 'android)
+                           (eq system-type 'android))
+  "Non-nil when this Emacs is the Android port.
+Guards the sections that need a desktop: a TeX toolchain and a
+compiled PDF renderer.  Guard with `unless', not use-package's :if --
+:ensure (always on here) installs the package even when :if is nil.")
+
+;; --- Content locations ---------------------------------------------------
+;; Every reference to the vault and the agenda home goes through these two
+;; variables.  Nothing below hardcodes a path, so one machine can put the
+;; trees somewhere else without touching the rest of this file.
+;;
+;; They are `defvar', not `setq', on purpose.  The Android port loads this
+;; file from a small stub that binds both first, and `defvar' leaves an
+;; already-bound value alone.  That is what lets the phone and the laptop
+;; share one config.
+
+(defvar rm/notes-directory (expand-file-name "~/Dropbox/notes/")
+  "Directory of the denote thought vault.")
+
+(defvar rm/org-directory (expand-file-name "~/Dropbox/org/")
+  "Directory of the agenda and capture files.  Synced, but NOT the vault.")
+
+(defun rm/org-file (name)
+  "Return the absolute path of NAME inside `rm/org-directory'."
+  (expand-file-name name rm/org-directory))
 
 ;; --- Sensible built-in defaults -----------------------------------------
 ;; No packages here -- this is Emacs teaching you what Emacs is.
@@ -80,7 +117,7 @@
       use-short-answers t                 ; y/n instead of yes/no
       sentence-end-double-space nil)      ; prose: single space ends a sentence
 
-;; The notes vault lives in Dropbox, so Emacs lock files (.#file) sync as
+;; The notes vault is file-synced, so Emacs lock files (.#file) sync as
 ;; phantom "duplicate" files (and churn on every edit).  Disable them --
 ;; single-user machine, so the "already open elsewhere" guard isn't needed.
 ;; Auto-save (#file#) and backups are already redirected out of the tree by
@@ -333,7 +370,7 @@
 ;; so C-a p p offers them from the very first session.
 (setq project-vc-extra-root-markers '(".project"))
 (with-eval-after-load 'project
-  (dolist (dir '("~/scholarship/research-wip/" "~/Dropbox/notes/"))
+  (dolist (dir (list "~/scholarship/research-wip/" rm/notes-directory))
     (when (file-directory-p dir)
       (project-remember-projects-under (expand-file-name dir)))))
 
@@ -768,48 +805,54 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 ;; `tex'), so we `use-package latex' -- still installing the `auctex' package.
 ;; Using `tex' here left `LaTeX-mode-map' void when the mode loaded, which errored
 ;; and silently dropped every .tex to Fundamental mode (no font-lock, no hooks).
-(use-package latex
-  :ensure auctex
-  :mode ("\\.tex\\'" . LaTeX-mode)        ; route .tex -> AUCTeX's LaTeX-mode
-  :hook ((LaTeX-mode . turn-on-cdlatex)   ; fast math input (impatient-scholar step 1)
-         (LaTeX-mode . turn-on-reftex)    ; \ref / \cite from the .bib
-         (LaTeX-mode . TeX-source-correlate-mode)  ; SyncTeX forward/inverse
-         (LaTeX-mode . outline-minor-mode)) ; fold on \section / \subsection
-  :bind (:map LaTeX-mode-map
-         ;; S-TAB anywhere in the buffer cycles the whole paper:
-         ;; overview (sections only) -> contents (all headings) -> show all.
-         ("<backtab>" . outline-cycle-buffer))
-  :init
-  (setq TeX-auto-save t                   ; parse macros/labels on save
-        TeX-parse-self t
-        TeX-master nil                     ; prompt for the master file
-        TeX-save-query nil                 ; C-c C-c saves without asking -> 1-gesture compile
-        reftex-plug-into-AUCTeX t
-        ;; Shared dissertation bibliography (the one-master-bib convention).
-        reftex-default-bibliography
-        '("~/scholarship/research-wip/documents/dissertation/references.bib"))
-  ;; org-like folding in LaTeX: with cycle on, TAB on a \section/\subsection
-  ;; line folds/unfolds that subtree (the heading-line keymap takes priority
-  ;; there, so cdlatex keeps TAB everywhere else).  Headings get a subtle
-  ;; highlight so they're easy to spot when collapsed.
-  (setq outline-minor-mode-cycle t
-        outline-minor-mode-highlight 'append)
-  :config
-  (setq TeX-view-program-selection '((output-pdf "Zathura"))))
+;; The whole toolchain is wrapped in `unless' rather than guarded with
+;; use-package's :if -- :ensure (forced globally by
+;; `use-package-always-ensure') installs the package even when :if is
+;; nil, so the phone would download AUCTeX for nothing.  `unless' gates
+;; the install too.
+(unless rm/android-p                     ; no TeX toolchain on the phone
+  (use-package latex
+    :ensure auctex
+    :mode ("\\.tex\\'" . LaTeX-mode)        ; route .tex -> AUCTeX's LaTeX-mode
+    :hook ((LaTeX-mode . turn-on-cdlatex)   ; fast math input (impatient-scholar step 1)
+           (LaTeX-mode . turn-on-reftex)    ; \ref / \cite from the .bib
+           (LaTeX-mode . TeX-source-correlate-mode)  ; SyncTeX forward/inverse
+           (LaTeX-mode . outline-minor-mode)) ; fold on \section / \subsection
+    :bind (:map LaTeX-mode-map
+           ;; S-TAB anywhere in the buffer cycles the whole paper:
+           ;; overview (sections only) -> contents (all headings) -> show all.
+           ("<backtab>" . outline-cycle-buffer))
+    :init
+    (setq TeX-auto-save t                   ; parse macros/labels on save
+          TeX-parse-self t
+          TeX-master nil                     ; prompt for the master file
+          TeX-save-query nil                 ; C-c C-c saves without asking -> 1-gesture compile
+          reftex-plug-into-AUCTeX t
+          ;; Shared dissertation bibliography (the one-master-bib convention).
+          reftex-default-bibliography
+          '("~/scholarship/research-wip/documents/dissertation/references.bib"))
+    ;; org-like folding in LaTeX: with cycle on, TAB on a \section/\subsection
+    ;; line folds/unfolds that subtree (the heading-line keymap takes priority
+    ;; there, so cdlatex keeps TAB everywhere else).  Headings get a subtle
+    ;; highlight so they're easy to spot when collapsed.
+    (setq outline-minor-mode-cycle t
+          outline-minor-mode-highlight 'append)
+    :config
+    (setq TeX-view-program-selection '((output-pdf "Zathura"))))
 
-;; Adds the `LatexMk' command so C-c C-c compiles with latexmk.
-(use-package auctex-latexmk
-  :after tex
-  :config
-  (setq auctex-latexmk-inherit-TeX-PDF-mode t)
-  (auctex-latexmk-setup)
-  (setq-default TeX-command-default "LatexMk"))
+  ;; Adds the `LatexMk' command so C-c C-c compiles with latexmk.
+  (use-package auctex-latexmk
+    :after tex
+    :config
+    (setq auctex-latexmk-inherit-TeX-PDF-mode t)
+    (auctex-latexmk-setup)
+    (setq-default TeX-command-default "LatexMk"))
 
-;; CDLaTeX is enabled via the LaTeX-mode hook above; this ensures it's
-;; installed.  Backtick -> Greek/math symbols, apostrophe -> accents,
-;; _ / ^ auto-insert braces.
-(use-package cdlatex
-  :defer t)
+  ;; CDLaTeX is enabled via the LaTeX-mode hook above; this ensures it's
+  ;; installed.  Backtick -> Greek/math symbols, apostrophe -> accents,
+  ;; _ / ^ auto-insert braces.
+  (use-package cdlatex
+    :defer t))
 
 ;; --- LaTeX in buffers: highlighted source, preview on demand ------------
 ;; No in-text auto-rendering: org-fragtog REMOVED 2026-07-23 (his ruling --
@@ -825,26 +868,30 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 ;; pages, h/l nudge sideways when zoomed in.  Stock keys kept: SPC /
 ;; S-SPC page-scroll, +/- zoom, W fit width, P fit page, o outline,
 ;; C-s isearch (searches the actual text layer).
-(use-package pdf-tools
-  :mode ("\\.pdf\\'" . pdf-view-mode)
-  :magic ("%PDF" . pdf-view-mode)
-  :config
-  (pdf-tools-install :no-query)
-  (setq pdf-view-display-size 'fit-width)
-  (defun rm/pdf-scroll-down ()
-    "Scroll the page down a comfortable step (vim j)."
-    (interactive)
-    (pdf-view-next-line-or-next-page 4))
-  (defun rm/pdf-scroll-up ()
-    "Scroll the page up a comfortable step (vim k)."
-    (interactive)
-    (pdf-view-previous-line-or-previous-page 4))
-  (keymap-set pdf-view-mode-map "j" #'rm/pdf-scroll-down)
-  (keymap-set pdf-view-mode-map "k" #'rm/pdf-scroll-up)
-  (keymap-set pdf-view-mode-map "J" #'pdf-view-next-page-command)
-  (keymap-set pdf-view-mode-map "K" #'pdf-view-previous-page-command)
-  (keymap-set pdf-view-mode-map "h" #'image-backward-hscroll)
-  (keymap-set pdf-view-mode-map "l" #'image-forward-hscroll))
+;; `unless', not :if, for the same reason as the LaTeX block above:
+;; epdfinfo is a C helper compiled in the package dir, so on Android the
+;; package must not even be INSTALLED, and :ensure ignores :if.
+(unless rm/android-p
+  (use-package pdf-tools
+    :mode ("\\.pdf\\'" . pdf-view-mode)
+    :magic ("%PDF" . pdf-view-mode)
+    :config
+    (pdf-tools-install :no-query)
+    (setq pdf-view-display-size 'fit-width)
+    (defun rm/pdf-scroll-down ()
+      "Scroll the page down a comfortable step (vim j)."
+      (interactive)
+      (pdf-view-next-line-or-next-page 4))
+    (defun rm/pdf-scroll-up ()
+      "Scroll the page up a comfortable step (vim k)."
+      (interactive)
+      (pdf-view-previous-line-or-previous-page 4))
+    (keymap-set pdf-view-mode-map "j" #'rm/pdf-scroll-down)
+    (keymap-set pdf-view-mode-map "k" #'rm/pdf-scroll-up)
+    (keymap-set pdf-view-mode-map "J" #'pdf-view-next-page-command)
+    (keymap-set pdf-view-mode-map "K" #'pdf-view-previous-page-command)
+    (keymap-set pdf-view-mode-map "h" #'image-backward-hscroll)
+    (keymap-set pdf-view-mode-map "l" #'image-forward-hscroll)))
 
 ;; --- Org: notes + TODO/agenda (:lang org, built into Emacs) -------------
 ;; Papers stay in LaTeX.  Org is for tasks/agenda and prose notes (the
@@ -871,7 +918,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
          ("TAB" . rm/org-tab)
          ("C-<tab>" . rm/org-untab))
   :init
-  (setq org-directory "~/Dropbox/org/"    ; agenda + capture home (synced, NOT the vault)
+  (setq org-directory rm/org-directory    ; agenda + capture home (synced, NOT the vault)
         ;; Agenda scans the dedicated org dir *and* the research documents
         ;; tree, so a TODO jotted in the inbox -- or mid-paper in a paper.org
         ;; -- surfaces.  The notes vault is deliberately NOT scanned: it held
@@ -881,7 +928,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         ;; Emacs lock/temp files.  New files need a restart (or re-eval) to
         ;; join the agenda; the org dir itself rescans live.
         org-agenda-files
-        (cons "~/Dropbox/org/"
+        (cons rm/org-directory
               (when (file-directory-p "~/scholarship/research-wip/documents/")
                 (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
                             (directory-files-recursively
@@ -942,9 +989,9 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
             ;; insert nothing (the project group headers are label enough).
             (org-agenda-overriding-header "")))))
   (setq org-capture-templates
-        '(("t" "Task" entry (file+headline "~/Dropbox/org/inbox.org" "miscellany")
+        `(("t" "Task" entry (file+headline ,(rm/org-file "inbox.org") "miscellany")
            "* TODO %?\n  %U\n" :empty-lines 1)
-          ("n" "Note" entry (file+headline "~/Dropbox/org/inbox.org" "Notes")
+          ("n" "Note" entry (file+headline ,(rm/org-file "inbox.org") "Notes")
            "* %?\n  %U\n" :empty-lines 1)))
   ;; Headings render via the org-level faces once font-lock runs; bump their
   ;; size so they stand out more than the body.  Tune the :heights.
@@ -1224,7 +1271,7 @@ entry inside it for a bulk action (see `org-agenda-bulk-action', on B)."
   (defvar rm/agenda-yank nil
     "Marker on the subtree `y' grabbed, for `p' to move (see agenda keymap).")
   (defun rm/inbox--file ()
-    (expand-file-name "~/Dropbox/org/inbox.org"))
+    (rm/org-file "inbox.org"))
   (defun rm/inbox--buffer ()
     (find-file-noselect (rm/inbox--file)))
   (defun rm/inbox--project-headings ()
@@ -1880,8 +1927,8 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
         ;; inbox.org <-> the "org" calendar.  Used only to resolve the target
         ;; calendar-id for pushes; the fetching commands stay unused.
         org-gcal-fetch-file-alist
-        '(("18e761b7f73a7aa68dc5b96efc6273b189816168bf96b6f3d2fe791389b5bfe8@group.calendar.google.com"
-           . "~/Dropbox/org/inbox.org"))))
+        `(("18e761b7f73a7aa68dc5b96efc6273b189816168bf96b6f3d2fe791389b5bfe8@group.calendar.google.com"
+           . ,(rm/org-file "inbox.org")))))
 
 ;; Push helpers live at TOP LEVEL (not the use-package :config) so the auto-push
 ;; advice and the M-SPC G command exist from startup; each loads org-gcal on
@@ -1921,8 +1968,7 @@ they never reach the calendar.  Each POST is awaited so org-gcal's entry-id/etag
 writeback lands (re-push PATCHes, no duplicates); the file is then saved."
   (interactive)
   (rm/org-gcal--ensure-auth)
-  (with-current-buffer (find-file-noselect
-                        (expand-file-name "~/Dropbox/org/inbox.org"))
+  (with-current-buffer (find-file-noselect (rm/org-file "inbox.org"))
     (let ((calid (org-gcal--get-calendar-id-of-buffer))
           (n 0))
       (org-map-entries
@@ -1943,8 +1989,7 @@ Fired after `org-schedule'/`org-deadline' so a scheduled TODO becomes an event
 without a manual M-SPC G.  Async (non-blocking) with a save chained after the
 POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
   (when (and buffer-file-name
-             (file-equal-p buffer-file-name
-                           (expand-file-name "~/Dropbox/org/inbox.org"))
+             (file-equal-p buffer-file-name (rm/org-file "inbox.org"))
              (or (org-get-scheduled-time (point))
                  (org-get-deadline-time (point))))
     (rm/org-gcal--ensure-auth)
@@ -2099,7 +2144,7 @@ y/p move, e/r/d act on the entry at point."
                   (propertize "❝" 'face 'nano-face-faded))))
 (add-hook 'org-mode-hook #'org-margin-mode)
 
-;; --- Denote: the thought vault (~/Dropbox/notes) --------------------------
+;; --- Denote: the thought vault (`rm/notes-directory') ---------------------
 ;; One flat naming grammar instead of folders: every note's filename is its
 ;; address on three axes at once --
 ;;   20260721T101530--topological-realism__paperidea_physics.org
@@ -2134,7 +2179,7 @@ y/p move, e/r/d act on the entry at point."
       "history" "neo-kantian" "phenomenology" "teaching" "fun")
     "Matter keywords: the research programs.  Grow this list only when a
 new program is genuinely born; free-typing new matter still works.")
-  (setq denote-directory (expand-file-name "~/Dropbox/notes/")
+  (setq denote-directory rm/notes-directory
         denote-known-keywords rm/denote-matter
         ;; Keep hyphens in keywords (neo-kantian): keywords sluggify like
         ;; titles.  Caveat: org's tag-match syntax reads "-" as NOT, so
@@ -3405,9 +3450,9 @@ dismisses the splash."
          ("<f8>"  . dired-sidebar-toggle-sidebar))
   :init
   (defun rm/notes-sidebar ()
-    "Toggle a dired sidebar rooted at the ~/Dropbox/notes vault."
+    "Toggle a dired sidebar rooted at the note vault."
     (interactive)
-    (let ((default-directory (expand-file-name "~/Dropbox/notes/")))
+    (let ((default-directory rm/notes-directory))
       (dired-sidebar-toggle-sidebar)))
   (defun rm/papers-sidebar ()
     "Toggle a dired sidebar rooted at research-wip.
