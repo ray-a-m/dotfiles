@@ -70,6 +70,12 @@ o.bind("SUPER + R", "Omarchy menu", "omarchy-menu toggle")
 -- chord can't resurrect it; re-enable via `omarchy toggle bar` if wanted.
 hl.unbind("SUPER + SHIFT + SPACE")
 
+-- Dead defaults: herdr and omacalc are not installed on this machine
+-- (removed with the rest of the unwanted Quattro default apps).
+hl.unbind("SUPER + CTRL + K")
+hl.unbind("SUPER + CTRL + Q")
+hl.unbind("XF86Calculator")
+
 -- Calendar — launches rencal (AUR: rencal-bin). The default SUPER+SHIFT+C
 -- HEY-webapp went away with omarchy_preinstalled_bindings=false. SUPER+C
 -- (Universal copy) and SUPER+CTRL+C (capture menu) are untouched — SUPER+C
