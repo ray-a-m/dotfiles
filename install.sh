@@ -225,14 +225,13 @@ if command -v update-mime-database &>/dev/null; then
 fi
 
 # Per-file symlinks for Omarchy app configs. Per-file (rather than dir-level)
-# because we want machine-specific files like ~/.config/hypr/monitors.conf to
+# because we want machine-specific files like ~/.config/hypr/monitors.lua to
 # stay locally owned, and we want Omarchy to keep adding new files alongside ours.
-# waybar dropped 2026-05-24: the Quickshell shell at ~/.config/quickshell/
-# replaces it entirely. Disabling is via ~/.local/state/omarchy/toggles/waybar-off
-# (created by this script below); the upstream omarchy autostart sees that
-# flag and skips spawning waybar.
-echo "==> Symlinking Omarchy app configs (hypr, walker, swayosd)"
-for app in hypr walker swayosd; do
+# walker/swayosd dropped with Omarchy 4 (Quattro, 2026-08-14): both programs
+# are retired upstream, replaced by the omarchy-shell. Their config dirs in
+# this repo remain as pre-Quattro reference only.
+echo "==> Symlinking Omarchy app configs (hypr)"
+for app in hypr; do
     src_dir="$DOTFILES_DIR/$app"
     dst_dir="$HOME/.config/$app"
     [ -d "$src_dir" ] || continue
@@ -249,16 +248,34 @@ for app in hypr walker swayosd; do
     done
 done
 
-echo "==> Suppressing waybar autostart (Quickshell takes over)"
-# Omarchy's default ~/.local/share/omarchy/default/hypr/autostart.conf only
-# spawns waybar when this flag file is absent. We migrated to Quickshell
-# 2026-05-24 so flip the toggle on; the file's existence is all that's
-# checked (contents irrelevant).
+echo "==> Suppressing the omarchy-shell bar (GlassPill Quickshell bar takes over)"
+# The Omarchy 4 shell hides its bar while this flag file exists (the shell
+# itself keeps running for lock/notifications/OSD/launcher). The file's
+# existence is all that's checked (contents irrelevant).
 mkdir -p ~/.local/state/omarchy/toggles
-touch ~/.local/state/omarchy/toggles/waybar-off
+touch ~/.local/state/omarchy/toggles/bar-off
 
-echo "==> Ensuring per-machine Hyprland override file exists"
-touch ~/.config/hypr/local.conf
+# Raymond's idle policy: display stays on, no auto-lock on idle (locking is
+# deliberate via SUPER+CTRL+L; sleep still locks via omarchy-sleep-lock).
+# These disable the shell's default screensaver@150s / lock@300s:
+# "stay-awake" is the idle kill-switch (omarchy-toggle-idle stay-awake),
+# screensaver-off additionally retires the screensaver outright.
+mkdir -p ~/.local/state/omarchy/indicators
+touch ~/.local/state/omarchy/indicators/stay-awake
+touch ~/.local/state/omarchy/toggles/screensaver-off
+
+echo "==> Ensuring per-machine Hyprland override files exist"
+# local.lua: per-machine overrides, loaded last by hyprland.lua.
+[ -e ~/.config/hypr/local.lua ] || printf '%s\n' \
+    "-- Per-machine Hyprland overrides (not tracked in dotfiles)." \
+    "-- Loaded last from hyprland.lua, so values here win." \
+    > ~/.config/hypr/local.lua
+# monitors.lua: machine-local monitor config; seed a 1x default.
+[ -e ~/.config/hypr/monitors.lua ] || printf '%s\n' \
+    "-- Machine-local monitor config (not tracked in dotfiles)." \
+    'hl.env("GDK_SCALE", "1")' \
+    'hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })' \
+    > ~/.config/hypr/monitors.lua
 
 if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/udev" ]; then
     echo "==> Symlinking udev rules into /etc/udev/rules.d/"

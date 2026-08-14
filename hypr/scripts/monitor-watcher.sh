@@ -45,8 +45,13 @@ heal_wallpaper() {
     # (and swaybg) can survive a dock/lid transition as a running process while
     # losing its output binding — pgrep still finds it, but the screen is black.
     # The old both-dead pgrep check skipped exactly that case, which is what
-    # left the external dark on lid-close (2026-07-10). namespace = mpvpaper|swaybg.
-    hyprctl layers 2>/dev/null | grep -qE 'namespace: (mpvpaper|swaybg)' && return
+    # left the external dark on lid-close (2026-07-10).
+    # namespace = mpvpaper|swaybg (pre-Quattro) or omarchy-background (the
+    # Quattro shell's own image layer). A video theme whose mpvpaper died
+    # while the shell's static fallback survived slips past this fast path;
+    # wallpaper-watchdog.timer restores the video within ~30s and the
+    # fallback art keeps the screen from going black meanwhile.
+    hyprctl layers 2>/dev/null | grep -qE 'namespace: (mpvpaper|swaybg|omarchy-background)' && return
     local now; now=$(date +%s)
     (( now - _last_wp_refire < 8 )) && return
     _last_wp_refire=$now

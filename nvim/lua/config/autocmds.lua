@@ -168,8 +168,16 @@ vim.api.nvim_create_autocmd("VimEnter", {
 -- Hyprland border and the buffer content. Reading colors.toml at runtime keeps
 -- this theme-agnostic across `omarchy-theme-set` swaps.
 local function read_theme_bg()
-  local path = vim.fn.expand("~/.config/omarchy/current/theme/colors.toml")
-  local f = io.open(path, "r")
+  -- Omarchy 4 keeps the built theme under ~/.local/state; pre-Quattro used
+  -- ~/.config. Try both so this works across the upgrade.
+  local f
+  for _, path in ipairs({
+    vim.fn.expand("~/.local/state/omarchy/current/theme/colors.toml"),
+    vim.fn.expand("~/.config/omarchy/current/theme/colors.toml"),
+  }) do
+    f = io.open(path, "r")
+    if f then break end
+  end
   if not f then return nil end
   for line in f:lines() do
     local hex = line:match('^%s*background%s*=%s*"#?(%x+)"')

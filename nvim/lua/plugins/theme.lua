@@ -7,11 +7,17 @@
 -- Fallback: on macOS or any non-Omarchy machine, use LazyVim's default
 -- (Tokyo Night Night) so the install doesn't blow up.
 
-local omarchy_theme = vim.fn.expand("~/.config/omarchy/current/theme/neovim.lua")
-local chunk = loadfile(omarchy_theme)
-if chunk then
-  local ok, spec = pcall(chunk)
-  if ok and spec then return spec end
+-- Omarchy 4 keeps the built theme under ~/.local/state; pre-Quattro used
+-- ~/.config. Try both so this works across the upgrade.
+for _, omarchy_theme in ipairs({
+  vim.fn.expand("~/.local/state/omarchy/current/theme/neovim.lua"),
+  vim.fn.expand("~/.config/omarchy/current/theme/neovim.lua"),
+}) do
+  local chunk = loadfile(omarchy_theme)
+  if chunk then
+    local ok, spec = pcall(chunk)
+    if ok and spec then return spec end
+  end
 end
 
 return {

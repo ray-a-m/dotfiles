@@ -1,10 +1,18 @@
 #!/bin/bash
-# Swap swaybg ↔ mpvpaper based on whether the current wallpaper is a
-# video. Omarchy's bg-next always launches swaybg, which silently
-# fails on video files.
+# Wallpaper daemon manager, dual-era so it works on both sides of the
+# Omarchy 3→4 (Quattro) upgrade.
+#
+# Pre-Quattro: omarchy's bg-next always launches swaybg, which silently
+# fails on video files — swap swaybg ↔ mpvpaper by extension.
+#
+# Quattro: the omarchy-shell background plugin renders images itself (its
+# picker never links a video), so this hook only manages mpvpaper for
+# video wallpapers. mpvpaper is spawned fresh each time so its surface
+# lands ABOVE the shell's static background layer — which stays underneath
+# as fallback art and as the lock-screen image.
 
-CURRENT_BG=$(readlink -f "$HOME/.config/omarchy/current/background" 2>/dev/null)
-[[ -z $CURRENT_BG || ! -e $CURRENT_BG ]] && exit 0
+STATE_BG="$HOME/.local/state/omarchy/current/background"
+LEGACY_BG="$HOME/.config/omarchy/current/background"
 
 # Kill by exact name and wait until it's actually gone (up to ~3s).
 kill_and_wait() {
@@ -16,9 +24,9 @@ kill_and_wait() {
   done
 }
 
-# Reap any swaybg for the next N seconds. Guards both directions of the
-# login race: upstream autostart may spawn swaybg *before* or *after* this
-# hook fires (cold-boot ordering jitters), and either way swaybg's empty
+# Reap any swaybg for the next N seconds (pre-Quattro only). Guards both
+# directions of the login race: upstream autostart may spawn swaybg
+# *before* or *after* this hook fires, and either way swaybg's empty
 # surface ends up on top of mpvpaper.
 reap_swaybg_window() {
   local seconds=${1:-8}
@@ -29,19 +37,49 @@ reap_swaybg_window() {
   disown
 }
 
-EXT="${CURRENT_BG##*.}"
-case "${EXT,,}" in
-  mp4|webm|mkv|mov|avi)
+spawn_mpvpaper() {
+  kill_and_wait mpvpaper
+  setsid uwsm-app -- mpvpaper -f -o "no-audio loop hwdec=auto panscan=1.0 speed=0.5" '*' "$1" >/dev/null 2>&1 &
+}
+
+is_video() {
+  case "${1##*.}" in
+    mp4|MP4|webm|WEBM|mkv|MKV|mov|MOV|avi|AVI) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if [[ -e $LEGACY_BG || -L $LEGACY_BG ]]; then
+  # --- Pre-Quattro path (unchanged behavior) -------------------------------
+  CURRENT_BG=$(readlink -f "$LEGACY_BG" 2>/dev/null)
+  [[ -z $CURRENT_BG || ! -e $CURRENT_BG ]] && exit 0
+
+  if is_video "$CURRENT_BG"; then
     kill_and_wait swaybg
-    kill_and_wait mpvpaper
     reap_swaybg_window 8
-    setsid uwsm-app -- mpvpaper -f -o "no-audio loop hwdec=auto panscan=1.0 speed=0.5" '*' "$CURRENT_BG" >/dev/null 2>&1 &
-    ;;
-  *)
-    if pgrep -x mpvpaper >/dev/null; then
-      kill_and_wait mpvpaper
-      kill_and_wait swaybg
-      setsid uwsm-app -- swaybg -i "$CURRENT_BG" -m fill >/dev/null 2>&1 &
-    fi
-    ;;
-esac
+    spawn_mpvpaper "$CURRENT_BG"
+  elif pgrep -x mpvpaper >/dev/null; then
+    kill_and_wait mpvpaper
+    kill_and_wait swaybg
+    setsid uwsm-app -- swaybg -i "$CURRENT_BG" -m fill >/dev/null 2>&1 &
+  fi
+else
+  # --- Quattro path --------------------------------------------------------
+  # The current/background link only ever points at an image. A video
+  # wallpaper lives in the theme's user backgrounds dir, invisible to the
+  # shell's image-only picker — find it there.
+  THEME_NAME=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
+  VIDEO=""
+  if [[ -n $THEME_NAME ]]; then
+    VIDEO=$(find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
+      "$HOME/.local/state/omarchy/current/theme/backgrounds/" -maxdepth 1 -type f \
+      \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' -o -iname '*.avi' \) \
+      2>/dev/null | sort | head -n1)
+  fi
+
+  if [[ -n $VIDEO ]]; then
+    spawn_mpvpaper "$VIDEO"
+  else
+    kill_and_wait mpvpaper
+  fi
+fi
