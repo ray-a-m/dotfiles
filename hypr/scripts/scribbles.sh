@@ -13,7 +13,8 @@
 # which never matched, so every press spawned a new window.
 
 if hyprctl clients | grep -q '(special:notes)'; then
-    hyprctl dispatch togglespecialworkspace notes
+    # Quattro Lua provider: the dispatch argument is evaluated as Lua.
+    hyprctl dispatch 'hl.dsp.workspace.toggle_special("notes")'
 else
     uwsm-app -- kitty --class notes -e yazi /home/raymond/Dropbox/scribbles &
 fi

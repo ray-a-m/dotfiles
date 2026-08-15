@@ -53,11 +53,13 @@ fi
 # Preserve each monitor's existing resolution, refresh, and absolute (x,y)
 # position — only the scale field changes. `auto` for position would let
 # Hyprland re-layout, breaking stable multi-monitor arrangements.
+# Quattro Lua provider: `hyprctl keyword` is rejected ("Use eval"), so the
+# monitor spec is applied as an hl.monitor(...) expression instead.
 jq -r --arg s "$new" \
-  '.[] | "\(.name),\(.width)x\(.height)@\(.refreshRate),\(.x)x\(.y),\($s)"' \
+  '.[] | "hl.monitor({ output = \"\(.name)\", mode = \"\(.width)x\(.height)@\(.refreshRate)\", position = \"\(.x)x\(.y)\", scale = \($s) })"' \
   <<<"$mons" \
-  | while read -r spec; do
-      hyprctl keyword monitor "$spec" >/dev/null
+  | while read -r expr; do
+      hyprctl eval "$expr" >/dev/null
     done
 
 # Read back the scale Hyprland actually settled on. If it differs from our

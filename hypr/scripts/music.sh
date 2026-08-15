@@ -9,10 +9,14 @@
 # Mirrors the detection pattern in scribbles.sh: `hyprctl clients` prints
 # `workspace: <id> (<name>)`, so we grep for `(special:music)`.
 
+# Quattro: the Lua config provider evaluates the dispatch argument as Lua,
+# so the classic `togglespecialworkspace music` form is a syntax error.
+toggle_music() { hyprctl dispatch 'hl.dsp.workspace.toggle_special("music")'; }
+
 if hyprctl clients | grep -q '(special:music)'; then
-    hyprctl dispatch togglespecialworkspace music
+    toggle_music
 else
-    hyprctl dispatch togglespecialworkspace music
+    toggle_music
     uwsm-app -- kitty --class spotify-player -e spotify_player &
     # Wait for spotify-player's window to register before launching cmus,
     # so it claims the left half of the tile split. Without this the two
