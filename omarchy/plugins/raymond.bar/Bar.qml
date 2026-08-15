@@ -1147,18 +1147,20 @@ Item {
         // the tiled-window column edge (gaps_out = 10 in looknfeel.lua —
         // keep the literal in sync with it).
         // No pill on the left (see above), so the grid itself is the visible
-        // edge — no pill overhang to compensate for.
+        // edge — no pill overhang to compensate for. The +3 is a deliberate
+        // optical nudge inward from the window column (Raymond's eye).
         LeftModules {
           id: leftMods
           anchors.left: parent.left
-          anchors.leftMargin: 10
+          anchors.leftMargin: 10 + 3
           anchors.verticalCenter: parent.verticalCenter
         }
 
+        // Same +3 optical nudge inward as the left section.
         RightModules {
           id: rightMods
           anchors.right: parent.right
-          anchors.rightMargin: 10 + Style.space(3)
+          anchors.rightMargin: 10 + 3 + Style.space(3)
           anchors.verticalCenter: parent.verticalCenter
         }
       }

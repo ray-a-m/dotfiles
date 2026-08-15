@@ -95,13 +95,22 @@ Item {
   }
 
   Rectangle {
+    id: lockCanvas
     anchors.fill: parent
     // Black fallback so the lock is never white while the image loads.
     color: "black"
 
+    // How far the whole composition (logo, baked lock symbol, input box)
+    // sits above Plymouth's dead-center placement. The image and the box
+    // shift together, so the box keeps its baked +158 spot in the artwork.
+    readonly property int lockRaise: 40
+
     Image {
       id: wallpaper
-      anchors.fill: parent
+      width: parent.width
+      height: parent.height
+      anchors.centerIn: parent
+      anchors.verticalCenterOffset: -lockCanvas.lockRaise
       source: root.loadBackground
         ? "file://" + Quickshell.env("HOME") + "/.config/hypr/thinkpad-lock.png"
         : ""
@@ -133,10 +142,9 @@ Item {
       width: root.fieldWidth
       height: root.fieldHeight
       anchors.centerIn: parent
-      // Below the native-size logo baked into thinkpad-lock.png. Plymouth
-      // puts its entry box at +158; Raymond prefers the lock's box a touch
-      // higher, so this sits ~12px under the logo instead of 40px.
-      anchors.verticalCenterOffset: 130
+      // Plymouth's +158 relative to the artwork (which keeps the box
+      // aligned with the baked lock symbol), minus the shared raise.
+      anchors.verticalCenterOffset: 158 - lockCanvas.lockRaise
       color: "#141414"
       borderSpec: root.inputBorderSpec
       radius: 0
