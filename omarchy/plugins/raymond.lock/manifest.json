@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "raymond.lock",
+  "name": "ThinkPad lock screen",
+  "version": "1.0.0",
+  "author": "Raymond Maung",
+  "description": "Stock lock fork that replicates the pre-Quattro hyprlock look: crisp thinkpad-lock.png over black (no blur), Plymouth-matched 286x48 input box 158px below center, ThinkPad palette independent of the active theme.",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.lock"
+  }
+}

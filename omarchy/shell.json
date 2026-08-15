@@ -59,11 +59,15 @@
   "plugins": [
     {
       "id": "raymond.menu"
+    },
+    {
+      "id": "raymond.lock"
     }
   ],
   "version": 1,
   "disabledPlugins": [
-    "omarchy.menu"
+    "omarchy.menu",
+    "omarchy.lock"
   ],
   "cloneSourceRestores": [
     "raymond.menu"

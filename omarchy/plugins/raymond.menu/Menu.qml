@@ -93,7 +93,10 @@ Item {
   property color foreground: Color.menu.text
   property color border: Color.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  property color scrim: Color.menu.scrim
+  // Clone patch: no scrim — the screen behind an open menu stays exactly as
+  // it is instead of dimming (the full-surface MouseArea still catches an
+  // outside click to close).
+  property color scrim: "transparent"
   property color selectedBackground: Color.menu.selectedBackground
   property color selectedText: Color.menu.selectedText
   property color selectedBorder: Color.menu.selectedBorder
