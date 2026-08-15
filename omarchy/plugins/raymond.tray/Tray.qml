@@ -9,7 +9,7 @@ import "TrayModel.js" as TrayModel
 
 BarWidget {
   id: root
-  moduleName: "omarchy.tray"
+  moduleName: "raymond.tray"
 
   property bool expanded: false
   property bool managePopupOpen: false
@@ -152,11 +152,15 @@ BarWidget {
     return item.tooltipTitle || item.title || item.id || ""
   }
 
+  // Pill fork: no hover drawer. An item either sits pinned in the bar or it
+  // does not appear at all — nothing is stashed behind the chevron reveal.
+  // Pin an item by adding its id to this widget's `pinned` array in
+  // shell.json's tray layout entry.
   function classifyItem(item) {
     var iid = String(item.id || "")
     if (hiddenIds.indexOf(iid) !== -1) return "hidden"
     if (pinnedIds.indexOf(iid) !== -1) return "pinned"
-    return "drawer"
+    return "hidden"
   }
 
   function ownedByOmarchy(item) {
@@ -182,7 +186,7 @@ BarWidget {
 
   function persistTrayState(pinned, hidden) {
     if (!root.bar || !root.bar.shell || typeof root.bar.shell.updateEntryInline !== "function") return
-    var id = root.moduleName || "omarchy.tray"
+    var id = root.moduleName || "raymond.tray"
     root.bar.shell.updateEntryInline(id, { id: id, pinned: pinned, hidden: hidden })
   }
 
@@ -232,7 +236,9 @@ BarWidget {
       id: horizontalTrayRoot
 
       readonly property int pinnedWidth: pinnedRow.implicitWidth
-      readonly property int drawerBlockWidth: root.allItems.length > 0 ? expandIcon.implicitWidth + root.drawerExtent : 0
+      // Pill fork: drawerCount is always 0 (see classifyItem), so no chevron
+      // block is ever reserved.
+      readonly property int drawerBlockWidth: root.drawerCount > 0 ? expandIcon.implicitWidth + root.drawerExtent : 0
 
       implicitWidth: pinnedWidth + drawerBlockWidth
       implicitHeight: root.barSize
@@ -257,7 +263,7 @@ BarWidget {
         x: 0
         width: horizontalTrayRoot.drawerBlockWidth
         height: root.barSize
-        visible: root.allItems.length > 0
+        visible: root.drawerCount > 0
 
         HoverHandler {
           onHoveredChanged: root.expanded = hovered
@@ -303,7 +309,7 @@ BarWidget {
         x: drawerArea.x + horizontalTrayRoot.drawerBlockWidth
         anchors.verticalCenter: parent.verticalCenter
         spacing: root.trayItemGap
-        leftPadding: root.pinnedItems.length > 0 && root.allItems.length > 0 ? root.trayJoinGap : 0
+        leftPadding: root.pinnedItems.length > 0 && root.drawerCount > 0 ? root.trayJoinGap : 0
         Repeater {
           model: root.pinnedItems
           TrayItem {}
@@ -319,7 +325,8 @@ BarWidget {
       id: verticalTrayRoot
 
       readonly property int pinnedHeight: pinnedCol.implicitHeight
-      readonly property int drawerBlockHeight: root.allItems.length > 0 ? expandIcon.implicitHeight + root.drawerExtent : 0
+      // Pill fork: drawerCount is always 0 (see classifyItem) — no chevron.
+      readonly property int drawerBlockHeight: root.drawerCount > 0 ? expandIcon.implicitHeight + root.drawerExtent : 0
 
       implicitWidth: root.barSize
       implicitHeight: pinnedHeight + drawerBlockHeight
@@ -339,7 +346,7 @@ BarWidget {
         y: 0
         width: root.barSize
         height: verticalTrayRoot.drawerBlockHeight
-        visible: root.allItems.length > 0
+        visible: root.drawerCount > 0
 
         HoverHandler {
           onHoveredChanged: root.expanded = hovered
@@ -386,7 +393,7 @@ BarWidget {
         y: drawerArea.y + verticalTrayRoot.drawerBlockHeight
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: root.trayItemGap
-        topPadding: root.pinnedItems.length > 0 && root.allItems.length > 0 ? root.trayJoinGap : 0
+        topPadding: root.pinnedItems.length > 0 && root.drawerCount > 0 ? root.trayJoinGap : 0
         Repeater {
           model: root.pinnedItems
           TrayItem {}
