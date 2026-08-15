@@ -1134,17 +1134,21 @@ Item {
           anchors.rightMargin: -Style.space(3)
         }
 
+        // The pills extend space(3) past the module rows, so an extra
+        // space(3) on the row margin lands the pill's OUTER edge exactly on
+        // the tiled-window column edge (gaps_out = 10 in looknfeel.lua —
+        // keep the literal in sync with it).
         LeftModules {
           id: leftMods
           anchors.left: parent.left
-          anchors.leftMargin: Style.space(8)
+          anchors.leftMargin: 10 + Style.space(3)
           anchors.verticalCenter: parent.verticalCenter
         }
 
         RightModules {
           id: rightMods
           anchors.right: parent.right
-          anchors.rightMargin: Style.space(8)
+          anchors.rightMargin: 10 + Style.space(3)
           anchors.verticalCenter: parent.verticalCenter
         }
       }

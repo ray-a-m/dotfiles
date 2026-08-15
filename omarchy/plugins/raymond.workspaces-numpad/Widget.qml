@@ -30,8 +30,11 @@ BarWidget {
   // Row-major numpad order.
   readonly property var numpadIds: [7, 8, 9, 4, 5, 6, 1, 2, 3]
 
-  // Fit three touching rows inside the bar, minus a 1 px breather each side.
-  readonly property int cellSize: Math.max(6, Math.floor((root.barSize - 2) / 3))
+  // The section pill hugs the slot, so a grid as tall as the bar pokes its
+  // corner cells past the pill's rounded ends (the "stray square" look).
+  // Inset the grid on every side instead: the slot stays bar-height like
+  // the stock widgets, the grid floats centered inside the rounding.
+  readonly property int cellSize: Math.max(6, Math.floor((root.barSize - Style.space(10)) / 3))
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values
@@ -46,12 +49,12 @@ BarWidget {
     root.bar.run("hyprctl dispatch " + Util.shellQuote("hl.dsp.focus({ workspace = \"" + id + "\" })"))
   }
 
-  implicitWidth: grid.width + (root.vertical ? 0 : Style.spaceReal(1.5))
-  implicitHeight: grid.height
+  implicitWidth: grid.width + (root.vertical ? 0 : Style.space(4))
+  implicitHeight: root.barSize
 
   Grid {
     id: grid
-    anchors.verticalCenter: parent.verticalCenter
+    anchors.centerIn: parent
     columns: 3
     rowSpacing: 0
     columnSpacing: 0
