@@ -12,6 +12,10 @@ git clone https://github.com/Yilmaz41/Thinkpad-boot-screen ~/.config/omarchy/the
 
 Then open the Omarchy menu → **Style → Unlock** and select **Thinkpad**. That's it — Omarchy handles the Plymouth config, SDDM login screen, and initramfs rebuild automatically.
 
+Or from a terminal: `omarchy-plymouth-set-by-theme thinkpad` (needs sudo).
+
+Note: an Omarchy package update replaces `/usr/share/plymouth/themes/omarchy/logo.png` with the stock logo. If the boot screen shows the Omarchy logo again, re-run the command above. To check: `cmp /usr/share/plymouth/themes/omarchy/logo.png ~/.config/omarchy/themes/thinkpad/unlock.png`.
+
 ## What's included
 
 | File | Purpose |
