@@ -1006,11 +1006,16 @@ Item {
       window: barWindow
     }
 
+    // Pill fork: float the pills a hair off the screen edge (the GlassPill
+    // bar sat at margins.top=8). Applies on the bar's own edge; the auto
+    // exclusion zone grows with the margin, so windows keep their gap.
+    readonly property int edgeInset: Style.space(5)
+
     margins {
-      top: root.barHidden && root.position === "top" ? -root.barSize : 0
-      bottom: root.barHidden && root.position === "bottom" ? -root.barSize : 0
-      left: root.barHidden && root.position === "left" ? -root.barSize : 0
-      right: root.barHidden && root.position === "right" ? -root.barSize : 0
+      top: root.position === "top" ? (root.barHidden ? -(root.barSize + barWindow.edgeInset) : barWindow.edgeInset) : 0
+      bottom: root.position === "bottom" ? (root.barHidden ? -(root.barSize + barWindow.edgeInset) : barWindow.edgeInset) : 0
+      left: root.position === "left" ? (root.barHidden ? -(root.barSize + barWindow.edgeInset) : barWindow.edgeInset) : 0
+      right: root.position === "right" ? (root.barHidden ? -(root.barSize + barWindow.edgeInset) : barWindow.edgeInset) : 0
     }
 
     anchors {
@@ -1120,8 +1125,11 @@ Item {
         // content. GlassPill look — tint from the bar background, faint
         // foreground border; compositor blur comes from the omarchy-bar
         // layer rule in hypr/windows.lua.
+        // The left section holds only the workspaces grid, which reads as
+        // its own mark — a pill behind it looked like an odd circle, so the
+        // left section paints no pill (the squares float bare).
         SectionPill {
-          visible: leftMods.width > 0
+          visible: false
           anchors.fill: leftMods
           anchors.leftMargin: -Style.space(3)
           anchors.rightMargin: -Style.space(3)
@@ -1138,10 +1146,12 @@ Item {
         // space(3) on the row margin lands the pill's OUTER edge exactly on
         // the tiled-window column edge (gaps_out = 10 in looknfeel.lua —
         // keep the literal in sync with it).
+        // No pill on the left (see above), so the grid itself is the visible
+        // edge — no pill overhang to compensate for.
         LeftModules {
           id: leftMods
           anchors.left: parent.left
-          anchors.leftMargin: 10 + Style.space(3)
+          anchors.leftMargin: 10
           anchors.verticalCenter: parent.verticalCenter
         }
 

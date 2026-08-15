@@ -56,7 +56,11 @@
     "lock": 300,
     "screensaver": 150
   },
-  "plugins": [],
+  "plugins": [
+    {
+      "id": "raymond.menu"
+    }
+  ],
   "version": 1,
   "disabledPlugins": [
     "omarchy.menu"
