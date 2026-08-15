@@ -2,6 +2,13 @@
 # `#fafcff` — load-bearing for legibility at ~80% window opacity over
 # wallpapers with darker regions.
 
+# The palette is light, but the SYSTEM scheme stays dark: pre-Quattro the
+# scheme never derived from the palette (no light.mode marker = dark), so
+# the setup was latte terminals + a dark browser/GTK. Quattro's background-
+# luminance auto-detect would classify this palette "light" and flip
+# LibreWolf/GTK light — pin the mode so it can't.
+mode = "dark"
+
 accent = "#1e66f5"
 cursor = "#4c4f69"
 foreground = "#4c4f69"
