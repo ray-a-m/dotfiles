@@ -83,3 +83,11 @@ else
     kill_and_wait mpvpaper
   fi
 fi
+
+# Quattro's theme-set generates the kitty theme file but never signals
+# kitty (it only live-reloads its own first-class terminals), so running
+# windows keep the old colors until restarted. SIGUSR1 = kitty's
+# reload-config signal.
+pkill -USR1 -x kitty 2>/dev/null
+
+exit 0
