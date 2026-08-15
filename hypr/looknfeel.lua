@@ -50,6 +50,11 @@ hl.config({
       -- fully-transparent layer shells.
       ignore_opacity = true,
       new_optimizations = true,
+      -- Omarchy 3.8 shipped this on and Quattro's default dropped it.
+      -- Without it, special-workspace windows skip blur entirely, so the
+      -- 0.65-alpha music kitties read as glassless (far more transparent
+      -- than pre-Quattro).
+      special = true,
     },
 
     -- Shadow split between active and inactive so the focus state is
