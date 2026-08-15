@@ -105,11 +105,17 @@ Item {
       source: root.loadBackground
         ? "file://" + Quickshell.env("HOME") + "/.config/hypr/thinkpad-lock.png"
         : ""
-      fillMode: Image.PreserveAspectCrop
+      // Pad, not PreserveAspectCrop: the PNG is a black field with a small
+      // centered logo, so rendering it 1:1 centered keeps the logo at its
+      // native size and true center on EVERY panel — cropping rescales the
+      // image on the undocked laptop screen (different resolution), which
+      // shifts the baked lock symbol away from the input field. Pad is also
+      // exactly how Plymouth composes the same art at boot.
+      fillMode: Image.Pad
+      horizontalAlignment: Image.AlignHCenter
+      verticalAlignment: Image.AlignVCenter
       asynchronous: true
       cache: false
-      sourceSize.width: width
-      sourceSize.height: height
     }
 
     // Lock fork: no blur — the ThinkPad image renders crisp, like hyprlock
@@ -127,10 +133,10 @@ Item {
       width: root.fieldWidth
       height: root.fieldHeight
       anchors.centerIn: parent
-      // 40px below the native-size logo baked into thinkpad-lock.png
-      // (= 158px below screen center on the 2560x1440 panel), exactly
-      // where Plymouth draws its entry box.
-      anchors.verticalCenterOffset: 158
+      // Below the native-size logo baked into thinkpad-lock.png. Plymouth
+      // puts its entry box at +158; Raymond prefers the lock's box a touch
+      // higher, so this sits ~12px under the logo instead of 40px.
+      anchors.verticalCenterOffset: 130
       color: "#141414"
       borderSpec: root.inputBorderSpec
       radius: 0
