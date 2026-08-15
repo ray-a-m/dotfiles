@@ -1,3 +1,4 @@
+onboarding = false
 # herdr user config — overrides merged over the built-in defaults.
 # See `herdr --default-config` for every option and its documentation.
 
@@ -13,3 +14,7 @@ redraw_on_focus_gained = false
 # Safe because herdr runs in a bare terminal OUTSIDE tmux — if ever nested,
 # tmux would grab Alt+Space first.
 prefix = "alt+space"
+
+[theme]
+name = "catppuccin-latte"
+auto_switch = false
