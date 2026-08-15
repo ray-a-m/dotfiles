@@ -10,12 +10,16 @@
 # downscaled to fit its panel (lower density but readable, and the lid is
 # the secondary surface anyway).
 #
-# Toggle file paths match what `omarchy-hyprland-toggle` reads, so SUPER+CTRL+
-# ALT+DEL keeps working — it'll just see a non-empty file and treat the
-# state as "mirror on", same as omarchy's own version.
+# Toggle files are Lua, in the names Quattro's toggle loader globs (it reads
+# *.lua only; toggles.lua require_all's the directory). The mirror file keeps
+# the stock name, so SUPER+CTRL+ALT+DEL still sees "mirror on"; the disable
+# state uses the stock clamshell flag, so omarchy-hyprland-monitor-clamshell
+# recognizes and clears it on lid-open.
 
-_mirror_toggle="$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
-_disable_toggle="$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
+_toggle_dir="$HOME/.local/state/omarchy/toggles/hypr"
+_mirror_toggle="$_toggle_dir/internal-monitor-mirror.lua"
+_clamshell_toggle="$_toggle_dir/internal-monitor-clamshell.lua"
+_disable_toggle="$_toggle_dir/internal-monitor-disable.lua"
 
 # Debounced external-monitor presence check, for the SUSPEND decision only.
 # omarchy-hw-external-monitors reads DRM connector status, which momentarily
@@ -38,22 +42,29 @@ external_present_stable() {
 
 mirror_on() {
     local internal external
-    internal=$(hyprctl monitors -j | jq -r '.[] | select(.name | contains("eDP")).name' | head -n 1)
+    internal=$(hyprctl monitors all -j | jq -r '.[] | select(.name | contains("eDP")).name' | head -n 1)
     external=$(hyprctl monitors -j | jq -r '.[] | select(.name | contains("eDP") | not).name' | head -n 1)
     [[ -z $internal || -z $external ]] && return 1
 
-    local desired="monitor=$internal, preferred, auto, auto, mirror, $external"
+    local desired
+    desired=$(printf 'hl.monitor({ output = "%s", mode = "preferred", position = "auto", scale = 1, mirror = "%s" })' "$internal" "$external")
     # Idempotent: reevaluate() calls mirror_on on every event, and a redundant
-    # hyprctl reload re-applies monitor rules (churning outputs → quickshell/
+    # hyprctl reload re-applies monitor rules (churning outputs → shell/
     # wallpaper blink). If we're already mirroring exactly this with no stale
-    # disable toggle, do nothing.
-    [[ "$(cat "$_mirror_toggle" 2>/dev/null)" == "$desired" && ! -e "$_disable_toggle" ]] && return 0
+    # disable/clamshell toggle, do nothing.
+    [[ "$(cat "$_mirror_toggle" 2>/dev/null)" == "$desired" && ! -e "$_disable_toggle" && ! -e "$_clamshell_toggle" ]] && return 0
 
-    # Mirror takes precedence over disable.
-    rm -f "$_disable_toggle"
-    mkdir -p "$(dirname "$_mirror_toggle")"
+    # Mirror takes precedence over disable/clamshell; removing those flags in
+    # the same reload also re-enables the internal panel on lid-open.
+    local was_disabled=0
+    [[ -e "$_disable_toggle" || -e "$_clamshell_toggle" ]] && was_disabled=1
+    rm -f "$_disable_toggle" "$_clamshell_toggle"
+    mkdir -p "$_toggle_dir"
     echo "$desired" > "$_mirror_toggle"
     hyprctl reload >/dev/null 2>&1
+    if (( was_disabled )); then
+        hyprctl dispatch "hl.dsp.dpms({ action = \"enable\", monitor = \"$internal\" })" >/dev/null 2>&1
+    fi
 }
 
 # Disable the internal panel in a SINGLE reload — straight from mirror to
@@ -69,8 +80,15 @@ internal_off_atomic() {
     local internal
     internal=$(hyprctl monitors all -j | jq -r '.[] | select(.name | contains("eDP")).name' | head -n 1)
     [[ -z $internal ]] && return 1
+    # Exact stock-clamshell format, so omarchy-hyprland-monitor-clamshell's
+    # enable path recognizes the flag and its own writes dedupe against ours.
+    local desired
+    desired=$(printf 'hl.monitor({ output = "%s", disabled = true })' "$internal")
+    # Idempotent, same reasoning as mirror_on: no redundant reload when the
+    # flag is already in place (reevaluate fires on every monitor event).
+    [[ "$(cat "$_clamshell_toggle" 2>/dev/null)" == "$desired" && ! -e "$_mirror_toggle" ]] && return 0
     rm -f "$_mirror_toggle"
-    mkdir -p "$(dirname "$_disable_toggle")"
-    echo "monitor=$internal,disable" > "$_disable_toggle"
+    mkdir -p "$_toggle_dir"
+    printf '%s\n' "$desired" > "$_clamshell_toggle"
     hyprctl reload >/dev/null 2>&1
 }

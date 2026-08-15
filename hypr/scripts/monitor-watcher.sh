@@ -59,31 +59,25 @@ heal_wallpaper() {
     "$HOME/.config/omarchy/hooks/theme-set"
 }
 
-# Quickshell sometimes survives a dock transition as a process but loses
-# its layer surfaces — pills disappear even though the process is alive
-# (observed 2026-06-10: bar pills gone after docked→undocked, fixed by
-# restart). Check for any quickshell-* layer surface; if none, restart.
-# Normal events where the surfaces survive are no-ops.
-heal_quickshell() {
-    hyprctl layers 2>/dev/null | grep -q 'namespace: quickshell-' && return
-    # quickshell loses its layer surfaces when its output is reconfigured during
+# The shell (quickshell) sometimes survives a dock transition as a process
+# but loses its layer surfaces — the bar disappears even though the process
+# is alive (observed 2026-06-10 on the GlassPill bar; same failure mode).
+# Check for the omarchy-bar layer surface; if none, restart the shell via
+# omarchy-restart-shell. Normal events where the surface survives are no-ops.
+heal_shell() {
+    hyprctl layers 2>/dev/null | grep -q 'namespace: omarchy-bar' && return
+    # The shell loses its layer surfaces when its output is reconfigured during
     # a dock/lid transition and does NOT re-anchor on its own — it needs a
     # restart to repaint. Do it promptly (a grace window just prolongs the dark
     # screen), but debounce with a cooldown: the transition fires a burst of
     # monitor events, and restarting on each one (4x in 5s observed 2026-07-10)
-    # kills quickshell before it can map its surfaces, so it never comes back.
+    # kills the shell before it can map its surfaces, so it never comes back.
     # One restart per window; a fresh instance gets the whole window to come up.
     local now; now=$(date +%s)
     (( now - _last_qs_restart < 8 )) && return
     _last_qs_restart=$now
-    log "quickshell has no layer surfaces post-event; restarting"
-    pkill -x quickshell 2>/dev/null
-    for _ in $(seq 1 20); do
-        pgrep -x quickshell >/dev/null || break
-        sleep 0.1
-    done
-    setsid uwsm-app -- quickshell -d -n >/dev/null 2>&1 &
-    disown
+    log "shell has no bar layer post-event; restarting via omarchy-restart-shell"
+    omarchy-restart-shell >/dev/null 2>&1
 }
 
 reevaluate() {
@@ -134,7 +128,7 @@ reevaluate
 
 socat -U - "UNIX-CONNECT:$sock" | while IFS= read -r line; do
     case "$line" in
-        monitoradded*|monitorremoved*) reevaluate; heal_wallpaper; heal_quickshell ;;
+        monitoradded*|monitorremoved*) reevaluate; heal_wallpaper; heal_shell ;;
     esac
 done
 
