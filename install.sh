@@ -87,7 +87,7 @@ install_linux_deps() {
     fi
 
     if [ "$pm" != "pacman" ]; then
-        echo "==> JetBrainsMono Nerd Font (kitty/quickshell/swayosd) comes from pacman on Arch;"
+        echo "==> JetBrainsMono Nerd Font (kitty/omarchy shell) comes from pacman on Arch;"
         echo "    on $pm install JetBrainsMono.zip manually from"
         echo "    https://github.com/ryanoasis/nerd-fonts/releases/latest"
     fi

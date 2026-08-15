@@ -8,18 +8,13 @@ o.window("^spotify-player$", { workspace = "special:music silent" })
 o.window("^cmus$", { workspace = "special:music silent" })
 o.window("^notes$", { workspace = "special:notes" })
 
--- GlassPill Quickshell bar surfaces — compositor blur via namespace prefix.
--- Without ignore_alpha, blur applies to every pixel of the (rectangular)
--- layer surface — including the fully-transparent pixels in the corners of
--- a rounded-rectangle GlassPill. Those corners show blurred wallpaper,
--- reading as visible square halos around the pill's rounded edges. 0.1 is
--- below the pill's tintAlpha (0.22) but above the transparent corners
--- (alpha 0) — so the pill blurs as before and the corners go untouched.
-hl.layer_rule({ match = { namespace = "^(quickshell-).*" }, blur = true, ignore_alpha = 0.1 })
-
 -- Pill-fork omarchy bar (raymond.bar plugin): the bar window is fully
--- transparent and each section paints a translucent pill, so it gets the
--- same blur + ignore_alpha treatment as the old GlassPill surfaces.
+-- transparent and each section paints a translucent pill. Without
+-- ignore_alpha, blur applies to every pixel of the (rectangular) layer
+-- surface — including the fully-transparent pixels around the pills and in
+-- their rounded corners, which then show blurred wallpaper as visible
+-- square halos. 0.1 is below the pill's tintAlpha (0.22) but above the
+-- transparent surround (alpha 0), so pills blur and the rest goes untouched.
 hl.layer_rule({ match = { namespace = "^omarchy-bar$" }, blur = true, ignore_alpha = 0.1 })
 
 -- Opacity tiers (last-match-wins). Omarchy tags every window with

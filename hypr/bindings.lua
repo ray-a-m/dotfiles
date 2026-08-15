@@ -26,8 +26,6 @@ hl.unbind("SUPER + SHIFT + F")
 hl.unbind("SUPER + ALT + SHIFT + F")
 o.bind("SUPER + E", "File manager (yazi)", "uwsm-app -- kitty --class yazi -e yazi")
 
-o.bind("SUPER + SHIFT + O", "Notes", { launch = "obsidian", focus = "^obsidian$" })
-
 -- vim-style window navigation (replaces SUPER+arrow defaults) ---------------
 -- SUPER+J (togglesplit), SUPER+K (keybindings viewer — still reachable via
 -- the SUPER+R menu), and SUPER+L (workspace layout toggle) are defaults that

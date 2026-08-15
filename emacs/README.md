@@ -13,7 +13,7 @@ friction: change things as they annoy you.
 support, and a compat layer wasn't worth it for a prose-only Emacs. The custom
 key layer is scoped to what the defaults do badly — window focus/resize/swap
 and the sidebars — everything else is stock. Two ergonomic moves make stock
-livable: CapsLock is Ctrl at the Hyprland level (`hypr/input.conf`), and the
+livable: the laptop modifiers are remapped at the keyd level (`keyd/`), and the
 command prefix is **swapped `C-x` → `C-a`** (so saving is `C-a C-s`, all on
 the home row; beginning-of-line lands on the vacated `C-x`). `C-a` is bound
 directly to `ctl-x-map`, so echoes and `describe-key` all report

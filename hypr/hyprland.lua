@@ -1,6 +1,6 @@
 -- Omarchy 4 (Quattro) entry point. Hyprland loads this instead of
--- hyprland.conf; the old .conf files stay in the repo as the pre-Quattro
--- reference until the port has soaked.
+-- hyprland.conf; the Lua files here are the only Hyprland config (the
+-- pre-Quattro .conf era is gone — hyprsunset.conf survives, unrelated).
 
 -- Omarchy's bootstrap keeps path setup out of this user config.
 dofile((os.getenv("OMARCHY_PATH") or "/usr/share/omarchy") .. "/default/hypr/bootstrap.lua")
