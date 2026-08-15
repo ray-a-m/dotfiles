@@ -103,7 +103,7 @@ Item {
     // How far the whole composition (logo, baked lock symbol, input box)
     // sits above Plymouth's dead-center placement. The image and the box
     // shift together, so the box keeps its baked +158 spot in the artwork.
-    readonly property int lockRaise: 40
+    readonly property int lockRaise: 80
 
     Image {
       id: wallpaper

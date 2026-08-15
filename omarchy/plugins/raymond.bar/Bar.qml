@@ -1152,7 +1152,7 @@ Item {
         LeftModules {
           id: leftMods
           anchors.left: parent.left
-          anchors.leftMargin: 10 + 3
+          anchors.leftMargin: 10 + 6
           anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -1160,7 +1160,7 @@ Item {
         RightModules {
           id: rightMods
           anchors.right: parent.right
-          anchors.rightMargin: 10 + 3 + Style.space(3)
+          anchors.rightMargin: 10 + 6 + Style.space(3)
           anchors.verticalCenter: parent.verticalCenter
         }
       }
