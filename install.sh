@@ -159,16 +159,11 @@ if command -v ya &>/dev/null; then
     ya pkg install
 fi
 
-# Quickshell uses a single top-level symlink (no machine-local override
-# needed, unlike hypr/).
-if [ -d "$DOTFILES_DIR/quickshell" ]; then
-    echo "==> Symlinking quickshell config"
-    if [ -e ~/.config/quickshell ] && [ ! -L ~/.config/quickshell ]; then
-        echo "Backing up existing ~/.config/quickshell to ~/.config/quickshell.bak"
-        mv ~/.config/quickshell ~/.config/quickshell.bak
-    fi
-    ln -sfn "$DOTFILES_DIR/quickshell" ~/.config/quickshell
-fi
+# The GlassPill Quickshell bar (dotfiles/quickshell/) retired 2026-08-14:
+# the Omarchy 4 shell bar took over as the main bar (pill-styled via the
+# raymond.bar plugin, symlinked with the other omarchy plugins below). The
+# quickshell/ dir stays in the repo as pre-Quattro reference only, so no
+# ~/.config/quickshell symlink is created anymore.
 
 if [ -d "$DOTFILES_DIR/spotify-player" ]; then
     echo "==> Symlinking spotify-player config"
@@ -248,12 +243,10 @@ for app in hypr; do
     done
 done
 
-echo "==> Suppressing the omarchy-shell bar (GlassPill Quickshell bar takes over)"
-# The Omarchy 4 shell hides its bar while this flag file exists (the shell
-# itself keeps running for lock/notifications/OSD/launcher). The file's
-# existence is all that's checked (contents irrelevant).
+# The omarchy-shell bar is the main bar (decided 2026-08-14, post-Quattro);
+# make sure no stale bar-off toggle from the GlassPill era suppresses it.
 mkdir -p ~/.local/state/omarchy/toggles
-touch ~/.local/state/omarchy/toggles/bar-off
+rm -f ~/.local/state/omarchy/toggles/bar-off
 
 # Raymond's idle policy: display stays on, no auto-lock on idle (locking is
 # deliberate via SUPER+CTRL+L; sleep still locks via omarchy-sleep-lock).
@@ -479,14 +472,14 @@ if [ "$OS" = "Linux" ]; then
     fi
 fi
 
-echo "==> Symlinking custom Omarchy hooks, themes, themed, and extensions"
+echo "==> Symlinking custom Omarchy hooks, themes, themed, extensions, and plugins"
 # Full rm-then-recreate of each managed subdir's symlinks so themes/hooks
 # removed from the repo (e.g. blue-girl→mornye rename, philosophy deletion)
 # don't leave dangling symlinks that omarchy-theme-set enumerates as
 # valid options. Any regular file at the destination gets moved to
 # .bak.<epoch> first (defensive — should never happen but guards against
 # hand-created files in these managed dirs).
-for sub in hooks themes themed extensions; do
+for sub in hooks themes themed extensions plugins; do
     src_dir="$DOTFILES_DIR/omarchy/$sub"
     dst_dir="$HOME/.config/omarchy/$sub"
     [ -d "$src_dir" ] || continue
@@ -505,6 +498,23 @@ for sub in hooks themes themed extensions; do
         [ -e "$src" ] || continue
         ln -sfn "$src" "$dst_dir/$(basename "$src")"
     done
+done
+
+echo "==> Installing omarchy shell config (bar layout, font size)"
+# COPIES, not symlinks: omarchy-shell-config (and the shell settings UI)
+# rewrites shell.json via tmp-file + mv, which would replace a symlink with
+# a plain file on the first edit. So the tracked copy is installed over the
+# stock default; edits made live on a machine must be copied back
+# (cp ~/.config/omarchy/shell.{json,toml} "$DOTFILES_DIR"/omarchy/) and
+# committed, or a re-run of this script reverts them (after a .bak).
+for f in shell.json shell.toml; do
+    src="$DOTFILES_DIR/omarchy/$f"
+    dst="$HOME/.config/omarchy/$f"
+    [ -e "$src" ] || continue
+    if ! cmp -s "$src" "$dst"; then
+        [ -e "$dst" ] && mv "$dst" "$dst.bak.$(date +%s)"
+        cp -p "$src" "$dst"
+    fi
 done
 
 echo "==> Refreshing TeX ls-R cache for dotfiles texmf tree"

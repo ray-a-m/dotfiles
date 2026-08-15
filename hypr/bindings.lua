@@ -60,14 +60,24 @@ o.bind("SUPER + SHIFT + T", "Toggle split direction", hl.dsp.layout("togglesplit
 
 -- Menus ---------------------------------------------------------------------
 -- ESC is Emacs's back key; the system menu must not sit on SUPER+ESCAPE.
--- SUPER+R keeps the root menu for muscle memory (SUPER+SPACE also works).
+-- SUPER+R keeps the root menu for muscle memory. SUPER+SPACE opens the app
+-- launcher directly, as walker did pre-Quattro (the Quattro default put the
+-- root menu there instead).
 hl.unbind("SUPER + ESCAPE")
 hl.unbind("SUPER + SHIFT + code:201")
+hl.unbind("SUPER + SPACE")
 o.bind("SUPER + R", "Omarchy menu", "omarchy-menu toggle")
+o.bind("SUPER + SPACE", "App launcher", "omarchy-menu toggle apps")
 
--- SUPER+SHIFT+SPACE toggles the omarchy-shell bar, which is deliberately
--- kept off (the GlassPill Quickshell bar replaces it). Unbind so a stray
--- chord can't resurrect it; re-enable via `omarchy toggle bar` if wanted.
+-- The power button goes to the rebuilt System menu ("power" in the menu
+-- jsonc), which confirms Restart/Shutdown and omits Logout. The stock
+-- default routes to the stock system submenu, which has neither guard.
+hl.unbind("XF86PowerOff")
+o.bind("XF86PowerOff", "Power menu", "omarchy-menu toggle power", { locked = true })
+
+-- SUPER+SHIFT+SPACE toggles the omarchy-shell bar off. The bar is now the
+-- main bar (pill-styled clone), so keep the toggle unbound to protect it
+-- from a stray chord; `omarchy-bar` still toggles it when wanted.
 hl.unbind("SUPER + SHIFT + SPACE")
 
 -- Dead defaults: herdr and omacalc are not installed on this machine

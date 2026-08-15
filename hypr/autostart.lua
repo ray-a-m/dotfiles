@@ -7,14 +7,8 @@ hl.on("hyprland.start", function()
   hl.dispatch(hl.dsp.focus({ workspace = "5" }))
 end)
 
--- GlassPill Quickshell bar (dotfiles/quickshell). The omarchy-shell stays
--- running for lock/notifications/OSD/launcher but its bar is suppressed via
--- ~/.local/state/omarchy/toggles/bar-off (created by install.sh). -d
--- detaches; -n exits if an instance with the same config is already
--- running, so a session-reload re-exec no-ops instead of stacking panels.
--- (Distinct config path from omarchy-shell's `-p $OMARCHY_PATH/shell`, so
--- the two instances coexist.)
-o.exec_on_start(o.launch("quickshell -d -n"))
+-- Bar: the omarchy-shell bar (decided 2026-08-14; GlassPill retired with
+-- Quattro). Customizations live in the shell config, not here.
 
 -- Video wallpaper: the omarchy-shell background plugin renders images only.
 -- The theme-set hook spawns mpvpaper when the theme's wallpaper is a video

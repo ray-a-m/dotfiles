@@ -1,0 +1,74 @@
+{
+  // Port of the pre-Quattro walker menu (menu.sh in this directory's git
+  // history) to the Quattro Quickshell menu. Top level: Mail / Emacs /
+  // Research / Files / Portals / System. Apps are not listed here because
+  // SUPER+SPACE opens the app launcher directly.
+  //
+  // The stock root rows move to an unlisted parent, which no submenu
+  // displays. A `when: "false"` guard would also break their routes and the
+  // apps provider ("Nothing here yet"), so re-parenting is the correct hide.
+  // Routes (`omarchy menu summon <name>`), links, and search still reach
+  // them.
+  //
+  // Each override restates the stock fields: the loader normalizes a user
+  // entry (missing fields become empty) before the merge, so a sparse
+  // override would erase the stock icon, label, aliases, and provider.
+  "apps": {"parent": "unlisted", "icon": "󰀻", "label": "Apps", "aliases": ["app", "applications"], "provider": "apps"},
+  "learn": {"parent": "unlisted", "icon": "󰧑", "label": "Learn"},
+  "trigger": {"parent": "unlisted", "icon": "󱓞", "label": "Trigger"},
+  "style": {"parent": "unlisted", "icon": "", "label": "Style"},
+  "setup": {"parent": "unlisted", "icon": "", "label": "Setup", "aliases": ["settings"]},
+  "install": {"parent": "unlisted", "icon": "󰉉", "label": "Install"},
+  "remove": {"parent": "unlisted", "icon": "󰭌", "label": "Remove", "aliases": ["uninstall"]},
+  "update": {"parent": "unlisted", "icon": "", "label": "Update", "aliases": ["restart", "refresh"]},
+  "about": {"parent": "unlisted", "icon": "", "label": "About", "action": "omarchy-launch-about"},
+  "system": {"parent": "unlisted", "icon": "", "label": "System", "aliases": ["power-menu"]},
+
+  // No GUI path to logout: a logout drops to the white SDDM greeter. The
+  // stock system submenu stays routable, so hide its logout row too.
+  "system.logout": {"icon": "󰍃", "label": "Logout", "action": "omarchy-system-logout", "when": "false"},
+
+  // Custom root menu
+  "mail": {"icon": "󰇮", "label": "Mail"},
+  "mail.personal": {"icon": "", "label": "Personal", "action": "gtk-launch personal-gmail"},
+  "mail.professional": {"icon": "", "label": "Professional", "action": "gtk-launch fastmail"},
+  "mail.uic": {"icon": "", "label": "UIC", "action": "gtk-launch uic-email"},
+
+  "emacs": {"icon": "", "label": "Emacs", "action": "gtk-launch emacsclient"},
+
+  "research": {"icon": "󰂺", "label": "Research"},
+  "research.chatgpt": {"icon": "", "label": "ChatGPT", "action": "gtk-launch chatgpt"},
+  "research.claude": {"icon": "", "label": "Claude", "action": "gtk-launch claude"},
+  "research.library": {"icon": "", "label": "UIC Library", "action": "gtk-launch uic-library"},
+  "research.zotero": {"icon": "", "label": "Zotero", "action": "gtk-launch zotero"},
+
+  "files": {"icon": "󰉋", "label": "Files"},
+  "files.dropbox": {"icon": "", "label": "Dropbox", "action": "gtk-launch dropbox"},
+  "files.personal": {"icon": "", "label": "Personal", "action": "gtk-launch personal-gdrive"},
+  "files.uic": {"icon": "", "label": "UIC", "action": "gtk-launch uic-gdrive"},
+
+  "portals": {"icon": "󰖟", "label": "Portals"},
+  "portals.canvas": {"icon": "", "label": "Canvas", "action": "gtk-launch canvas"},
+  "portals.github": {"icon": "", "label": "GitHub", "action": "gtk-launch github"},
+
+  // System, rebuilt under its own id ("power") for full control of row order.
+  // Logout is omitted on purpose: securing this machine means Lock, and a
+  // logout drops to the white SDDM greeter (rationale in menu.sh, git
+  // history). The rare intentional logout stays available as `omarchy logout`
+  // in a terminal.
+  "power": {"icon": "", "label": "System"},
+  "power.style": {"icon": "", "label": "Style", "target": "style"},
+  "power.screensaver": {"icon": "󱄄", "label": "Screensaver", "action": "omarchy-launch-screensaver force"},
+  "power.lock": {"icon": "", "label": "Lock", "action": "omarchy-system-lock"},
+  "power.suspend": {"icon": "󰒲", "label": "Suspend", "when": "! omarchy-toggle-enabled suspend-off", "action": "systemctl suspend"},
+  "power.hibernate": {"icon": "󰤁", "label": "Hibernate", "when": "omarchy-hibernation-available", "action": "systemctl hibernate"},
+
+  // Restart and Shutdown open a confirm submenu with Cancel first, so a
+  // stray Enter or `l` cannot power the machine off.
+  "power.restart": {"icon": "󰜉", "label": "Restart"},
+  "power.restart.cancel": {"icon": "", "label": "Cancel", "target": "power"},
+  "power.restart.yes": {"icon": "󰜉", "label": "Yes", "action": "omarchy-system-reboot"},
+  "power.shutdown": {"icon": "󰐥", "label": "Shutdown"},
+  "power.shutdown.cancel": {"icon": "", "label": "Cancel", "target": "power"},
+  "power.shutdown.yes": {"icon": "󰐥", "label": "Yes", "action": "omarchy-system-shutdown"}
+}

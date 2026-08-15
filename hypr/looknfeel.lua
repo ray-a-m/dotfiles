@@ -4,10 +4,9 @@
 
 hl.config({
   general = {
-    -- Top gap of 48px accommodates the Quickshell bar pills
-    -- (Workspaces/Clock/TrayButton at margins.top=8, ~30px tall, so
-    -- ~y=8..38) plus a 10px breather matching the other sides.
-    gaps_out = "48, 10, 10, 10",
+    -- The omarchy-shell bar reserves its own strip (exclusive zone), so the
+    -- top gap matches the other sides.
+    gaps_out = 10,
 
     -- Border thickness — Hyprland doesn't expose per-focus sizes, so this
     -- is global. With the active border at alpha 0, the size only affects

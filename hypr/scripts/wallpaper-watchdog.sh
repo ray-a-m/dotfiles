@@ -27,6 +27,15 @@ if [ -z "${WAYLAND_DISPLAY:-}" ]; then
     export WAYLAND_DISPLAY="$disp"
 fi
 
+# The Quattro health check below calls hyprctl, which needs the instance
+# signature — also absent from the unit env. Same recovery as
+# monitor-watcher.sh; without it the check always reads "buried" and the
+# heal re-fires every 30s (static-image flash over the video).
+if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    sig=$(systemctl --user show-environment 2>/dev/null | sed -n 's/^HYPRLAND_INSTANCE_SIGNATURE=//p' | head -n1)
+    [ -n "$sig" ] && export HYPRLAND_INSTANCE_SIGNATURE="$sig"
+fi
+
 log() { printf '[wallpaper-watchdog] %s\n' "$*"; }
 
 LEGACY_BG=$(readlink -f "$HOME/.config/omarchy/current/background" 2>/dev/null)
@@ -66,8 +75,8 @@ else
     # video. Re-firing the hook respawns mpvpaper back on top.
     if pgrep -x mpvpaper >/dev/null && hyprctl layers 2>/dev/null | awk '
         /^Monitor /  { mon = $2 }
-        /namespace: mpvpaper$/            { mpv[mon] = NR; seen = 1 }
-        /namespace: omarchy-background$/  { oma[mon] = NR }
+        /namespace: mpvpaper(,|$)/            { mpv[mon] = NR; seen = 1 }
+        /namespace: omarchy-background(,|$)/  { oma[mon] = NR }
         END {
             if (!seen) exit 1
             for (m in mpv) if (oma[m] > mpv[m]) exit 1

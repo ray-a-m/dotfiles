@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "raymond.workspaces-numpad",
+  "name": "Numpad workspaces",
+  "version": "1.0.0",
+  "author": "Raymond Maung",
+  "description": "3x3 numpad-arranged workspace grid, matching the Corne numpad layer",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "Widget.qml" },
+  "barWidget": {
+    "displayName": "Numpad workspaces",
+    "description": "3x3 numpad-arranged workspace grid",
+    "category": "Compositor",
+    "allowMultiple": false,
+    "defaultSection": "left"
+  }
+}

@@ -17,6 +17,11 @@ o.window("^notes$", { workspace = "special:notes" })
 -- (alpha 0) — so the pill blurs as before and the corners go untouched.
 hl.layer_rule({ match = { namespace = "^(quickshell-).*" }, blur = true, ignore_alpha = 0.1 })
 
+-- Pill-fork omarchy bar (raymond.bar plugin): the bar window is fully
+-- transparent and each section paints a translucent pill, so it gets the
+-- same blur + ignore_alpha treatment as the old GlassPill surfaces.
+hl.layer_rule({ match = { namespace = "^omarchy-bar$" }, blur = true, ignore_alpha = 0.1 })
+
 -- Opacity tiers (last-match-wins). Omarchy tags every window with
 -- `default-opacity` and strips it for apps that opt out (terminals via the
 -- `terminal` tag, browsers, video, qemu, steam). Active and inactive
