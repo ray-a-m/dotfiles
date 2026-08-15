@@ -80,8 +80,12 @@ o.bind("XF86PowerOff", "Power menu", "omarchy-menu toggle power", { locked = tru
 -- from a stray chord; `omarchy-bar` still toggles it when wanted.
 hl.unbind("SUPER + SHIFT + SPACE")
 
--- Dead defaults: herdr and omacalc are not installed on this machine
--- (removed with the rest of the unwanted Quattro default apps).
+-- herdr is installed (reinstated post-Quattro), but keeps its pre-Quattro
+-- workflow: launched by hand in a bare terminal, driven by its own
+-- alt+space prefix (herdr/config.toml) — no Hyprland binds. So the Quattro
+-- defaults stay unbound: SUPER+CTRL+K (herdr keybindings menu), and
+-- SUPER+CTRL+RETURN is rebound to a plain terminal above. omacalc is not
+-- installed; its default is dead too.
 hl.unbind("SUPER + CTRL + K")
 hl.unbind("SUPER + CTRL + Q")
 hl.unbind("XF86Calculator")
