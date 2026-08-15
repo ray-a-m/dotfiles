@@ -70,7 +70,7 @@ install_linux_deps() {
         pacman)
             sudo pacman -S --needed --noconfirm \
                 neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd \
-                pandoc-cli qpdf obsidian aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation ttf-roboto-mono \
+                pandoc-cli qpdf aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation ttf-roboto-mono \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
             ;;
