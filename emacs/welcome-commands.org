@@ -23,9 +23,9 @@ tasks                                     musing        kant
                                           paperidea     math
   push ..................... [M-SPC G]    poetry        neo-kantian
   schedule ............... [M-SPC M-s]    presentation  phenomenology
-  todo ........................... [t]    talk          physics
-  todos .......................... [a]    wip           science
-                                                        teaching
+  todo ........................... [t]    project       physics
+  todos .......................... [a]    talk          science
+                                          wip           teaching
 vault  file = ID--title__form_matter                    (none = misc)
 
   Attach: file → Files/ .. [M-SPC d a]
@@ -33,5 +33,22 @@ vault  file = ID--title__form_matter                    (none = misc)
   Classify: note / task ........ [M-c]
   Insert link ............ [M-SPC d k]
   Promote / rename ....... [M-SPC d r]
+
+llm  file = ID--title__ai_<project>[_project]
+
+  Ask here / send ....... [M-RET / M-SPC l l]
+  Send ask block .............. [M-SPC M-SPC]
+  Aside ......................... [M-SPC l a]
+  Branch ........................ [M-SPC l b]
+  Kill request .................. [M-SPC l k]
+  Link to block ................... [M-SPC L]
+  Project note (C-u: choose) .... [M-SPC l P]
+  Project tree .......................... [l]
+  Promote in .................... [M-SPC l i]
+  Promote out ................... [M-SPC l p]
+    C-u: no compaction · C-u C-u: new project
+  Refresh backlinks ............. [M-SPC l r]
+  Session / referee log ......... [M-SPC l s]
+  Tree (branches) ............... [M-SPC l t]
 
                               any key to dismiss
