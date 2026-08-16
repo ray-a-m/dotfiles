@@ -999,10 +999,17 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   (set-face-attribute 'org-level-1 nil :height 1.3)
   (set-face-attribute 'org-level-2 nil :height 1.15)
   (set-face-attribute 'org-level-3 nil :height 1.05)
-  ;; Inline LaTeX preview (C-c C-x C-l): crisp SVG output, a bit larger than
-  ;; the tiny default so equations are readable next to the prose font.
+  ;; Inline LaTeX preview: crisp SVG output.  Since the preview key was
+  ;; neutered (below), the only consumer is llm.el, which renders math in
+  ;; session files; the scale is judged against the prose font there
+  ;; (1.5 read too large, 2026-08-16 -- dvisvgm adds its own 1.7 factor).
   (setq org-preview-latex-default-process 'dvisvgm)
-  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.5))
+  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.0))
+  ;; The rendered SVGs are a per-machine cache keyed by fragment hash, not
+  ;; a record: keep them out of the synced notes vault (llm.el renders
+  ;; math in every session file, 2026-08-16).
+  (setq org-preview-latex-image-directory
+        (expand-file-name "org-ltximg/" (or (getenv "XDG_CACHE_HOME") "~/.cache/")))
   ;; LaTeX reads as highlighted SOURCE in prose: $math$, environments,
   ;; and \commands (citation keys included) get org-latex-and-related --
   ;; sienna Roboto Mono at prose height, the export-block look he liked
