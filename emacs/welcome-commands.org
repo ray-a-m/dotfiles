@@ -1,4 +1,4 @@
-Commands                                       C = Ctrl (CapsLock too) · M = Alt
+commands                                       C = Ctrl (CapsLock too) · M = Alt
 
   Back ......................... [ESC]    Publish (deploy) ......... [M-SPC P]
   Close buffer ............... [M-a k]    Quit / cancel ................ [M-g]
@@ -19,36 +19,38 @@ find                                      form          matter
   by tag ......................... [d]    lit           fun
   hubs ........................... [h]    log           hegel
                                           meeting       history
-tasks                                     musing        kant
+llm  ID--title__ai_<project>[_project]    musing        kant
                                           paperidea     math
-  push ..................... [M-SPC G]    poetry        neo-kantian
-  schedule ............... [M-SPC M-s]    presentation  phenomenology
-  todo ........................... [t]    project       physics
-  todos .......................... [a]    talk          science
-                                          wip           teaching
-vault  file = ID--title__form_matter                    (none = misc)
+  Ask / send ..... [M-RET / M-SPC l l]    poetry        neo-kantian
+  Send ask block ....... [M-SPC M-SPC]    presentation  phenomenology
+  Aside .................. [M-SPC l a]    project       physics
+  Branch ................. [M-SPC l b]    talk          science
+  Kill request ........... [M-SPC l k]    wip           teaching
+  Link to block ............ [M-SPC L]                  (none = misc)
+  Project note ........... [M-SPC l P]
+    pick a project ... [C-u M-SPC l P]
+  Project tree ................... [l]
+  Promote in ............. [M-SPC l i]
+  Promote out ............ [M-SPC l p]
+    no compaction .... [C-u M-SPC l p]
+    new project .. [C-u C-u M-SPC l p]
+  Refresh backlinks ...... [M-SPC l r]
+  Session / referee log .. [M-SPC l s]
+  Tree (branches) ........ [M-SPC l t]
+
+tasks
+
+  push ..................... [M-SPC G]
+  schedule ............... [M-SPC M-s]
+  todo ........................... [t]
+  todos .......................... [a]
+
+vault  file = ID--title__form_matter
 
   Attach: file → Files/ .. [M-SPC d a]
   Backlinks .............. [M-SPC d b]
   Classify: note / task ........ [M-c]
   Insert link ............ [M-SPC d k]
   Promote / rename ....... [M-SPC d r]
-
-llm  file = ID--title__ai_<project>[_project]
-
-  Ask here / send ....... [M-RET / M-SPC l l]
-  Send ask block .............. [M-SPC M-SPC]
-  Aside ......................... [M-SPC l a]
-  Branch ........................ [M-SPC l b]
-  Kill request .................. [M-SPC l k]
-  Link to block ................... [M-SPC L]
-  Project note (C-u: choose) .... [M-SPC l P]
-  Project tree .......................... [l]
-  Promote in .................... [M-SPC l i]
-  Promote out ................... [M-SPC l p]
-    C-u: no compaction · C-u C-u: new project
-  Refresh backlinks ............. [M-SPC l r]
-  Session / referee log ......... [M-SPC l s]
-  Tree (branches) ............... [M-SPC l t]
 
                               any key to dismiss

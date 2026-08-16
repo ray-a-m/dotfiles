@@ -3012,10 +3012,11 @@ runs its normal splash binding (so `c' then `t' still captures a task)."
       (let ((org-mode-hook nil)) (org-mode))       ; monospace, no prose hooks
       (setq-local mode-line-format nil header-line-format nil cursor-type nil)
       (font-lock-add-keywords nil
-                              '(("^\\(?:Commands\\|find\\|tasks\\|vault\\|llm\\)\\b" 0 'bold)
+                              '(("^\\(?:commands\\|find\\|tasks\\|vault\\|llm\\)\\b" 0 'bold)
                                 ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
                                 ("C = Ctrl.*$" 0 'italic)
-                                ("^\\(?:vault\\|llm\\)  \\(file = .*\\)$" 1 'italic)
+                                ("^vault  \\(file = .*\\)$" 1 'italic)
+                                ("^llm  \\(\\S-+\\)" 1 'italic)
                                 ("any key to dismiss" 0 'italic)
                                 ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
                               t)
