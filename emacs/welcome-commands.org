@@ -29,6 +29,7 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Project note ........... [M-SPC l P]
     pick a project ... [C-u M-SPC l P]
   Project tree ................... [l]
+    new project (in tree) ........ [a]
   Promote in ............. [M-SPC l i]
   Promote out ............ [M-SPC l p]
     no compaction .... [C-u M-SPC l p]
