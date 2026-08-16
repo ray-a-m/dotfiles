@@ -2240,7 +2240,7 @@ denote name only if it becomes something you search for."
       (insert (format "[[file:Files/%s]]" (file-name-nondirectory file)))
       (when (derived-mode-p 'org-mode) (org-display-inline-images))))
   (defun rm/denote-list ()
-    "The picker over titles AND keywords: fragments match either (M-SPC d l).
+    "The picker over titles AND keywords: fragments match either (splash d).
 Same catalog as f, but candidates carry their keywords (faded, after
 the title), so `_hegel hub' narrows by form/matter too."
     (interactive)
@@ -3108,8 +3108,9 @@ so the startup hook stays quiet when a frame opens on a file."
                                         ; (no c/capture menu: t and n ARE capture)
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
             (define-key map (kbd "l") #'llm-project-tree)       ; llm project tree
-                                        ; (rm/denote-list, the picker by
-                                        ; words, keeps M-SPC d l)
+                                        ; (side window, like p and w)
+            (define-key map (kbd "d") #'rm/denote-list)         ; list by words
+                                        ; (was l until 2026-08-16)
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
             (define-key map (kbd "w") #'rm/website-sidebar)     ; website pages
                                         ; (sidebar, like p; listed first in

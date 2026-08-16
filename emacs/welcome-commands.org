@@ -16,7 +16,7 @@ find                                      form          matter
 
   by content ..................... [g]    hub           aesthetics
   by name ........................ [f]    idea          concepts
-  by tag ................ [M-SPC d l]    lit           fun
+  by tag ......................... [d]    lit           fun
   hubs ........................... [h]    log           hegel
                                           meeting       history
 tasks                                     musing        kant
