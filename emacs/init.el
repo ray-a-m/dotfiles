@@ -2098,7 +2098,11 @@ frame lands on this session."
         '(("TODO"       . (:foreground "#8b5fbf" :inverse-video t :weight semibold))
           ("NEXT"       . (:foreground "#c64e3b" :inverse-video t :weight semibold))
           ("CONTINUING" . (:foreground "#2076c1" :inverse-video t :weight semibold))
-          ("DONE"       . (:foreground "#3a9e57" :inverse-video t :weight semibold)))))
+          ("DONE"       . (:foreground "#3a9e57" :inverse-video t :weight semibold))))
+  :config
+  ;; the level glyphs at 3/4 size: full-size polygons overpower the headline
+  ;; (his call, 2026-08-16); the face also covers checkboxes and progress
+  (set-face-attribute 'org-modern-symbol nil :height 0.75))
 
 ;; org-super-agenda (alphapapa): groups the otherwise-flat todo list into
 ;; titled sections.  Wired for ONE view -- the splash `a' (rm/agenda-projects)
