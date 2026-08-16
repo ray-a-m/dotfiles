@@ -2071,9 +2071,17 @@ frame lands on this session."
   :hook ((org-mode            . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda))  ; same look in C-c a
   :init
-  (setq org-modern-star nil               ; the ✦✧✱✳ glyphs moved into the
-                                          ; MARGIN (org-margin below) --
-                                          ; headline text sits flush left
+  ;; Heading stars in-line: each leading star displays as a space (?\s --
+  ;; NOT `leading', which collapses them to nothing), so a heading sits as
+  ;; many columns in as its depth, and the last star is the level glyph.
+  ;; (Until 2026-08-16 the glyphs sat in the margin via org-margin and every
+  ;; headline was flush left; a folded outline then showed no depth -- his
+  ;; complaint on the first llm.el session.)
+  (setq org-modern-star 'replace
+        ;; polygons by depth, all outlines: circle, triangle, square,
+        ;; pentagon, hexagon (Unicode has no outline octagon; 6+ repeat)
+        org-modern-replace-stars "○△□⬠⬡"
+        org-modern-hide-stars ?\s
         ;; real bullets for plain lists -- the stock "-" -> "–" en dash
         ;; read as hyphens (his complaint, 2026-07-23)
         org-modern-list '((?- . "•") (?+ . "◦") (?* . "▹"))
@@ -2122,28 +2130,6 @@ y/p move, e/r/d act on the entry at point."
   (interactive)
   (require 'org-super-agenda)
   (org-agenda nil "agenda"))
-
-;; org-margin (rougier, vendored like nano): headline stars render IN the
-;; left margin as the level glyphs, so headline text starts at column 0 --
-;; the outdented look.  Implementation: font-lock puts a
-;; `display ((margin left-margin) GLYPH)' property on the leading stars.
-;; olivetti must center via FRINGES for this (style t below): both would
-;; otherwise fight over window margins.  nano paints fringes in the
-;; background colour, so the switch is visually silent.
-(require 'org-margin (expand-file-name "org-margin.el" user-emacs-directory))
-(setq org-margin-headers
-      (list (cons 'rm (list (propertize "✦" 'face 'org-level-1)
-                            (propertize "✧" 'face 'org-level-2)
-                            (propertize "✱" 'face 'org-level-3)
-                            (propertize "✳" 'face 'org-level-4)
-                            (propertize "✳" 'face 'org-level-5)
-                            (propertize "✳" 'face 'org-level-6))))
-      org-margin-headers-set 'rm
-      ;; quiet quote marker only (the icon-font defaults render as boxes)
-      org-margin-markers
-      (list (cons "\\(#\\+begin_quote\\)"
-                  (propertize "❝" 'face 'nano-face-faded))))
-(add-hook 'org-mode-hook #'org-margin-mode)
 
 ;; --- Denote: the thought vault (`rm/notes-directory') ---------------------
 ;; One flat naming grammar instead of folders: every note's filename is its
@@ -2629,11 +2615,10 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;; prefix.  Spec: ~/projects/llm.el/SPEC.org.
 (add-to-list 'load-path (expand-file-name "~/projects/llm.el"))
 ;; org-side-tree: the branch viewer (M-SPC l t) is the session's outline as
-;; an indented tree in a side window.  Chosen because org-margin draws every
-;; level flush left, so a folded session shows no depth in-file.
+;; an indented tree in a side window.
 (use-package org-side-tree
   :commands (org-side-tree)
-  :init (setq org-side-tree-fontify nil))   ; org-margin flattens it otherwise
+  :init (setq org-side-tree-fontify nil))   ; plain text, our own faces
 (require 'llm)
 (llm-global-mode 1)
 ;; The prefix is global, not only in sessions: M-SPC l s must work from any
@@ -2686,9 +2671,9 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
          (markdown-mode . olivetti-mode)
          (LaTeX-mode    . olivetti-mode))
   :init (setq olivetti-body-width 72      ; text column width, in columns
-              ;; center via FRINGES, not margins: org-margin owns the left
-              ;; margin now (headline glyphs render there).  nano paints
-              ;; fringes in the background colour -- looks identical.
+              ;; center via FRINGES, not margins (kept from the org-margin
+              ;; days; nano paints fringes in the background colour, so it
+              ;; looks identical and leaves the margins free).
               olivetti-style t)
   :config
   ;; Centering margins count toward a window's MINIMUM width, so frame-level
