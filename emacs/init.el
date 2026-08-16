@@ -3211,6 +3211,10 @@ so the startup hook stays quiet when a frame opens on a file."
       (delete-file f)                    ;  day -- go home directly)
       (when born (rm/welcome t))
       (message "Empty note discarded")))
+   ;; the llm project tree (splash l) is a popup like a sidebar: while it
+   ;; shows, ESC dismisses it first, wherever point is -- a file opened
+   ;; from it goes home on the NEXT ESC (his ask, 2026-08-16)
+   ((and (fboundp 'llm-project-tree-hide) (llm-project-tree-hide)))
    ((eq (current-buffer) (get-buffer "*welcome*"))
     ;; the floor.  A duplicate splash in an extra window is a stale
     ;; popup: close it (ONE splash is the floor).  A sidebar beside the
@@ -3282,7 +3286,8 @@ stranding the frame on the file tree."
   (not (seq-some (lambda (w)
                    (and (not (eq w (selected-window)))
                         (with-current-buffer (window-buffer w)
-                          (not (derived-mode-p 'dired-sidebar-mode)))))
+                          (not (derived-mode-p 'dired-sidebar-mode
+                                               'llm-view-tree-mode)))))
                  (window-list))))
 (defun rm/escape--floor ()
   "Trail exhausted: close a popup window, else floor on the splash.
