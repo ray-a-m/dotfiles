@@ -2240,7 +2240,7 @@ denote name only if it becomes something you search for."
       (insert (format "[[file:Files/%s]]" (file-name-nondirectory file)))
       (when (derived-mode-p 'org-mode) (org-display-inline-images))))
   (defun rm/denote-list ()
-    "The picker over titles AND keywords: fragments match either (splash l).
+    "The picker over titles AND keywords: fragments match either (M-SPC d l).
 Same catalog as f, but candidates carry their keywords (faded, after
 the title), so `_hegel hub' narrows by form/matter too."
     (interactive)
@@ -2630,6 +2630,7 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;; The prefix is global, not only in sessions: M-SPC l s must work from any
 ;; buffer to create the first session.  org-store-link moved to C-c L.
 (keymap-global-set "C-c l" llm-prefix-map)
+;; Splash l opens the project tree (bound in the splash keymap below).
 
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
@@ -3106,7 +3107,9 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "t") #'rm/capture-task)        ; new todo, directly
                                         ; (no c/capture menu: t and n ARE capture)
             (define-key map (kbd "h") #'rm/denote-hubs)         ; hub catalog
-            (define-key map (kbd "l") #'rm/denote-list)         ; list by words
+            (define-key map (kbd "l") #'llm-project-tree)       ; llm project tree
+                                        ; (rm/denote-list, the picker by
+                                        ; words, keeps M-SPC d l)
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
             (define-key map (kbd "w") #'rm/website-sidebar)     ; website pages
                                         ; (sidebar, like p; listed first in

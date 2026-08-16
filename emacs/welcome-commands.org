@@ -1,22 +1,22 @@
 Commands                                       C = Ctrl (CapsLock too) · M = Alt
 
-  Back ......................... [ESC]    Quit / cancel ................ [M-g]
-  Close buffer ............... [M-a k]    Resize windows ...... [M-SPC w hjkl]
-  File in project .......... [M-a p f]    Restart Emacs .. [M-x restart-emacs]
-  File to split ...... [M-SPC w f / b]    Save ..................... [M-a M-s]
-  Git save (commit+push) ... [M-SPC g]    Scratch .............. [s / M-SPC s]
-  Home ................... [M-SPC SPC]    Search in buffer ........... [M-s l]
-  Jump / swap .................. [M-o]    Swap windows ........... [M-SPC w w]
-  Move to window ......... [C-h j k l]    Switch buffer ...... [M-ESC / M-a b]
-  New note ....................... [n]    Undo / redo .......... [M-z / M-S-z]
-  Papers ......................... [p]    Window menu .............. [M-SPC w]
-  Publish (deploy) ......... [M-SPC P]
+  Back ......................... [ESC]    Publish (deploy) ......... [M-SPC P]
+  Close buffer ............... [M-a k]    Quit / cancel ................ [M-g]
+  File in project .......... [M-a p f]    Resize windows ...... [M-SPC w hjkl]
+  File to split ...... [M-SPC w f / b]    Restart Emacs .. [M-x restart-emacs]
+  Git save (commit+push) ... [M-SPC g]    Save ..................... [M-a M-s]
+  Home ................... [M-SPC SPC]    Scratch .............. [s / M-SPC s]
+  Jump / swap .................. [M-o]    Search in buffer ........... [M-s l]
+  Move to window ......... [C-h j k l]    Swap windows ........... [M-SPC w w]
+  New note ....................... [n]    Switch buffer ...... [M-ESC / M-a b]
+  Papers ......................... [p]    Undo / redo .......... [M-z / M-S-z]
+  Projects (llm) ................. [l]    Window menu .............. [M-SPC w]
 
 find                                      form          matter
 
   by content ..................... [g]    hub           aesthetics
   by name ........................ [f]    idea          concepts
-  by tag ......................... [l]    lit           fun
+  by tag ................ [M-SPC d l]    lit           fun
   hubs ........................... [h]    log           hegel
                                           meeting       history
 tasks                                     musing        kant
