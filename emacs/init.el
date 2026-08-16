@@ -903,7 +903,8 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
   :bind (("C-c a" . org-agenda)           ; the calendar/todo dispatcher
          ;; (C-c c UNBOUND 2026-07-23: t/n on the splash are capture --
          ;;  rm/capture-task still calls org-capture programmatically)
-         ("C-c l" . org-store-link)
+         ;; C-c L since 2026-08-16: C-c l is the llm.el prefix (below)
+         ("C-c L" . org-store-link)
          :map org-mode-map
          ;; preview is OFF for good (rendered fragments kept reappearing);
          ;; the stock preview key can only ever CLEAR images now
@@ -2629,6 +2630,9 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 (add-to-list 'load-path (expand-file-name "~/projects/llm.el"))
 (require 'llm)
 (llm-global-mode 1)
+;; The prefix is global, not only in sessions: M-SPC l s must work from any
+;; buffer to create the first session.  org-store-link moved to C-c L.
+(keymap-global-set "C-c l" llm-prefix-map)
 
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
