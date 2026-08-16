@@ -22,7 +22,6 @@ find                                      form          matter
 llm  ID--title__ai_<project>[_project]    musing        kant
                                           paperidea     math
   Ask / send ..... [M-RET / M-SPC l l]    poetry        neo-kantian
-  Send ask block ....... [M-SPC M-SPC]    presentation  phenomenology
   Aside .................. [M-SPC l a]    project       physics
   Branch ................. [M-SPC l b]    talk          science
   Kill request ........... [M-SPC l k]    wip           teaching
