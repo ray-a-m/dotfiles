@@ -66,11 +66,12 @@ Item {
   property string filterText: ""
   property int selectedIndex: 0
   property bool cursorActive: false
-  // Two keyboard regimes (clone patch): provider menus (apps) and dmenu
-  // prompts keep type-to-filter; static menus take vim keys instead
-  // (j/k move, h back, l select) and ignore other letters, matching the
-  // pre-Quattro walker menu.
-  readonly property bool typingMenu: dmenuActive || !!(item(activeMenu) && item(activeMenu).provider)
+  // Two keyboard regimes (clone patch): dmenu prompts type-to-filter; every
+  // other menu, the apps launcher included, takes vim keys (j/k move, h back,
+  // l select) and ignores other letters, matching the pre-Quattro walker
+  // menu. "/" switches such a menu into search until Escape or navigation.
+  property bool searchActive: false
+  readonly property bool typingMenu: dmenuActive || searchActive
   property int requestSerial: 0
   property int applySerial: 0
   property var items: ({})
@@ -155,6 +156,19 @@ Item {
     return (root.filterText || root.dmenuActive) && detail ? root.detailRowHeight : root.baseRowHeight
   }
 
+  // Height of the root menu's row list (its visible children, one base row
+  // each plus spacing); provider cards size themselves relative to it
+  // (clone patch).
+  function rootRowsHeight() {
+    var count = 0
+    for (var i = 0; i < root.itemOrder.length; i++) {
+      var child = root.item(root.itemOrder[i])
+      if (child && child.parent === "root" && root.isVisible(child)) count++
+    }
+    count = Math.max(1, count)
+    return count * root.baseRowHeight + (count - 1) * root.rowSpacing
+  }
+
   // Height the card can devote to rows before running off the screen — or
   // past the frozen top edge once a search has pinned the card in place.
   // Uses panel.cardTop rather than effectiveCardTop: the centered top is
@@ -166,9 +180,11 @@ Item {
     // drilldown into a longer static menu (System) grows the card downward
     // so every row stays visible instead of scrolling behind the fold.
     if (root.filterText && panel.maxRowsHeight >= 0) available = Math.min(available, panel.maxRowsHeight)
-    // Provider lists (apps) show a handful of rows, not a full page; the
-    // clipped row at the fold signals the rest scrolls (clone patch).
-    if (root.typingMenu && !root.dmenuActive) available = Math.min(available, Math.round(root.baseRowHeight * 7.5))
+    // Provider lists (apps) show a card 1.5x the root menu's height, not a
+    // full page; the clipped row at the fold signals the rest scrolls
+    // (clone patch).
+    var activeItem = root.item(root.activeMenu)
+    if (!root.dmenuActive && activeItem && activeItem.provider) available = Math.min(available, Math.round(root.rootRowsHeight() * 1.5))
     // A card that swallows the whole screen reads as a page, not a menu.
     return Math.min(available, Math.round(panel.height * 0.7))
   }
@@ -702,6 +718,7 @@ Item {
     if (pushHistory && id !== root.activeMenu) root.navStack = root.navStack.concat([root.activeMenu])
     root.activeMenu = id
     root.filterText = ""
+    root.searchActive = false
     root.selectedIndex = 0
     root.cursorActive = true
     if (fromPointer) pointerGate.allowInitialSample()
@@ -720,6 +737,10 @@ Item {
       root.setActiveMenu(previous, false)
       return true
     }
+
+    // A menu opened directly (SUPER+SPACE lands on apps) has nowhere to go
+    // back to: stay put instead of surfacing its parent or root (clone patch).
+    if (root.activeMenu === root.pendingInitialMenu) return false
 
     var active = root.item(root.activeMenu)
     root.setActiveMenu((active && active.parent) ? active.parent : "root", false)
@@ -813,6 +834,7 @@ Item {
     activeMenu = root.item(initialMenu) ? initialMenu : "root"
     navStack = []
     filterText = ""
+    searchActive = false
     selectedIndex = 0
     cursorActive = true
     root.disarmPointer()
@@ -841,6 +863,7 @@ Item {
     activeMenu = "root"
     navStack = []
     filterText = ""
+    searchActive = false
     selectedIndex = 0
     cursorActive = mode !== "input"
     root.disarmPointer()
@@ -1098,7 +1121,12 @@ Item {
             event.accepted = true
           } else if (event.key === Qt.Key_Escape) {
             if (root.filterText) root.setFilter("")
+            else if (root.searchActive) root.searchActive = false
             else root.cancel()
+            event.accepted = true
+          } else if (!root.typingMenu && event.text === "/" && (event.modifiers === Qt.NoModifier || event.modifiers === Qt.ShiftModifier)) {
+            // "/" enters search in a vim-key menu (clone patch).
+            root.searchActive = true
             event.accepted = true
           } else if (!root.typingMenu && event.text && event.text.length === 1 && event.modifiers === Qt.NoModifier && "hjkl".indexOf(event.text) >= 0) {
             // Vim navigation in static menus (clone patch).
@@ -1109,6 +1137,10 @@ Item {
             event.accepted = true
           } else if (root.typingMenu && Util.editsFilter(event, root.filterText)) {
             root.setFilter(Util.editedFilter(event, root.filterText))
+            event.accepted = true
+          } else if (event.key === Qt.Key_Backspace && root.searchActive && !root.filterText) {
+            // Backspace on an empty search leaves search for vim keys (clone patch).
+            root.searchActive = false
             event.accepted = true
           } else if ((event.key === Qt.Key_Backspace || event.key === Qt.Key_Left) && !root.filterText) {
             root.goBack()
