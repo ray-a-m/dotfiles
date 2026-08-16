@@ -2102,7 +2102,9 @@ frame lands on this session."
   :config
   ;; the level glyphs at 3/4 size: full-size polygons overpower the headline
   ;; (his call, 2026-08-16); the face also covers checkboxes and progress
-  (set-face-attribute 'org-modern-symbol nil :height 0.75))
+  ;; One font for the whole set: circle/triangle/square otherwise fall to
+  ;; Noto Sans Mono and draw larger than the Math-font pentagon/hexagon.
+  (set-face-attribute 'org-modern-symbol nil :family "Noto Sans Math" :height 0.75))
 
 ;; org-super-agenda (alphapapa): groups the otherwise-flat todo list into
 ;; titled sections.  Wired for ONE view -- the splash `a' (rm/agenda-projects)
