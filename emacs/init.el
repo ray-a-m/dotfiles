@@ -2628,6 +2628,12 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;; llm-mode on in ai-keyed denote files: M-RET asks, C-c l (M-SPC l) is the
 ;; prefix.  Spec: ~/projects/llm.el/SPEC.org.
 (add-to-list 'load-path (expand-file-name "~/projects/llm.el"))
+;; org-side-tree: the branch viewer (M-SPC l t) is the session's outline as
+;; an indented tree in a side window.  Chosen because org-margin draws every
+;; level flush left, so a folded session shows no depth in-file.
+(use-package org-side-tree
+  :commands (org-side-tree)
+  :init (setq org-side-tree-fontify nil))   ; org-margin flattens it otherwise
 (require 'llm)
 (llm-global-mode 1)
 ;; The prefix is global, not only in sessions: M-SPC l s must work from any

@@ -5,3 +5,5 @@
 *~
 shada/
 __pycache__/
+# llm.el runtime state (pdftotext cache, claude work dir)
+emacs/llm/
