@@ -2620,6 +2620,16 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   :init (setq citar-denote-keyword "lit")
   :config (citar-denote-mode 1))
 
+;; --- llm.el: research and referee-edit in org, on denote -------------------
+;; In development at ~/projects/llm.el; loaded straight from the working tree
+;; so every edit stays in that repo (no symlink, no copy into elpa/).  The
+;; load-path line goes when the package has a home.  llm-global-mode turns
+;; llm-mode on in ai-keyed denote files: M-RET asks, C-c l (M-SPC l) is the
+;; prefix.  Spec: ~/projects/llm.el/SPEC.org.
+(add-to-list 'load-path (expand-file-name "~/projects/llm.el"))
+(require 'llm)
+(llm-global-mode 1)
+
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
 ;;   * the body font is Atkinson Hyperlegible Next, supplied via nano's
