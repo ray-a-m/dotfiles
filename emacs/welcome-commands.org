@@ -26,6 +26,7 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Branch ................. [M-SPC l b]    talk          science
   Kill request ........... [M-SPC l k]    wip           teaching
   Link to block ............ [M-SPC L]                  (none = misc)
+  New referee log ........ [M-SPC l n]
   Project note ........... [M-SPC l P]
     pick a project ... [C-u M-SPC l P]
   Project tree ................... [l]
@@ -34,9 +35,11 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Promote out ............ [M-SPC l p]
     no compaction .... [C-u M-SPC l p]
     new project .. [C-u C-u M-SPC l p]
+  Referee pass ...... [region + M-RET]
   Refresh backlinks ...... [M-SPC l r]
   Session / referee log .. [M-SPC l s]
-  Tree (branches) ........ [M-SPC l t]
+  Tree (branches) ........ [M-SPC l T]
+  Typo pass (paper) ...... [M-SPC l t]
 
 tasks
 

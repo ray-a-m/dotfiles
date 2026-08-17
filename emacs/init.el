@@ -1405,13 +1405,20 @@ survive org-agenda's finalize."
   (defun rm/agenda--item-project (item)
     "Group key for :auto-map -- ITEM's top-level `*' ancestor heading.
 A todo and all its descendants map to the same project, so they share a
-section instead of splitting off (which :auto-parent did)."
+section instead of splitting off (which :auto-parent did).  A todo in an
+llm.el referee log files under `research', whatever the log's heading
+says: the log is research work on a paper, and its title is a file
+name, not a project."
     (when-let ((m (rm/agenda--item-marker item)))
       (org-with-point-at m
-        (org-back-to-heading t)
-        (while (and (org-current-level) (> (org-current-level) 1))
-          (org-up-heading-safe))
-        (org-get-heading t t t t))))
+        (if (and (fboundp 'llm-project-referee-log-p)
+                 (llm-project-referee-log-p
+                  (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
+            "research"
+          (org-back-to-heading t)
+          (while (and (org-current-level) (> (org-current-level) 1))
+            (org-up-heading-safe))
+          (org-get-heading t t t t)))))
   (defun rm/agenda--outline-path (item)
     "ITEM's heading titles from its project down to itself, each lowercased."
     (when-let ((m (rm/agenda--item-marker item)))
@@ -2634,6 +2641,15 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   :init (setq org-side-tree-fontify nil))   ; plain text, our own faces
 (require 'llm)
 (llm-global-mode 1)
+;; Referee logs carry TODOs (filed under `research', see
+;; rm/agenda--item-project).  The vault stays out of the agenda; the logs
+;; join it by file -- the ones that exist here, the new ones as llm.el
+;; makes them (llm-referee-agenda).
+(setq org-agenda-files (append org-agenda-files (llm-referee-log-files)))
+;; Bundled PDFs go to the model as marker markdown (pdf2md, Datalab; the
+;; key comes from ~/.config/secrets.env), converted in the background the
+;; first time a PDF is linked; pdftotext text until then.
+(setq llm-project-pdf-converter 'marker)
 ;; The prefix is global, not only in sessions: M-SPC l s must work from any
 ;; buffer to create the first session.  org-store-link moved to C-c L.
 (keymap-global-set "C-c l" llm-prefix-map)
@@ -3222,6 +3238,10 @@ so the startup hook stays quiet when a frame opens on a file."
    ;; shows, ESC dismisses it first, wherever point is -- a file opened
    ;; from it goes home on the NEXT ESC (his ask, 2026-08-16)
    ((and (fboundp 'llm-project-tree-hide) (llm-project-tree-hide)))
+   ;; the same for a dired sidebar (splash p / w, f8): while it shows, ESC
+   ;; dismisses it first, from the paper as much as from the tree itself
+   ;; (his ask, 2026-08-17)
+   ((rm/escape--sidebar-visible-p) (dired-sidebar-hide-sidebar))
    ((eq (current-buffer) (get-buffer "*welcome*"))
     ;; the floor.  A duplicate splash in an extra window is a stale
     ;; popup: close it (ONE splash is the floor).  A sidebar beside the
