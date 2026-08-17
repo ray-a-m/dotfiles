@@ -7,13 +7,16 @@
 ;; lands in the website repo, and the research-public tree doubles as
 ;; the local preview root (where the relative PDF links resolve):
 ;;
-;;   website/index.org        -> research-public/index.html
+;;   website/about.org        -> research-public/index.html
 ;;   website/<name>.org       -> research-public/<name>/index.html
 ;;   website/<dir>/<name>.org -> research-public/<dir>/<name>/index.html
 ;;
 ;; The /<name>/index.html shape preserves the WordPress-era URLs
 ;; (/research/, /teaching/, ...); the <dir> case costs nothing now and
-;; lets a section grow subpages later with no exporter change.
+;; lets a section grow subpages later with no exporter change.  The
+;; home page is the About page: its source is named for what it says
+;; (about.org, so the sidebar reads right) and `rm/org-site-home-page'
+;; maps it to the root index.html the server needs.
 ;;
 ;; A page is its body only.  The document shell -- head, nav, footer --
 ;; is the hand-written website/shared/template.html (the preamble.tex
@@ -49,6 +52,11 @@
 (defconst rm/org-site-output-root
   (expand-file-name "~/scholarship/research-public/")
   "Where the generated pages land (the tree GitHub Pages serves).")
+
+(defconst rm/org-site-home-page "about"
+  "Basename of the top-level page that exports to the site root.
+That page becomes /index.html; every other <name>.org becomes
+/<name>/index.html.  Mirrored in the publish shell function.")
 
 (defvar rm/org-site--current-root ""
   "The {{ROOT}} prefix of the page currently exporting.
@@ -332,13 +340,14 @@ Pages only -- shared/ holds config (template, css, fonts), not pages."
 
 (defun rm/org-site--output-file (org-file)
   "The generated HTML page ORG-FILE exports to.
-index.org keeps its directory; any other name becomes a directory with
-an index.html inside, so /name/ serves it (the WordPress-era URLs)."
+The home page (`rm/org-site-home-page') becomes the root index.html;
+any other name becomes a directory with an index.html inside, so /name/
+serves it (the WordPress-era URLs)."
   (let* ((rel (file-relative-name org-file rm/org-site-source-root))
          (sans (file-name-sans-extension rel)))
     (expand-file-name
-     (if (string= (file-name-nondirectory sans) "index")
-         (concat sans ".html")
+     (if (string= sans rm/org-site-home-page)
+         "index.html"
        (concat sans "/index.html"))
      rm/org-site-output-root)))
 

@@ -328,7 +328,7 @@ quotes).
 Machinery in `org-site-export.el`: a `site-html` backend derived from
 stock ox-html with the paper backend's determinism rule (ox-html's
 random `id="orgNNN"` attributes are stripped; same export twice, same
-bytes). URL mapping preserves the WordPress-era paths: `index.org` →
+bytes). URL mapping preserves the WordPress-era paths: `about.org` (the home page) →
 `/index.html`, `<name>.org` → `/<name>/index.html`. Saving a page
 re-exports it (after-save hook, beside the paper hook); `C-c C-c` too.
 Splash `w` toggles a dired-sidebar rooted at the page sources (the

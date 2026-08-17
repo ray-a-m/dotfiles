@@ -122,8 +122,8 @@ publish() {
             _org_export_site "$org" || exit 1
             rel="${org#"$site_src"/}"
             sans="${rel%.org}"
-            if [[ "$(basename "$sans")" == index ]]; then
-              out="${sans}.html"
+            if [[ "$sans" == about ]]; then   # rm/org-site-home-page
+              out="index.html"
             else
               out="$sans/index.html"
             fi
