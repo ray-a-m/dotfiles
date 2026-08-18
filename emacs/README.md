@@ -396,7 +396,7 @@ land on `C-x C-c`, close-the-frame). The custom layer on top:
 | `S-TAB` | cycle the document outline (in `.tex`) |
 | `ESC` | universal back: abort prompt → drop region → dismiss a sidebar → one step back through this window's buffer history (machinery popups skipped; the splash counts as a stop) → when the trail ends, a popup window closes; the frame's last real window (sidebars don't count) dismisses an open sidebar first, then floors on the splash (one splash only — ESC on a duplicate closes it) |
 | `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
-| `M-c` | classify: vault note → form+matter rename; task heading / agenda entry → task tags (in the minibuffer: one letter tags and exits; `C-c` there shows the key grid) |
+| `M-c` | classify: vault note → form+matter rename; task heading / agenda entry / live capture → filed under an inbox project (completion, a new name creates the project), then asked whether to date it |
 | `C-c s` | pop the \*scratch\* buffer |
 | `C-c SPC` | straight home: the splash in the current window — the teleport when ESC's step-by-step walk is too long (`C-c w SPC` is the same destination in a new split) |
 | `q` | dismiss the welcome screen |

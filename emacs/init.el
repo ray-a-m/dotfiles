@@ -2004,12 +2004,20 @@ writeback lands (re-push PATCHes, no duplicates); the file is then saved."
       (message "org-gcal: pushed %d timestamped entr%s from inbox.org"
                n (if (= n 1) "y" "ies")))))
 
+(defvar rm/task--classifying nil
+  "Non-nil while a classify is mid-flight, to hold the calendar push back.
+Classify schedules the entry BEFORE it refiles it, so a push fired by the
+`org-schedule' advice (or by the capture finalize) would come back and write
+its id/etag through a marker the refile has since moved out from under.
+`rm/task-classify-project' pushes once, itself, from the entry's final home.")
+
 (defun rm/org-gcal-auto-push ()
   "Auto-push the entry at point when it's a timestamped entry in inbox.org.
 Fired after `org-schedule'/`org-deadline' so a scheduled TODO becomes an event
 without a manual M-SPC G.  Async (non-blocking) with a save chained after the
 POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
-  (when (and buffer-file-name
+  (when (and (not rm/task--classifying)
+             buffer-file-name
              (file-equal-p buffer-file-name (rm/org-file "inbox.org"))
              (or (org-get-scheduled-time (point))
                  (org-get-deadline-time (point))))
@@ -2309,29 +2317,100 @@ and matter are assigned in the note with C-c d c (rm/denote-classify)."
     (interactive)
     (require 'denote)
     (denote nil nil))
+  (defun rm/inbox--find-child (parent title)
+    "Marker on PARENT's descendant headline titled TITLE (the last match), or nil.
+How the entry is picked up again after a refile has moved it: org's refile
+leaves no handle on what it moved, and the refile lands the entry LAST among
+its new siblings, so the last title match is the one just filed."
+    (org-with-point-at parent
+      (org-back-to-heading t)
+      (let ((end (save-excursion (org-end-of-subtree t t) (point)))
+            found)
+        (save-excursion
+          (while (and (outline-next-heading) (< (point) end))
+            (when (equal (org-get-heading t t t t) title)
+              (setq found (point-marker)))))
+        found)))
+  (defun rm/task--offer-schedule (pom)
+    "Ask whether to schedule the entry at POM; non-nil when it got a date.
+Classifying and scheduling are separate decisions -- most todos want a project
+and no date -- so this only ASKS, and only when the entry carries no
+SCHEDULED/DEADLINE yet: `n' leaves it undated, `y' opens
+`org-schedule's date prompt.  Asked BEFORE the entry is filed, so from a
+capture the date question comes up while the capture window is still standing,
+not after it has closed.  M-g (C-g) at the question backs out of the classify
+altogether -- nothing has moved yet.  The calendar push is held back here
+(`rm/task--classifying') and fired once the entry has landed."
+    (when pom
+      (org-with-point-at pom
+        (unless (or (org-get-scheduled-time (point))
+                    (org-get-deadline-time (point)))
+          (when (y-or-n-p "Schedule it? ")
+            (let ((rm/task--classifying t)) (org-schedule nil))
+            (when buffer-file-name (save-buffer))   ; nil in a capture buffer
+            t)))))
   (defun rm/task-classify-project (&optional agenda)
-    "File the task at hand under a project chosen by name.
+    "File the task at hand under a project chosen by name, then offer a date.
 Projects are the top-level `*' headings in inbox.org -- the replacement
 for the old task tags, now that the agenda groups by project.  With
 AGENDA non-nil, refile the agenda entry at point and rebuild the view
 (default project = the one under point); otherwise refile the org
-heading at point."
-    (let* ((marker (when agenda
+heading at point.  A LIVE CAPTURE takes org-capture's own dance instead
+(finalize first, then refile the stored entry from the base buffer): a
+plain refile out of a capture buffer loses the todo outright, because
+finalize goes on to delete the region the refile has already moved away.
+Filed, `rm/task--offer-schedule' asks whether to date it -- classify
+first, schedule only when the todo actually wants a day."
+    (let* ((capture (bound-and-true-p org-capture-mode))
+           (marker (when agenda
                      (or (org-get-at-bol 'org-hd-marker)
                          (org-get-at-bol 'org-marker)
                          (user-error "No entry on this line"))))
+           (title (if agenda
+                      (org-with-point-at marker (org-get-heading t t t t))
+                    (save-excursion (org-back-to-heading t)
+                                    (org-get-heading t t t t))))
            (dest (rm/inbox--read-project
                   (and agenda (rm/agenda--project-at-point))))
            (file (buffer-file-name (marker-buffer dest)))
            (head (org-with-point-at dest (org-get-heading t t t t)))
-           (rfloc (list head file nil (marker-position dest))))
-      (if agenda
+           (rfloc (list head file nil (marker-position dest)))
+           (dated (rm/task--offer-schedule (or marker (point)))))
+      ;; The whole move runs with the calendar push held back -- the capture
+      ;; finalize fires one of its own, through a marker the refile below
+      ;; then invalidates.
+      (let ((rm/task--classifying t))
+        (cond
+         (agenda
           (let ((src (marker-buffer marker)))
             (org-with-point-at marker (org-refile nil nil rfloc))
-            (when (buffer-live-p src) (with-current-buffer src (save-buffer)))
-            (with-current-buffer (marker-buffer dest) (save-buffer))
-            (rm/agenda-rebuild))
-        (org-refile nil nil rfloc))
+            (when (buffer-live-p src) (with-current-buffer src (save-buffer)))))
+         (capture
+          (let ((base (or (buffer-base-buffer) (current-buffer)))
+                (pos (make-marker))
+                (org-capture-is-refiling t))
+            ;; Marker in the BASE buffer: the indirect capture buffer is killed
+            ;; by the finalize, and finalize can shift text around the entry.
+            (set-marker pos (save-excursion (org-back-to-heading t) (point)) base)
+            (org-capture-put :kill-buffer nil :jump-to-captured nil)
+            (org-capture-finalize)
+            (save-window-excursion
+              (with-current-buffer base
+                (org-with-point-at pos (org-refile nil nil rfloc))
+                (save-buffer)))))
+         (t (org-refile nil nil rfloc)))
+        (with-current-buffer (marker-buffer dest) (save-buffer)))
+      ;; Now that the entry has stopped moving, let the calendar have it.
+      (when dated
+        (let ((m (rm/inbox--find-child dest title)))
+          (when m (org-with-point-at m (rm/org-gcal-auto-push)))))
+      ;; Land on the agenda whenever it is on screen -- a capture window
+      ;; closing should hand him back the task list, not whatever sat behind
+      ;; it.  Rebuilt there, so the entry shows under its new project.
+      (let ((win (get-buffer-window (or (bound-and-true-p org-agenda-buffer-name)
+                                        "*Org Agenda*"))))
+        (cond (win (select-window win) (rm/agenda-rebuild))
+              (agenda (rm/agenda-rebuild))))
       (message "Filed under %s" head)))
   (defun rm/denote-classify ()
     "Classify the thing at hand -- one gesture, context decides.
