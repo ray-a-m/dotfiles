@@ -6,7 +6,7 @@ commands                                       C = Ctrl (CapsLock too) · M = Al
   File to split ...... [M-SPC w f / b]    Restart Emacs .. [M-x restart-emacs]
   Git save (commit+push) ... [M-SPC g]    Save ..................... [M-a M-s]
   Home ................... [M-SPC SPC]    Scratch .............. [s / M-SPC s]
-  Home in new window .. [M-SPC w SPC]    Search in buffer ........... [M-s l]
+  Home in new window ... [M-SPC w SPC]    Find in file ............... [M-s l]
   Jump / swap .................. [M-o]    Swap windows ........... [M-SPC w w]
   Move to window ......... [C-h j k l]    Switch buffer ...... [M-ESC / M-a b]
   New note ............. [n / M-SPC n]    Undo / redo .......... [M-z / M-S-z]
@@ -28,35 +28,18 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Bundle this subtree .... [M-SPC l B]    wip           teaching
   Kill request ........... [M-SPC l k]                  (none = misc)
   Link to block ............ [M-SPC L]
-  New referee log ........ [M-SPC l n]
+  New referee log ........ [M-SPC l n]    tasks
   Project note ........... [M-SPC l P]
-    pick a project ... [C-u M-SPC l P]
-  Project tree ....... [l / M-SPC l l]
-    new project (in tree) ........ [a]
-    open right / below ....... [f / b]
+    pick a project ... [C-u M-SPC l P]      push ................... [M-SPC G]
+  Project tree ....... [l / M-SPC l l]      schedule ......... [s / M-SPC M-s]
+    new project (in tree) ........ [a]      todo ............... [t / M-SPC t]
+    open right / below ....... [f / b]      todos ........................ [a]
   Promote in ............. [M-SPC l i]
-  Promote out ............ [M-SPC l p]
+  Promote out ............ [M-SPC l p]    vault  file = ID--title__form_matter
     no compaction .... [C-u M-SPC l p]
-    new project .. [C-u C-u M-SPC l p]
-  Referee pass ...... [region + M-RET]
-  Refresh backlinks ...... [M-SPC l r]
-  Session / referee log .. [M-SPC l s]
-  Tree (branches) ........ [M-SPC l T]
+    new project .. [C-u C-u M-SPC l p]      Attach → Files/ ...... [M-SPC d a]
+  Referee pass ...... [region + M-RET]      Backlinks ............ [M-SPC d b]
+  Refresh backlinks ...... [M-SPC l r]      Classify: note / task ...... [M-c]
+  Session / referee log .. [M-SPC l s]      Insert link .......... [M-SPC d k]
+  Tree (branches) ........ [M-SPC l T]      Promote / rename ..... [M-SPC d r]
   Typo pass (paper) ...... [M-SPC l t]
-
-tasks
-
-  push ..................... [M-SPC G]
-  schedule ............... [M-SPC M-s]
-  todo ................. [t / M-SPC t]
-  todos .......................... [a]
-
-vault  file = ID--title__form_matter
-
-  Attach: file → Files/ .. [M-SPC d a]
-  Backlinks .............. [M-SPC d b]
-  Classify: note / task ........ [M-c]
-  Insert link ............ [M-SPC d k]
-  Promote / rename ....... [M-SPC d r]
-
-                              any key to dismiss

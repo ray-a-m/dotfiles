@@ -3177,12 +3177,15 @@ runs its normal splash binding (so `c' then `t' still captures a task)."
       (let ((org-mode-hook nil)) (org-mode))       ; monospace, no prose hooks
       (setq-local mode-line-format nil header-line-format nil cursor-type nil)
       (font-lock-add-keywords nil
-                              '(("^\\(?:commands\\|find\\|tasks\\|vault\\|llm\\)\\b" 0 'bold)
+                              ;; Block headers: commands/find/llm start their
+                              ;; line, tasks/vault ride the right-hand column
+                              ;; beside the llm list, so match them as words.
+                              '(("^\\(?:commands\\|find\\|llm\\)\\b" 0 'bold)
+                                ("\\_<\\(?:tasks\\|vault\\)\\_>" 0 'bold)
                                 ("\\_<\\(?:form\\|matter\\)\\_>" 0 'bold)
                                 ("C = Ctrl.*$" 0 'italic)
-                                ("^vault  \\(file = .*\\)$" 1 'italic)
+                                ("vault  \\(file = .*\\)$" 1 'italic)
                                 ("^llm  \\(\\S-+\\)" 1 'italic)
-                                ("any key to dismiss" 0 'italic)
                                 ("\\[[^][()]*\\]" 0 'nano-face-salient prepend))
                               t)
       (font-lock-flush) (font-lock-ensure)
