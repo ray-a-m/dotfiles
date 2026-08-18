@@ -1809,6 +1809,12 @@ delete only."
       ;; inbox.org's file-derived category is "inbox" -- redundant with the
       ;; project group header, and just repeats down the whole column.  Blank it.
       (when (equal s "inbox") (setq s ""))
+      ;; An llm.el referee log is grouped under `research' already, and its
+      ;; project tag names the paper; its title-form ("higgs referee 1 ai")
+      ;; would only repeat that.  Blank, like inbox (his ask, 2026-08-18).
+      (when (and f (fboundp 'llm-project-referee-log-p)
+                 (llm-project-referee-log-p f))
+        (setq s ""))
       ;; A blank category (inbox todos) used to still pad to 18 columns, which
       ;; pushed every todo far to the right of its project header.  Emit nothing
       ;; when blank so todos don't sit at the old far-right 18-col gutter.  But
@@ -2646,6 +2652,13 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;; join it by file -- the ones that exist here, the new ones as llm.el
 ;; makes them (llm-referee-agenda).
 (setq org-agenda-files (append org-agenda-files (llm-referee-log-files)))
+;; A log's todo inherits the file tags :ai:<project>:referee:.  The form
+;; keywords say nothing in the agenda; the project tag names the paper and
+;; stays.
+(setq org-agenda-hide-tags-regexp
+      (regexp-opt (list llm-project-form-keyword llm-project-referee-keyword
+                        llm-project-note-keyword)
+                  'symbols))
 ;; Bundled PDFs go to the model as marker markdown (pdf2md, Datalab; the
 ;; key comes from ~/.config/secrets.env), converted in the background the
 ;; first time a PDF is linked; pdftotext text until then.
