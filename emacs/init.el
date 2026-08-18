@@ -935,16 +935,13 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
                             (directory-files-recursively
                              (expand-file-name "~/scholarship/research-wip/documents/")
                              "\\.org\\'"))))
-        ;; The default 'reorganize-frame DELETES the other windows on C-c a --
-        ;; the agenda hijacks the frame and there's nothing left to resize
-        ;; against.  'other-window keeps the buffer you launched from
-        ;; visible (agenda lands in another/new window -- 'current-window
-        ;; put the task list ON TOP of the file you were reading); the
-        ;; daily paper+notes+agenda layout survives and C-c w hjkl work.
-        ;; Which "other window" is pinned by the display-buffer-alist rule
-        ;; below: reuse a visible agenda window, else ALWAYS split a fresh
-        ;; one -- never commandeer an existing window.
-        org-agenda-window-setup 'other-window
+        ;; The agenda REPLACES the buffer in the window you called it from --
+        ;; from the splash that is the point of it (2026-08-18, reversing the
+        ;; earlier 'other-window rule): `a' turns home into the task list
+        ;; rather than splitting the frame in two.  ESC walks back, so the
+        ;; buffer underneath is one key away.  ('reorganize-frame, the org
+        ;; default, would DELETE the other windows instead.)
+        org-agenda-window-setup 'current-window
         org-startup-folded 'showall       ; open fully expanded; S-TAB cycles all folding
         org-startup-with-inline-images t  ; render ![[image]] embeds inline (Obsidian-like)
         org-image-actual-width '(500)     ; cap oversized inline images at 500px
@@ -1727,6 +1724,17 @@ delete only."
         (setq rm/agenda--deleted nil)
         (rm/agenda-rebuild)
         (message "Restored %s" (plist-get s :heading)))))
+  (defun rm/agenda-schedule (arg)
+    "Put a date on the agenda entry at point (`s').
+`org-agenda-schedule' -- which routes through `org-schedule', so the calendar
+push advice sees it -- with the file saved after, the way every other agenda
+edit here leaves nothing unwritten.  ARG passes through (C-u removes the
+date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
+    (interactive "P")
+    (org-agenda-schedule arg)
+    (let ((m (or (org-get-at-bol 'org-hd-marker) (org-get-at-bol 'org-marker))))
+      (when (and m (buffer-live-p (marker-buffer m)))
+        (with-current-buffer (marker-buffer m) (save-buffer)))))
   (with-eval-after-load 'org-agenda
     (keymap-set org-agenda-mode-map "j" #'org-agenda-next-line)
     (keymap-set org-agenda-mode-map "k" #'org-agenda-previous-line)
@@ -1739,6 +1747,13 @@ delete only."
     (keymap-set org-agenda-mode-map "a" #'rm/agenda-new)
     (keymap-set org-agenda-mode-map "y" #'rm/agenda-yank)
     (keymap-set org-agenda-mode-map "p" #'rm/agenda-paste)
+    (keymap-set org-agenda-mode-map "s" #'rm/agenda-schedule)
+    ;; M-a M-s in the agenda: the agenda buffer visits no file, so stock
+    ;; `save-buffer' fell through to `write-file' and asked where to save it.
+    ;; Save the org files instead -- what `s' used to do here.  A remap, not a
+    ;; key bind, so every route to save-buffer lands on it.
+    (keymap-set org-agenda-mode-map "<remap> <save-buffer>"
+                #'org-save-all-org-buffers)
     (keymap-set org-agenda-mode-map "V" #'org-agenda-view-mode-dispatch)
     (keymap-set org-agenda-mode-map "SPC" #'org-agenda-bulk-toggle)
     (keymap-set org-agenda-mode-map "v" #'rm/agenda-visual-toggle))
@@ -1773,7 +1788,7 @@ delete only."
   ;; The agenda's own keys, printed where they apply (footer of every
   ;; agenda view) rather than on the splash.
   (defconst rm/agenda-footer-text
-    " hjkl move \u00b7 e edit \u00b7 a new \u00b7 y/p move \u00b7 r progress \u00b7 d delete \u00b7 u undo \u00b7 s save")
+    " a new \u00b7 d delete \u00b7 e edit \u00b7 hjkl move \u00b7 r progress \u00b7 s schedule \u00b7 u undo \u00b7 y/p move")
   (defun rm/agenda-footer ()
     ;; Idempotent by CONTENT: agenda redraws strip text properties, so
     ;; sweep the literal footer line (and its leading blank) wherever it
@@ -1832,13 +1847,12 @@ delete only."
           (todo   . " %(rm/agenda-category)%(rm/agenda-indent)")
           (tags   . " %i %(rm/agenda-category) ")
           (search . " %i %(rm/agenda-category) ")))
-  ;; The agenda always gets its own window: reuse one already showing it,
-  ;; else split fresh (largest window gives up the space); never replace
-  ;; the buffer in an existing window.  Pairs with 'other-window above.
+  ;; Reuse a window already showing the agenda; otherwise it lands in the
+  ;; current one ('current-window above -- pop-to-buffer-same-window reads
+  ;; this alist, so no `inhibit-same-window' here or the split comes back).
   (add-to-list 'display-buffer-alist
                '("\\*Org Agenda\\*"
-                 (display-buffer-reuse-window display-buffer-pop-up-window)
-                 (inhibit-same-window . t))))
+                 (display-buffer-reuse-window display-buffer-same-window))))
 
 ;; --- Papers in Org: body-only LaTeX export --------------------------------
 ;; paper.org files under research-wip/documents/papers/<slug>/ export to the
