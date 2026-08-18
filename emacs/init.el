@@ -2659,6 +2659,24 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
       (regexp-opt (list llm-project-form-keyword llm-project-referee-keyword
                         llm-project-note-keyword)
                   'symbols))
+;; ...and the project tag goes too: a todo in a log wears no tags at all
+;; (his ask, 2026-08-18 -- no new tag pill for todos).  Done after the
+;; agenda is built, per line, since the project tag is not a fixed word.
+(defun rm/agenda--strip-log-tags ()
+  "Remove the tag string from every agenda line whose entry is in a referee log."
+  (let ((inhibit-read-only t))
+    (save-excursion
+      (goto-char (point-min))
+      (while (not (eobp))
+        (when-let* ((m (or (get-text-property (point) 'org-hd-marker)
+                           (get-text-property (point) 'org-marker)))
+                    (f (buffer-file-name (marker-buffer m))))
+          (when (and (llm-project-referee-log-p f)
+                     (re-search-forward org-tag-group-re (line-end-position) t))
+            (delete-region (match-beginning 0) (line-end-position))
+            (delete-horizontal-space)))
+        (forward-line 1)))))
+(add-hook 'org-agenda-finalize-hook #'rm/agenda--strip-log-tags)
 ;; Bundled PDFs go to the model as marker markdown (pdf2md, Datalab; the
 ;; key comes from ~/.config/secrets.env), converted in the background the
 ;; first time a PDF is linked; pdftotext text until then.
