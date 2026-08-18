@@ -3226,6 +3226,14 @@ so the startup hook stays quiet when a frame opens on a file."
   (interactive)
   (rm/welcome t))
 (keymap-global-set "C-c SPC" #'rm/home)
+;; The splash's single keys that fit under M-SPC (= C-c) without a clash
+;; are global too, so the splash need not be visited for them (his ask,
+;; 2026-08-18): n note, p papers, s scratch, a agenda, d list, 1-9
+;; bookmarks were already; f find, t todo, c commands join.  l is the
+;; llm map (its l l opens the project tree); g h w stay splash-only.
+(keymap-global-set "C-c f" #'rm/denote-find)
+(keymap-global-set "C-c t" #'rm/capture-task)
+(keymap-global-set "C-c c" #'rm/welcome-commands)
 ;; ESC, single press: universal "back out of where I am".
 ;; Prompts abort; a marked region deactivates; otherwise one literal
 ;; step back through the SELECTED WINDOW's own buffer history (every

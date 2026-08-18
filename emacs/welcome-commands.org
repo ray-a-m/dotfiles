@@ -8,29 +8,28 @@ commands                                       C = Ctrl (CapsLock too) · M = Al
   Home ................... [M-SPC SPC]    Scratch .............. [s / M-SPC s]
   Jump / swap .................. [M-o]    Search in buffer ........... [M-s l]
   Move to window ......... [C-h j k l]    Swap windows ........... [M-SPC w w]
-  New note ....................... [n]    Switch buffer ...... [M-ESC / M-a b]
-  Papers ......................... [p]    Undo / redo .......... [M-z / M-S-z]
-  Projects (llm) ................. [l]    Window menu .............. [M-SPC w]
+  New note ............. [n / M-SPC n]    Switch buffer ...... [M-ESC / M-a b]
+  Papers ............... [p / M-SPC p]    Undo / redo .......... [M-z / M-S-z]
+  Projects (llm) ..... [l / M-SPC l l]    Window menu .............. [M-SPC w]
 
 find                                      form          matter
 
   by content ..................... [g]    hub           aesthetics
-  by name ........................ [f]    idea          concepts
+  by name .............. [f / M-SPC f]    idea          concepts
   by tag ......................... [d]    lit           fun
   hubs ........................... [h]    log           hegel
                                           meeting       history
 llm  ID--title__ai_<project>[_project]    musing        kant
                                           paperidea     math
-  Ask / send ..... [M-RET / M-SPC l l]    poetry        neo-kantian
+  Ask / send ... [M-RET / M-SPC l RET]    poetry        neo-kantian
   Aside .................. [M-SPC l a]    project       physics
   Branch ................. [M-SPC l b]    talk          science
   Kill request ........... [M-SPC l k]    wip           teaching
   Link to block ............ [M-SPC L]                  (none = misc)
   New referee log ........ [M-SPC l n]
-  Outline (branches) ..... [M-SPC l o]
   Project note ........... [M-SPC l P]
     pick a project ... [C-u M-SPC l P]
-  Project tree ....... [l / M-SPC l T]
+  Project tree ....... [l / M-SPC l l]
     new project (in tree) ........ [a]
     open right / below ....... [f / b]
   Promote in ............. [M-SPC l i]
@@ -40,13 +39,14 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Referee pass ...... [region + M-RET]
   Refresh backlinks ...... [M-SPC l r]
   Session / referee log .. [M-SPC l s]
+  Tree (branches) ........ [M-SPC l T]
   Typo pass (paper) ...... [M-SPC l t]
 
 tasks
 
   push ..................... [M-SPC G]
   schedule ............... [M-SPC M-s]
-  todo ........................... [t]
+  todo ................. [t / M-SPC t]
   todos .......................... [a]
 
 vault  file = ID--title__form_matter
