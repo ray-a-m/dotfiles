@@ -6,7 +6,7 @@ commands                                       C = Ctrl (CapsLock too) · M = Al
   File to split ...... [M-SPC w f / b]    Restart Emacs .. [M-x restart-emacs]
   Git save (commit+push) ... [M-SPC g]    Save ..................... [M-a M-s]
   Home ................... [M-SPC SPC]    Scratch .............. [s / M-SPC s]
-  Home in new split .... [M-SPC w SPC]    Search in buffer ........... [M-s l]
+  Home in new window .. [M-SPC w SPC]    Search in buffer ........... [M-s l]
   Jump / swap .................. [M-o]    Swap windows ........... [M-SPC w w]
   Move to window ......... [C-h j k l]    Switch buffer ...... [M-ESC / M-a b]
   New note ............. [n / M-SPC n]    Undo / redo .......... [M-z / M-S-z]
