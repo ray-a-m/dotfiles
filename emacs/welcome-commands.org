@@ -25,8 +25,9 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Ask / send ... [M-RET / M-SPC l RET]    poetry        neo-kantian
   Aside .................. [M-SPC l a]    project       physics
   Branch ................. [M-SPC l b]    talk          science
-  Kill request ........... [M-SPC l k]    wip           teaching
-  Link to block ............ [M-SPC L]                  (none = misc)
+  Bundle this subtree .... [M-SPC l B]    wip           teaching
+  Kill request ........... [M-SPC l k]                  (none = misc)
+  Link to block ............ [M-SPC L]
   New referee log ........ [M-SPC l n]
   Project note ........... [M-SPC l P]
     pick a project ... [C-u M-SPC l P]
