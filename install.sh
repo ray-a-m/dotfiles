@@ -470,6 +470,16 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Merging LibreWolf policies (Bitwarden auto-install)"
         "$DOTFILES_DIR/librewolf/merge-policies.sh"
     fi
+
+    # LibreWolf pref overrides (dotfiles/librewolf/user.js). The main job is
+    # the timezone. LibreWolf turns on resistFingerprinting by default, which
+    # reports UTC to every website and makes calendar sites show the wrong
+    # local time. The script links user.js into each profile. Read the header
+    # of user.js for the measured trade-off.
+    if [ -x "$DOTFILES_DIR/librewolf/link-user-js.sh" ]; then
+        echo "==> Linking LibreWolf user.js (real timezone, keep other protections)"
+        "$DOTFILES_DIR/librewolf/link-user-js.sh"
+    fi
 fi
 
 echo "==> Symlinking custom Omarchy hooks, themes, themed, extensions, and plugins"
