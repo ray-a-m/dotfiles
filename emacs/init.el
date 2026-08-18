@@ -2039,6 +2039,24 @@ POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
       (rm/org-gcal-auto-push))))
 (add-hook 'org-capture-after-finalize-hook #'rm/org-gcal--capture-push)
 
+;; org-gcal also wires TWO auto-post hooks of its OWN: `org-gcal--refile-post'
+;; on `org-after-refile-insert-hook' and `org-gcal--capture-post' on
+;; `org-capture-after-finalize-hook'.  Both POST any entry that lands in a file
+;; from `org-gcal-fetch-file-alist' (here: inbox.org), timestamp or not -- and
+;; `org-gcal-post-at-point' PROMPTS with `org-read-date' when the entry carries
+;; no timestamp.  That is what turned a plain classify (M-c, pick the project,
+;; refile into inbox.org) into a date/time prompt, and it hit fresh captures
+;; the same way.  Drop both.  The push story stays one-way and deliberate:
+;; `rm/org-gcal--capture-push' above (guarded on an actual timestamp), the
+;; org-schedule/org-deadline advice, and M-SPC G for bulk.  Nested
+;; `with-eval-after-load' so the removal runs AFTER org-gcal's own adds,
+;; whichever of org-refile/org-capture loads first.
+(with-eval-after-load 'org-gcal
+  (with-eval-after-load 'org-refile
+    (remove-hook 'org-after-refile-insert-hook #'org-gcal--refile-post))
+  (with-eval-after-load 'org-capture
+    (remove-hook 'org-capture-after-finalize-hook #'org-gcal--capture-post)))
+
 (keymap-global-set "C-c G" #'rm/org-gcal-push)   ; M-SPC G -- bulk one-way push
 
 ;; Set a SCHEDULED stamp with M-SPC M-s (= C-c M-s), matching the M-SPC command
