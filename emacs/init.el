@@ -2385,31 +2385,48 @@ denote, so nothing is missed."
     (let ((c (delete-dups (delq nil (copy-sequence candidates)))))
       (string-trim (completing-read (format "%s (%s): " prompt (or default "new"))
                                     c nil nil nil nil default))))
-  (defun rm/teaching-new ()
-    "Create a teaching document: academic year, term, class, type, title."
+  (defun rm/teaching--path-parts (dir)
+    "The (ay term class) of DIR under the teaching root, missing ones nil."
+    (when (and dir (string-prefix-p rm/teaching-directory (expand-file-name dir)))
+      (let ((parts (split-string (file-relative-name (expand-file-name dir)
+                                                     rm/teaching-directory)
+                                 "/" t)))
+        (list (nth 0 parts) (nth 1 parts) (nth 2 parts)))))
+  (defun rm/teaching-new (&optional dir)
+    "Create a teaching document: academic year, term, class, type, title.
+DIR, a directory inside the tree (the sidebar passes the line at
+point), pre-answers year/term/class; RET accepts each."
     (interactive)
     (require 'denote)
-    (let* ((root rm/teaching-directory)
-           (ay (rm/teaching--pick "Academic year"
-                                  (cons (rm/teaching--academic-year) (rm/teaching--subdirs root))
-                                  (rm/teaching--academic-year)))
-           (ay-dir (expand-file-name ay root))
-           (term (rm/teaching--pick "Term"
-                                    (append (rm/teaching--subdirs ay-dir) rm/teaching-terms)
-                                    (car (or (rm/teaching--subdirs ay-dir) rm/teaching-terms))))
-           (term-dir (expand-file-name term ay-dir))
-           (class (denote-sluggify-title
-                   (rm/teaching--pick "Class" (rm/teaching--subdirs term-dir)
-                                      (car (rm/teaching--subdirs term-dir)))))
-           (class-dir (file-name-as-directory (expand-file-name class term-dir)))
-           (type (completing-read "Type: " rm/teaching-types nil t))
-           (title (read-string "Title: ")))
+    (pcase-let* ((`(,d-ay ,d-term ,d-class) (rm/teaching--path-parts dir))
+                 (root rm/teaching-directory)
+                 (ay (rm/teaching--pick "Academic year"
+                                        (cons (rm/teaching--academic-year) (rm/teaching--subdirs root))
+                                        (or d-ay (rm/teaching--academic-year))))
+                 (ay-dir (expand-file-name ay root))
+                 (term (rm/teaching--pick "Term"
+                                          (append (rm/teaching--subdirs ay-dir) rm/teaching-terms)
+                                          (or d-term (car (or (rm/teaching--subdirs ay-dir) rm/teaching-terms)))))
+                 (term-dir (expand-file-name term ay-dir))
+                 (class (denote-sluggify-title
+                         (rm/teaching--pick "Class" (rm/teaching--subdirs term-dir)
+                                            (or d-class (car (rm/teaching--subdirs term-dir))))))
+                 (class-dir (file-name-as-directory (expand-file-name class term-dir)))
+                 (type (completing-read "Type: " rm/teaching-types nil t))
+                 (title (read-string "Title: ")))
       (when (string-empty-p class) (user-error "A class is needed"))
       (make-directory class-dir t)
       (let* ((denote-directory root)
              (denote-templates rm/teaching-templates)
              (path (denote title (list "teaching" type) 'org class-dir nil (intern type))))
         (add-to-list 'org-agenda-files path)
+        ;; A showing teaching sidebar learns of the new file at once.
+        (when-let ((sb (and (fboundp 'dired-sidebar-showing-sidebar-p)
+                            (dired-sidebar-showing-sidebar-p))))
+          (with-current-buffer (window-buffer sb)
+            (when (string-prefix-p rm/teaching-directory (expand-file-name default-directory))
+              (dired-sidebar-refresh-buffer)
+              (rm/sidebar--reveal path))))
         (find-file path))))
   (defun rm/denote-attach (file)
     "Copy FILE into the vault's Files/ bin and link it at point (C-c d a).
@@ -3913,12 +3930,16 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
   ;; step into it) or visit a file; h: collapse an expanded dir, else jump
   ;; to the parent line.
   (defun rm/sidebar-open ()
-    "Expand the directory at point, or visit the file in the main window."
+    "Expand the directory at point, or visit the file in the main window.
+An empty folder says so -- expanding it draws nothing, which reads as
+\"nothing happened\"."
     (interactive)
     (if (dired-subtree--dired-line-is-directory-or-link-p)
-        (if (dired-subtree--is-expanded-p)
-            (dired-subtree-down)
-          (dired-subtree-toggle))
+        (cond
+         ((dired-subtree--is-expanded-p) (dired-subtree-down))
+         ((null (directory-files (dired-get-filename) nil "\\`[^.]" t 1))
+          (message "%s is empty" (file-name-nondirectory (dired-get-filename))))
+         (t (dired-subtree-toggle)))
       (dired-sidebar-find-file)))
   (defun rm/sidebar-close ()
     "Collapse the expanded directory at point, else jump to the parent."
@@ -3931,6 +3952,15 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
   (define-key dired-sidebar-mode-map (kbd "k") #'dired-previous-line)
   (define-key dired-sidebar-mode-map (kbd "l") #'rm/sidebar-open)
   (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close)
+  ;; K in the teaching sidebar: file a new document where point is (the
+  ;; folder line's year/term/class pre-answer the prompts), as on the splash.
+  (defun rm/sidebar-teaching-new ()
+    "New teaching document at point's folder; only in the teaching sidebar."
+    (interactive)
+    (unless (string-prefix-p rm/teaching-directory (expand-file-name default-directory))
+      (user-error "K files teaching documents: open the teaching sidebar (C-c k)"))
+    (rm/teaching-new (rm/sidebar--dir-at-point)))
+  (define-key dired-sidebar-mode-map (kbd "K") #'rm/sidebar-teaching-new)
   ;; f / b: open the file at point in a split of the MAIN window -- right
   ;; and below, the same letters as C-c w f/b (one split vocabulary
   ;; everywhere).  The main window is found the way dired-sidebar itself

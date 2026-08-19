@@ -27,8 +27,8 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Aside .................. [M-SPC l a]    project       physics
   Branch ................. [M-SPC l b]    talk          science
   Bundle this subtree .... [M-SPC l B]    wip           teaching
-  Kill request ........... [M-SPC l k]    teaching*     (none = misc)
-  Link to block ............ [M-SPC L]    *= ~/Dropbox/teaching, not vault
+  Kill request ........... [M-SPC l k]    teaching      (none = misc)
+  Link to block ............ [M-SPC L]
   New referee log ........ [M-SPC l n]    tasks
   Project note ........... [M-SPC l P]
     pick a project ... [C-u M-SPC l P]      push ................... [M-SPC G]
