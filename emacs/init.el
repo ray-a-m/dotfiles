@@ -1561,11 +1561,11 @@ name, not a project."
            ((and (fboundp 'llm-project-referee-log-p)
                  (llm-project-referee-log-p file))
             "research")
-           ;; A teaching document files under its class (the directory
-           ;; name, e.g. phil-101): one section per course, whatever the
-           ;; syllabus heading above the todo says.
+           ;; A teaching document files under `teaching', with the inbox's
+           ;; teaching todos, whatever the heading above the todo says; the
+           ;; category column names the course (rm/agenda-category).
            ((and file (string-prefix-p rm/teaching-directory file))
-            (file-name-nondirectory (directory-file-name (file-name-directory file))))
+            "teaching")
            (t
             (org-back-to-heading t)
             (while (and (org-current-level) (> (org-current-level) 1))
@@ -1985,6 +1985,13 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
       (when (and f (fboundp 'llm-project-referee-log-p)
                  (llm-project-referee-log-p f))
         (setq s ""))
+      ;; A teaching document: the course code (PHIL 104), not the file's
+      ;; title -- the todo sits under `teaching' already, and the code says
+      ;; which course.  A class folder without a code shows nothing.
+      (when (and f (string-prefix-p rm/teaching-directory f))
+        (setq s (or (car (rm/teaching--class-meta
+                          (or (nth 2 (rm/teaching--path-parts (file-name-directory f))) "")))
+                    "")))
       ;; A blank category (inbox todos) used to still pad to 18 columns, which
       ;; pushed every todo far to the right of its project header.  Emit nothing
       ;; when blank so todos don't sit at the old far-right 18-col gutter.  But
@@ -2490,13 +2497,17 @@ syllabus skeleton does not repeat them.")
        (replace-regexp-in-string "[[:space:]_/]+" "-" (string-trim name))))
      "-+" "-+"))
   (defun rm/teaching--class-meta (class)
-    "Split a CLASS folder slug into (code . course), hyphens read as spaces.
-PHIL-104-Intro-to-Political-Philosophy -> (\"PHIL 104\" . \"Intro to Political Philosophy\");
-a slug with no leading code gives (\"\" . whole)."
-    (if (string-match "\\`\\([[:alpha:]]+-[[:digit:]]+[[:alpha:]]*\\)-\\(.+\\)\\'" class)
-        (cons (string-replace "-" " " (match-string 1 class))
-              (string-replace "-" " " (match-string 2 class)))
-      (cons "" (string-replace "-" " " class))))
+    "Split a CLASS folder name into (code . course).
+Takes the slug K makes and a hand-named folder alike:
+PHIL-104-Intro-to-Political-Philosophy and
+\"Phil 104: Introduction to Political Philosophy\" both give
+(\"PHIL 104\" . \"Intro…\").  Hyphens read as spaces in a slug (no spaces
+in the name); a folder with no leading code gives (\"\" . whole)."
+    (let ((words (lambda (x) (if (string-search " " x) x (string-replace "-" " " x)))))
+      (if (string-match "\\`\\([[:alpha:]]+[- ][[:digit:]]+[[:alpha:]]*\\)[-:[:space:]]+\\(.+\\)\\'" class)
+          (cons (string-replace "-" " " (match-string 1 class))
+                (funcall words (string-trim (match-string 2 class))))
+        (cons "" (funcall words class)))))
   (defun rm/teaching--sidebar-show (path)
     "Refresh a showing teaching sidebar and land its point on PATH."
     (when-let ((w (and (fboundp 'dired-sidebar-showing-sidebar-p)
