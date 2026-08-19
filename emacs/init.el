@@ -122,6 +122,14 @@ a typed answer.")
   "Month (1-12) the academic year starts.  August: Aug-Dec file under
 ayYY-(YY+1), Jan-Jul under ay(YY-1)-YY.")
 
+(defun rm/teaching--term-display (term ay)
+  "TERM and AY as prose: fall + ay26-27 -> \"Fall 2026–27\"."
+  (string-join
+   (delq nil (list (and term (capitalize term))
+                   (and ay (replace-regexp-in-string
+                            "\\`ay\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\'" "20\\1–\\2" ay))))
+   " "))
+
 (defun rm/org-files-under (dir)
   "All .org files under DIR, recursively, skipping Emacs lock/temp files.
 Nil when DIR does not exist.  Feeds `org-agenda-files'."
@@ -874,10 +882,7 @@ The PDF is set in Atkinson Hyperlegible Next through xelatex; the DOCX
                        course))
                (sub (string-join
                      (delq nil (list (unless (string-empty-p doc) doc)
-                                     (when (and term ay)
-                                       (format "%s %s" (capitalize term)
-                                               (replace-regexp-in-string
-                                                "\\`ay\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\'" "20\\1–\\2" ay)))))
+                                     (when (and term ay) (rm/teaching--term-display term ay))))
                      " · "))
                ;; -M date= drops denote's timestamp from under the title; the
                ;; document states its own dates in the body.
@@ -2421,11 +2426,12 @@ denote, so nothing is missed."
   (defvar rm/teaching-assignment-kinds '("essay" "presentation" "quiz")
     "Kinds of assignment: the third filename keyword of an assignment file.")
   (defvar rm/teaching-templates
-    '((syllabus . "* Course\n\n* Instructor & office hours\n\n* Description\n\n* Texts\n\n* Requirements & grading\n\n* Schedule\n\n* Policies\n")
+    '((syllabus . "* {{code}}: {{course}}\n{{term}}\n\n* Instructor & office hours\n\n* Description\n\n* Texts\n\n* Requirements & grading\n\n* Schedule\n\n* Policies\n")
       (essay . "* Due\n\n* Prompt\n\n* Length & format\n\n* Criteria\n")
       (presentation . "* Date\n\n* Format & length\n\n* Expectations\n\n* Rubric\n")
       (quiz . "* Date\n\n* Coverage\n\n* Format\n\n* Questions\n"))
-    "Org skeleton per document (syllabus) or assignment kind, under the front matter.")
+    "Org skeleton per document (syllabus) or assignment kind, under the front matter.
+{{course}} {{code}} {{term}} are filled from the folder when the file is made.")
   (defun rm/teaching--academic-year ()
     "The current academic year as ayYY-YY, per `rm/teaching-ay-start-month'."
     (let* ((now (decode-time))
@@ -2524,7 +2530,13 @@ the .org and, after C-c P, its PDF and DOCX.  Opens in the main window
             (when (re-search-forward "^#\\+identifier:.*$" nil t)
               (forward-line 1)
               (insert (format "#+course:     %s\n#+code:       %s\n#+term:       %s\n#+ay:         %s\n"
-                              (cdr meta) (car meta) term ay))))
+                              (cdr meta) (car meta) term ay)))
+            ;; The skeleton's {{...}} placeholders inherit the same facts.
+            (dolist (sub `(("{{course}}" . ,(cdr meta)) ("{{code}}" . ,(car meta))
+                           ("{{term}}" . ,(rm/teaching--term-display term ay))))
+              (goto-char (point-min))
+              (while (search-forward (car sub) nil t)
+                (replace-match (cdr sub) t t))))
           (save-buffer))
         (add-to-list 'org-agenda-files path)
         (rm/teaching--sidebar-show path)
