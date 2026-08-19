@@ -1033,6 +1033,7 @@ The PDF is set in Atkinson Hyperlegible Next through xelatex; the DOCX
          ;; see org-list-indent-offset), C-TAB outdents (C-TAB was
          ;; org-force-cycle-archived, never used)
          ("RET" . rm/org-return)
+         ("S-<return>" . rm/org-shift-return)
          ("TAB" . rm/org-tab)
          ("C-<tab>" . rm/org-untab))
   :init
@@ -1262,7 +1263,25 @@ a bullet (make/delete loop, 2026-07-24).  Everywhere else, stock
         (delete-region (line-beginning-position) (line-end-position))))
      ((org-at-item-p)
       (org-insert-item (org-at-item-checkbox-p)))
+     ;; On an item's continuation line (S-RET made it) a new bullet
+     ;; follows, as on the bullet line; the blank line under a list is
+     ;; still left alone (org-in-item-p counts it, we don't).
+     ((and (org-in-item-p)
+           (save-excursion (beginning-of-line) (not (looking-at-p "[ \t]*$"))))
+      (org-insert-item))
      (t (org-return))))
+  (defun rm/org-shift-return ()
+    "S-RET in a list item: a new line inside the item, no bullet (Obsidian).
+The line is indented to the item's text, so it reads as the item's
+continuation.  In a table, stock S-RET (copy down); elsewhere a newline."
+    (interactive)
+    (cond
+     ((org-at-table-p) (org-table-copy-down 1))
+     ((org-in-item-p)
+      (let ((col (org-list-item-body-column (org-in-item-p))))
+        (delete-horizontal-space t)
+        (insert "\n" (make-string col ?\s))))
+     (t (newline))))
   (defun rm/org-tab ()
     "TAB on a list item indents it one level; elsewhere, stock cycling."
     (interactive)
