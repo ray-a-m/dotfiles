@@ -907,10 +907,14 @@ in the buffer's blue; the DOCX
                             "-V" "mainfont=Atkinson Hyperlegible Next"
                             "-V" "geometry:margin=1in"
                             ;; /emphasis/ in the same soft blue it has in
-                            ;; the buffer (rm/apply-face-tweaks' italic).
+                            ;; the buffer (rm/apply-face-tweaks' italic);
+                            ;; tables without booktabs' top rule (the
+                            ;; header rule and the bottom rule stay).
                             "-V" (concat "header-includes=\\usepackage{xcolor}"
                                          "\\let\\rmOldEmph\\emph"
-                                         "\\renewcommand{\\emph}[1]{\\textcolor[HTML]{4a6fa5}{\\rmOldEmph{#1}}}"))
+                                         "\\renewcommand{\\emph}[1]{\\textcolor[HTML]{4a6fa5}{\\rmOldEmph{#1}}}"
+                                         "\\usepackage{booktabs}"
+                                         "\\AtBeginDocument{\\renewcommand{\\toprule}{}}"))
                       common)
      :sentinel
      (lambda (p _e)
