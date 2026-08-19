@@ -1419,7 +1419,8 @@ agenda in this window; ESC again closes it (see `rm/escape')."
       (switch-to-buffer edit)))                 ; reuse the agenda's window
   (defun rm/agenda-open-entry ()
     "RET in the agenda: inbox entry -> narrowed card (`rm/agenda-edit-entry');
-entry in any other file -> that file, point on the todo, entry unfolded."
+entry in any other file -> that file shown from its top, point on the todo,
+entry unfolded (the document in context, not a window starting mid-file)."
     (interactive)
     (let* ((marker (or (org-get-at-bol 'org-hd-marker)
                        (org-get-at-bol 'org-marker)
@@ -1431,7 +1432,10 @@ entry in any other file -> that file, point on the todo, entry unfolded."
         (when (derived-mode-p 'org-mode)
           (org-fold-show-entry)
           (org-fold-show-children)
-          (recenter 5)))))
+          ;; the window starts at the top of the file; point stays on the
+          ;; todo (when it is further down than the window shows, Emacs
+          ;; scrolls only as far as needed to keep point visible)
+          (set-window-start (selected-window) (point-min))))))
   (defun rm/agenda-visual-toggle ()
     "Yazi-style visual select in the agenda.
 First press anchors a region; j/k extend it; a second press marks every
