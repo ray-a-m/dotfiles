@@ -387,7 +387,7 @@ teaching — same word, different axis, and the two meet under the same
 - `C-c P` in a teaching buffer runs `rm/teaching-pdf`: pandoc renders the
   org to `Course-Title-CODE-ay-term_suffix.pdf` **and** `.docx` beside it
   (suffix `syllabus`, else the document title), both headed
-  `Course Title (CODE)` and subtitled `Document · Fall 2026–27`, and
+  `Course Title (CODE)` and subtitled `Document · Fall AY2026-27`, and
   opens the PDF to the right. The PDF is set in Atkinson Hyperlegible
   Next via xelatex (`-V mainfont`); the DOCX — real heading styles,
   `lang=en-US` — is the screen-reader-accessible copy for students who

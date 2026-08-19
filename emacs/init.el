@@ -123,11 +123,13 @@ a typed answer.")
 ayYY-(YY+1), Jan-Jul under ay(YY-1)-YY.")
 
 (defun rm/teaching--term-display (term ay)
-  "TERM and AY as prose: fall + ay26-27 -> \"Fall 2026–27\"."
+  "TERM and AY as prose: fall + ay26-27 -> \"Fall AY2026-27\".
+The AY is named as such: the term sits inside the academic year, it
+does not run into the second calendar year."
   (string-join
    (delq nil (list (and term (capitalize term))
                    (and ay (replace-regexp-in-string
-                            "\\`ay\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\'" "20\\1–\\2" ay))))
+                            "\\`ay\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\'" "AY20\\1-\\2" ay))))
    " "))
 
 (defun rm/org-files-under (dir)
