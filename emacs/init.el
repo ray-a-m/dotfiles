@@ -2283,6 +2283,36 @@ POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
       (rm/org-gcal-auto-push))))
 (add-hook 'org-capture-after-finalize-hook #'rm/org-gcal--capture-push)
 
+;; A filed todo is shown where he works with todos: the agenda, point on
+;; the new entry -- not the splash the capture was called from (his ask,
+;; 2026-08-19).  Used by classify (M-c) and by a plain capture finalize
+;; (C-c C-c, or ESC on a written capture).  The agenda takes the selected
+;; window when it is not on screen, as splash `a' does.
+(defun rm/agenda-show-entry (title)
+  "Bring up the project agenda, rebuilt, with point on the entry titled TITLE."
+  (let ((win (get-buffer-window (or (bound-and-true-p org-agenda-buffer-name)
+                                    "*Org Agenda*"))))
+    (if win
+        (progn (select-window win) (rm/agenda-rebuild))
+      (rm/agenda-projects)))
+  (when (and title (not (string-empty-p title)))
+    (goto-char (point-min))
+    (when (search-forward title nil t)
+      (beginning-of-line))))
+(defun rm/capture--show-in-agenda ()
+  "After a task capture is kept, show it in the agenda.
+Not for an aborted capture, a note capture (`* Notes' is not a todo
+list), or the finalize classify runs itself before refiling."
+  (when (and (not org-note-abort)
+             (not rm/task--classifying)
+             (equal (plist-get org-capture-plist :key) "t")
+             (bound-and-true-p org-capture-last-stored-marker)
+             (marker-buffer org-capture-last-stored-marker))
+    (let ((title (org-with-point-at org-capture-last-stored-marker
+                   (org-get-heading t t t t))))
+      (rm/agenda-show-entry title))))
+(add-hook 'org-capture-after-finalize-hook #'rm/capture--show-in-agenda)
+
 ;; org-gcal also wires TWO auto-post hooks of its OWN: `org-gcal--refile-post'
 ;; on `org-after-refile-insert-hook' and `org-gcal--capture-post' on
 ;; `org-capture-after-finalize-hook'.  Both POST any entry that lands in a file
@@ -2954,13 +2984,11 @@ first, schedule only when the todo actually wants a day."
       (when dated
         (let ((m (rm/inbox--find-child dest title)))
           (when m (org-with-point-at m (rm/org-gcal-auto-push)))))
-      ;; Land on the agenda whenever it is on screen -- a capture window
-      ;; closing should hand him back the task list, not whatever sat behind
-      ;; it.  Rebuilt there, so the entry shows under its new project.
-      (let ((win (get-buffer-window (or (bound-and-true-p org-agenda-buffer-name)
-                                        "*Org Agenda*"))))
-        (cond (win (select-window win) (rm/agenda-rebuild))
-              (agenda (rm/agenda-rebuild))))
+      ;; Land on the agenda, point on the entry under its new project --
+      ;; a capture window closing should hand him back the task list, not
+      ;; whatever sat behind it (the splash, 2026-08-19), so the agenda is
+      ;; brought up when it is not on screen.
+      (rm/agenda-show-entry title)
       (message "Filed under %s" head)))
   (defun rm/denote-classify ()
     "Classify the thing at hand -- one gesture, context decides.
