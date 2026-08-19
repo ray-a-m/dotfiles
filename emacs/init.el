@@ -1417,6 +1417,21 @@ agenda in this window; ESC again closes it (see `rm/escape')."
         (goto-char (point-min))
         (setq-local rm/edit-origin agenda))
       (switch-to-buffer edit)))                 ; reuse the agenda's window
+  (defun rm/agenda-open-entry ()
+    "RET in the agenda: inbox entry -> narrowed card (`rm/agenda-edit-entry');
+entry in any other file -> that file, point on the todo, entry unfolded."
+    (interactive)
+    (let* ((marker (or (org-get-at-bol 'org-hd-marker)
+                       (org-get-at-bol 'org-marker)
+                       (user-error "No agenda entry on this line")))
+           (file (buffer-file-name (marker-buffer marker))))
+      (if (and file (file-equal-p file (rm/org-file "inbox.org")))
+          (rm/agenda-edit-entry)
+        (org-agenda-switch-to)
+        (when (derived-mode-p 'org-mode)
+          (org-fold-show-entry)
+          (org-fold-show-children)
+          (recenter 5)))))
   (defun rm/agenda-visual-toggle ()
     "Yazi-style visual select in the agenda.
 First press anchors a region; j/k extend it; a second press marks every
@@ -1931,11 +1946,12 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
     (keymap-set org-agenda-mode-map "d" #'rm/agenda-delete)
     (keymap-set org-agenda-mode-map "u" #'rm/agenda-undo-delete)
     (keymap-set org-agenda-mode-map "e" #'rm/agenda-edit-entry)
-    ;; RET too: stock org-agenda-switch-to lands in the whole inbox.org at
-    ;; the heading, the rest of the file trailing below -- "what is all
-    ;; this under my note?" (2026-08-19).  The narrowed entry view is the
-    ;; one he means; C-c C-o / the file itself are a step away from there.
-    (keymap-set org-agenda-mode-map "RET" #'rm/agenda-edit-entry)
+    ;; RET: an inbox todo is a card -- the narrowed entry view, as e (stock
+    ;; org-agenda-switch-to landed in the whole inbox.org, the rest of the
+    ;; file trailing under the note, 2026-08-19).  A todo in a document (a
+    ;; teaching file, a paper) is a place in that document: visit the file
+    ;; there, the entry unfolded.
+    (keymap-set org-agenda-mode-map "RET" #'rm/agenda-open-entry)
     (keymap-set org-agenda-mode-map "a" #'rm/agenda-new)
     (keymap-set org-agenda-mode-map "y" #'rm/agenda-yank)
     (keymap-set org-agenda-mode-map "p" #'rm/agenda-paste)
