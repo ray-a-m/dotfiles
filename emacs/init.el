@@ -2293,6 +2293,16 @@ frame lands on this session."
   :hook ((org-mode            . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda))  ; same look in C-c a
   :init
+  ;; Teaching documents: no tag pills.  Their #+filetags line is machinery
+  ;; (the agenda reads it), not a classification to look at, unlike a
+  ;; vault note's form/matter.  org-modern reads `org-modern-tag' when
+  ;; the mode turns on, so the local nil must be set before its hook
+  ;; runs: depth -10 puts this ahead of it.
+  (defun rm/teaching-no-tag-pills ()
+    (when (and buffer-file-name
+               (string-prefix-p rm/teaching-directory (expand-file-name buffer-file-name)))
+      (setq-local org-modern-tag nil)))
+  (add-hook 'org-mode-hook #'rm/teaching-no-tag-pills -10)
   ;; Heading stars in-line: each leading star displays as a space (?\s --
   ;; NOT `leading', which collapses them to nothing), so a heading sits as
   ;; many columns in as its depth, and the last star is the level glyph.
