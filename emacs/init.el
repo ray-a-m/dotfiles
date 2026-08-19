@@ -114,9 +114,9 @@ Outside the vault on purpose -- the denote pickers never see it -- but
 inside the agenda (see org-agenda-files).")
 
 (defvar rm/teaching-terms '("fall" "spring" "summer")
-  "Term names offered when filing a teaching document.  Existing term
-directories are offered too, and anything typed is accepted, so a
-quarter system is an edit here or just a typed answer.")
+  "Term names; the first is the default K offers for a new class folder.
+Anything typed is accepted, so a quarter system is an edit here or just
+a typed answer.")
 
 (defvar rm/teaching-ay-start-month 8
   "Month (1-12) the academic year starts.  August: Aug-Dec file under
@@ -983,7 +983,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         ;; lists.  Recursive (the trees are nested) and filtered to skip
         ;; Emacs lock/temp files.  New files need a restart (or re-eval) to
         ;; join the agenda; the org dir itself rescans live.  The teaching
-        ;; tree joins the same way (rm/teaching-new adds its file at once);
+        ;; tree joins the same way (rm/teaching-new-doc adds its file at once);
         ;; its TODOs inherit :teaching: from the denote filetags.
         org-agenda-files
         (cons rm/org-directory
@@ -2351,7 +2351,7 @@ denote, so nothing is missed."
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
 
-  ;; --- Teaching documents (K in the teaching sidebar) --------------------
+  ;; --- Teaching documents (teaching sidebar: K folder, n document) ------
   ;; Syllabi, assignments, prompts: denote-named files of form `teaching'
   ;; (then the document type), filed ay26-27/<term>/<class>/ under
   ;; rm/teaching-directory.  Not a vault form -- rm/denote-forms and M-c
@@ -2375,16 +2375,6 @@ denote, so nothing is missed."
            (y (decoded-time-year now))
            (start (if (>= (decoded-time-month now) rm/teaching-ay-start-month) y (1- y))))
       (format "ay%02d-%02d" (% start 100) (% (1+ start) 100))))
-  (defun rm/teaching--subdirs (dir)
-    "Names of the subdirectories of DIR, dot-dirs skipped; nil if DIR is absent."
-    (when (file-directory-p dir)
-      (seq-filter (lambda (n) (file-directory-p (expand-file-name n dir)))
-                  (directory-files dir nil "\\`[^.]"))))
-  (defun rm/teaching--pick (prompt candidates default)
-    "completing-read PROMPT over CANDIDATES, free text allowed, DEFAULT offered."
-    (let ((c (delete-dups (delq nil (copy-sequence candidates)))))
-      (string-trim (completing-read (format "%s (%s): " prompt (or default "new"))
-                                    c nil nil nil nil default))))
   (defun rm/teaching--path-parts (dir)
     "The (ay term class) of DIR under the teaching root, missing ones nil."
     (when (and dir (string-prefix-p rm/teaching-directory (expand-file-name dir)))
@@ -2392,42 +2382,53 @@ denote, so nothing is missed."
                                                      rm/teaching-directory)
                                  "/" t)))
         (list (nth 0 parts) (nth 1 parts) (nth 2 parts)))))
-  (defun rm/teaching-new (&optional dir)
-    "Create a teaching document: academic year, term, class, type, title.
-DIR, a directory inside the tree (the sidebar passes the line at
-point), pre-answers year/term/class; RET accepts each."
+  (defun rm/teaching--sidebar-show (path)
+    "Refresh a showing teaching sidebar and land its point on PATH."
+    (when-let ((w (and (fboundp 'dired-sidebar-showing-sidebar-p)
+                       (dired-sidebar-showing-sidebar-p))))
+      (with-selected-window w
+        (when (string-prefix-p rm/teaching-directory (expand-file-name default-directory))
+          (dired-sidebar-refresh-buffer)
+          (rm/sidebar--reveal path)))))
+  (defun rm/teaching-new-class (&optional dir)
+    "Make a class folder ay/term/class; DIR (the sidebar line) answers what it can.
+Plain prompts with defaults -- RET accepts -- only for the parts DIR
+does not name; the class is always asked."
     (interactive)
     (require 'denote)
-    (pcase-let* ((`(,d-ay ,d-term ,d-class) (rm/teaching--path-parts dir))
-                 (root rm/teaching-directory)
-                 (ay (rm/teaching--pick "Academic year"
-                                        (cons (rm/teaching--academic-year) (rm/teaching--subdirs root))
-                                        (or d-ay (rm/teaching--academic-year))))
-                 (ay-dir (expand-file-name ay root))
-                 (term (rm/teaching--pick "Term"
-                                          (append (rm/teaching--subdirs ay-dir) rm/teaching-terms)
-                                          (or d-term (car (or (rm/teaching--subdirs ay-dir) rm/teaching-terms)))))
-                 (term-dir (expand-file-name term ay-dir))
-                 (class (denote-sluggify-title
-                         (rm/teaching--pick "Class" (rm/teaching--subdirs term-dir)
-                                            (or d-class (car (rm/teaching--subdirs term-dir))))))
-                 (class-dir (file-name-as-directory (expand-file-name class term-dir)))
-                 (type (completing-read "Type: " rm/teaching-types nil t))
-                 (title (read-string "Title: ")))
+    (pcase-let* ((`(,d-ay ,d-term ,_) (rm/teaching--path-parts dir))
+                 (ay (or d-ay (read-string "Academic year: " nil nil (rm/teaching--academic-year))))
+                 (term (or d-term (read-string "Term: " nil nil (car rm/teaching-terms))))
+                 (class (denote-sluggify-title (read-string "Class: ")))
+                 (class-dir (file-name-as-directory
+                             (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory))))
       (when (string-empty-p class) (user-error "A class is needed"))
       (make-directory class-dir t)
-      (let* ((denote-directory root)
-             (denote-templates rm/teaching-templates)
-             (path (denote title (list "teaching" type) 'org class-dir nil (intern type))))
+      (rm/teaching--sidebar-show (directory-file-name class-dir))
+      (message "%s" (abbreviate-file-name class-dir))))
+  (defun rm/teaching-new-doc (&optional dir)
+    "Create a teaching document in the class folder DIR: type, then title.
+Opens in the main window (not the sidebar's), and the sidebar shows it."
+    (interactive)
+    (require 'denote)
+    (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts dir)))
+      (unless (and ay term class)
+        (user-error "Point at a class folder (ay/term/class); K makes one"))
+      (let* ((class-dir (file-name-as-directory
+                         (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory)))
+             (type (completing-read "Type: " rm/teaching-types nil t))
+             (title (read-string "Title: "))
+             (main (if (eq major-mode 'dired-sidebar-mode)
+                       (or (get-mru-window nil nil t) (selected-window))
+                     (selected-window)))
+             (path (with-selected-window main
+                     (let ((denote-directory rm/teaching-directory)
+                           (denote-templates rm/teaching-templates)
+                           (denote-save-buffers t)) ; on disk at once: the sidebar shows it
+                       (denote title (list "teaching" type) 'org class-dir nil (intern type))))))
         (add-to-list 'org-agenda-files path)
-        ;; A showing teaching sidebar learns of the new file at once.
-        (when-let ((sb (and (fboundp 'dired-sidebar-showing-sidebar-p)
-                            (dired-sidebar-showing-sidebar-p))))
-          (with-current-buffer (window-buffer sb)
-            (when (string-prefix-p rm/teaching-directory (expand-file-name default-directory))
-              (dired-sidebar-refresh-buffer)
-              (rm/sidebar--reveal path))))
-        (find-file path))))
+        (rm/teaching--sidebar-show path)
+        (select-window main))))
   (defun rm/denote-attach (file)
     "Copy FILE into the vault's Files/ bin and link it at point (C-c d a).
 Attachments stay plain files by design -- see README; promote one to a
@@ -3410,7 +3411,7 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "n") #'rm/denote-note)         ; new note
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
             (define-key map (kbd "k") #'rm/teaching-sidebar)    ; teaching tree
-                                        ; (K = new doc lives in the sidebar)
+                                        ; (K class / n doc live in the sidebar)
             (define-key map (kbd "f") #'rm/denote-find)         ; the note picker
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
             (define-key map (kbd "a") #'rm/agenda-projects)     ; todos, grouped by
@@ -3486,7 +3487,7 @@ so the startup hook stays quiet when a frame opens on a file."
 ;; are global too, so the splash need not be visited for them (his ask,
 ;; 2026-08-18): n note, p papers, s scratch, a agenda, d list, 1-9
 ;; bookmarks were already; f find, t todo, c commands join; k teaching
-;; sidebar (2026-08-19; K = new doc is a sidebar key, not a splash one).
+;; sidebar (2026-08-19; K class / n doc are sidebar keys, not splash ones).
 ;; l is the llm map (its l l opens the project tree); g h w stay splash-only.
 (keymap-global-set "C-c f" #'rm/denote-find)
 (keymap-global-set "C-c t" #'rm/capture-task)
@@ -3951,15 +3952,25 @@ An empty folder says so -- expanding it draws nothing, which reads as
   (define-key dired-sidebar-mode-map (kbd "k") #'dired-previous-line)
   (define-key dired-sidebar-mode-map (kbd "l") #'rm/sidebar-open)
   (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close)
-  ;; K in the teaching sidebar: file a new document where point is (the
-  ;; folder line's year/term/class pre-answer the prompts), as on the splash.
-  (defun rm/sidebar-teaching-new ()
-    "New teaching document at point's folder; only in the teaching sidebar."
+  ;; Teaching sidebar only: K makes a class folder (ay/term/class, the
+  ;; line at point answering what it can), n files a document (type,
+  ;; title) in the class at point.  Elsewhere n keeps dired's next-line.
+  (defun rm/sidebar--teaching-p ()
+    (string-prefix-p rm/teaching-directory (expand-file-name default-directory)))
+  (defun rm/sidebar-teaching-class ()
+    "New class folder at point (teaching sidebar)."
     (interactive)
-    (unless (string-prefix-p rm/teaching-directory (expand-file-name default-directory))
-      (user-error "K files teaching documents: open the teaching sidebar (C-c k)"))
-    (rm/teaching-new (rm/sidebar--dir-at-point)))
-  (define-key dired-sidebar-mode-map (kbd "K") #'rm/sidebar-teaching-new)
+    (unless (rm/sidebar--teaching-p)
+      (user-error "K makes teaching class folders: open the teaching sidebar (C-c k)"))
+    (rm/teaching-new-class (rm/sidebar--dir-at-point)))
+  (defun rm/sidebar-teaching-doc ()
+    "New teaching document in the class at point; elsewhere, next line."
+    (interactive)
+    (if (rm/sidebar--teaching-p)
+        (rm/teaching-new-doc (rm/sidebar--dir-at-point))
+      (dired-next-line 1)))
+  (define-key dired-sidebar-mode-map (kbd "K") #'rm/sidebar-teaching-class)
+  (define-key dired-sidebar-mode-map (kbd "n") #'rm/sidebar-teaching-doc)
   ;; f / b: open the file at point in a split of the MAIN window -- right
   ;; and below, the same letters as C-c w f/b (one split vocabulary
   ;; everywhere).  The main window is found the way dired-sidebar itself

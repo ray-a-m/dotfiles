@@ -363,14 +363,16 @@ teaching — same word, different axis, and the two meet under the same
 
 - Splash `k` / `C-c k` toggles a dired sidebar rooted at the tree
   (`rm/teaching-sidebar`; the `.project` marker makes it a project root).
-- `K` in that sidebar (`rm/teaching-new`, with the folder at point
-  pre-answering year/term/class) files a new document:
-  academic year (default from `rm/teaching-ay-start-month`, August) →
-  term (`rm/teaching-terms` ∪ existing dirs, free text — quarters are an
-  edit or a typed answer) → class (sluggified; new makes the directory)
-  → type → title. Denote writes the front matter and the type's skeleton
-  from `rm/teaching-templates` goes straight under it, so the headings are
-  already laid out on open. The new file joins `org-agenda-files` at once.
+- In that sidebar, `K` (`rm/teaching-new-class`) makes a class folder:
+  plain prompts with defaults for whatever the line at point does not
+  already name (year from `rm/teaching-ay-start-month`, August; term from
+  `rm/teaching-terms` — free text, so quarters are just typed), then the
+  class (sluggified). `n` (`rm/teaching-new-doc`) on or in a class folder
+  files a document: type → title. Denote writes the front matter and the
+  type's skeleton from `rm/teaching-templates` goes straight under it, so
+  the headings are already laid out on open. The file opens in the main
+  window, the sidebar refreshes onto it, and it joins `org-agenda-files`
+  at once. `f`/`b` split-open as in every sidebar.
 - The tree IS in the agenda: denote's `#+filetags: :teaching:<type>:` is
   inherited by every TODO, and `rm/agenda--item-project` files a teaching
   todo under its class directory name, so the agenda shows one section
