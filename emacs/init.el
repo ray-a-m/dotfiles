@@ -1987,23 +1987,29 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
         (setq s ""))
       ;; A teaching document: the course code (PHIL 104), not the file's
       ;; title -- the todo sits under `teaching' already, and the code says
-      ;; which course.  A class folder without a code shows nothing.
-      (when (and f (string-prefix-p rm/teaching-directory f))
-        (setq s (or (car (rm/teaching--class-meta
-                          (or (nth 2 (rm/teaching--path-parts (file-name-directory f))) "")))
-                    "")))
-      ;; A blank category (inbox todos) used to still pad to 18 columns, which
-      ;; pushed every todo far to the right of its project header.  Emit nothing
-      ;; when blank so todos don't sit at the old far-right 18-col gutter.  But
-      ;; flush-left reads as no nesting, so hang inbox todos to the END OF THE
-      ;; LONGEST PROJECT NAME -- a tidy column just past the headers that
-      ;; self-adjusts if projects are renamed.  Real categories (research-wip
-      ;; denote names) still align at 18.
-      (if (string-empty-p (or s ""))
-          (make-string (apply #'max 1 (mapcar (lambda (p) (length (car p)))
-                                              (rm/inbox--project-headings)))
-                       ?\s)
-        (truncate-string-to-width s 18 nil ?\s "…"))))
+      ;; which course.  It starts in the inbox todos' keyword column and the
+      ;; keyword follows it, a little to the right (his ask, 2026-08-19).
+      ;; A class folder without a code shows nothing.
+      (let ((teaching (and f (string-prefix-p rm/teaching-directory f)))
+            ;; A blank category (inbox todos) used to still pad to 18 columns,
+            ;; which pushed every todo far to the right of its project header.
+            ;; Emit nothing when blank so todos don't sit at the old far-right
+            ;; 18-col gutter.  But flush-left reads as no nesting, so hang
+            ;; inbox todos to the END OF THE LONGEST PROJECT NAME -- a tidy
+            ;; column just past the headers that self-adjusts if projects are
+            ;; renamed.  Real categories (research-wip denote names) still
+            ;; align at 18.
+            (pad (make-string (apply #'max 1 (mapcar (lambda (p) (length (car p)))
+                                                     (rm/inbox--project-headings)))
+                              ?\s)))
+        (when teaching
+          (setq s (or (car (rm/teaching--class-meta
+                            (or (nth 2 (rm/teaching--path-parts (file-name-directory f))) "")))
+                      "")))
+        (cond
+         ((string-empty-p (or s "")) pad)
+         (teaching (concat pad s " "))
+         (t (truncate-string-to-width s 18 nil ?\s "…"))))))
   (setq org-agenda-prefix-format
         '((agenda . " %i %(rm/agenda-category) %?-12t% s")
           (todo   . " %(rm/agenda-category)%(rm/agenda-indent)")
@@ -3148,12 +3154,20 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 (use-package olivetti
   :hook ((org-mode      . olivetti-mode)
          (markdown-mode . olivetti-mode)
-         (LaTeX-mode    . olivetti-mode))
+         (LaTeX-mode    . olivetti-mode)
+         (org-agenda-mode . rm/agenda-olivetti))
   :init (setq olivetti-body-width 72      ; text column width, in columns
               ;; center via FRINGES, not margins (kept from the org-margin
               ;; days; nano paints fringes in the background colour, so it
               ;; looks identical and leaves the margins free).
               olivetti-style t)
+  ;; The agenda is centred too (his ask, 2026-08-19), but in a wider
+  ;; measure: its lines are one todo each and long, and the 72-col prose
+  ;; measure would wrap them and break the columns.  Tune the 120 here.
+  (defun rm/agenda-olivetti ()
+    "Centre the agenda in a measure wide enough that todo lines don't wrap."
+    (setq-local olivetti-body-width 120)
+    (olivetti-mode 1))
   :config
   ;; Centering margins count toward a window's MINIMUM width, so frame-level
   ;; splits that halve the root refuse when half the frame is narrower than
