@@ -839,7 +839,8 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
       (when (re-search-forward (format "^#\\+%s:[ \t]*\\(.*\\)$" (regexp-quote key)) nil t)
         (let ((v (string-trim (match-string 1)))) (unless (string-empty-p v) v))))))
 (defun rm/teaching--pdf-name (file)
-  "The PDF name for teaching FILE: Course-Title-CODE-ay-term_suffix.pdf.
+  "The output base name for teaching FILE: Course-Title-CODE-ay-term_suffix.
+PDF and DOCX add their extensions to it.
 Course and code come from the #+course/#+code lines (falling back to
 the class folder); the suffix is `syllabus' for a syllabus, else the
 document's title."
@@ -852,18 +853,22 @@ document's title."
                (suffix (if (equal type "syllabus") "syllabus"
                          (rm/teaching--slug (or (rm/teaching--keyword file "title") "document")))))
     (concat (rm/teaching--slug (string-join (delq nil (list course code ay term)) " "))
-            "_" suffix ".pdf")))
+            "_" suffix)))
 (defun rm/teaching-pdf (file)
-  "Render the teaching org FILE to a PDF beside it with pandoc, then show it.
-Named Course-Title-CODE-ay-term_suffix.pdf, headed by the course and
-code, subtitled by the document and term (see rm/teaching--pdf-name)."
+  "Render the teaching org FILE to a PDF and a DOCX beside it, then show the PDF.
+Both named Course-Title-CODE-ay-term_suffix (rm/teaching--pdf-name),
+headed by the course and code, subtitled by the document and term.
+The PDF is set in Atkinson Hyperlegible Next through xelatex; the DOCX
+(real heading styles, document language set) is the screen-reader copy."
   (interactive (list (or buffer-file-name (user-error "Not visiting a file"))))
   (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts (file-name-directory file)))
                (meta (rm/teaching--class-meta (or class "")))
                (course (or (rm/teaching--keyword file "course") (cdr meta)))
                (code (or (rm/teaching--keyword file "code") (car meta)))
                (doc (or (rm/teaching--keyword file "title") ""))
-               (pdf (expand-file-name (rm/teaching--pdf-name file) (file-name-directory file)))
+               (base (expand-file-name (rm/teaching--pdf-name file) (file-name-directory file)))
+               (pdf (concat base ".pdf"))
+               (docx (concat base ".docx"))
                (head (if (and code (not (string-empty-p code)))
                          (format "%s (%s)" course code)
                        course))
@@ -873,24 +878,36 @@ code, subtitled by the document and term (see rm/teaching--pdf-name)."
                                        (format "%s %s" (capitalize term)
                                                (replace-regexp-in-string
                                                 "\\`ay\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\'" "20\\1–\\2" ay)))))
-                     " · ")))
+                     " · "))
+               ;; -M date= drops denote's timestamp from under the title; the
+               ;; document states its own dates in the body.
+               (common (list file "-M" "date=" "-M" (concat "title=" head)
+                             "-M" (concat "subtitle=" sub) "-M" "lang=en-US")))
     (with-current-buffer (get-buffer-create "*rm-publish*") (erase-buffer))
-    (message "pandoc → %s…" (file-name-nondirectory pdf))
+    (message "pandoc → %s…" (file-name-nondirectory base))
+    (make-process
+     :name "rm-teaching-docx" :buffer "*rm-publish*"
+     :command (append (list "pandoc" "-o" docx) common)
+     :sentinel
+     (lambda (p _e)
+       (when (and (memq (process-status p) '(exit signal))
+                  (not (zerop (process-exit-status p))))
+         (message "pandoc docx failed — log in *rm-publish* (M-ESC reaches it)"))))
     (make-process
      :name "rm-teaching-pdf" :buffer "*rm-publish*"
-     ;; -M date= drops denote's timestamp from under the title; the
-     ;; document states its own dates in the body.
-     :command (list "pandoc" file "-o" pdf "-V" "geometry:margin=1in" "-M" "date="
-                    "-M" (concat "title=" head) "-M" (concat "subtitle=" sub))
+     :command (append (list "pandoc" "-o" pdf "--pdf-engine=xelatex"
+                            "-V" "mainfont=Atkinson Hyperlegible Next"
+                            "-V" "geometry:margin=1in")
+                      common)
      :sentinel
      (lambda (p _e)
        (when (memq (process-status p) '(exit signal))
          (if (zerop (process-exit-status p))
-             (progn (message "PDF ✓ %s" (file-name-nondirectory pdf))
+             (progn (message "PDF + DOCX ✓ %s" (file-name-nondirectory base))
                     (let ((b (find-file-noselect pdf)))
                       (with-current-buffer b (ignore-errors (revert-buffer t t t)))
                       (display-buffer b '(display-buffer-in-direction (direction . right)))))
-           (message "pandoc failed — log in *rm-publish* (M-ESC reaches it)")))))))
+           (message "pandoc pdf failed — log in *rm-publish* (M-ESC reaches it)")))))))
 
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
@@ -2471,12 +2488,14 @@ folder is CODE-Title (rm/teaching--class-meta reads it back)."
   (defun rm/teaching-new-doc (&optional dir)
     "Create a teaching document in the class folder DIR.
 Syllabus, or assignment (essay / presentation / quiz) then a title.
-Opens in the main window (not the sidebar's), and the sidebar shows it."
+Each document is a folder of its own under the class -- <Title>/ holding
+the .org and, after C-c P, its PDF and DOCX.  Opens in the main window
+(not the sidebar's), and the sidebar shows it."
     (interactive)
     (require 'denote)
     (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts dir)))
       (unless (and ay term class)
-        (user-error "Point at a class folder (ay/term/class); K makes one"))
+        (user-error "Point at (or inside) a class folder; K makes one"))
       (let* ((class-dir (file-name-as-directory
                          (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory)))
              (type (completing-read "Type: " rm/teaching-types nil t))
@@ -2485,6 +2504,8 @@ Opens in the main window (not the sidebar's), and the sidebar shows it."
              ;; A syllabus is just the syllabus: no title to ask for.
              (title (if (equal type "syllabus") "Syllabus" (read-string "Title: ")))
              (meta (rm/teaching--class-meta class))
+             (doc-dir (file-name-as-directory
+                       (expand-file-name (rm/teaching--slug title) class-dir)))
              (main (if (eq major-mode 'dired-sidebar-mode)
                        (or (get-mru-window nil nil t) (selected-window))
                      (selected-window)))
@@ -2492,7 +2513,8 @@ Opens in the main window (not the sidebar's), and the sidebar shows it."
                      (let ((denote-directory rm/teaching-directory)
                            (denote-templates rm/teaching-templates)
                            (denote-save-buffers t)) ; on disk at once: the sidebar shows it
-                       (denote title (delq nil (list "teaching" type kind)) 'org class-dir nil
+                       (make-directory doc-dir t)
+                       (denote title (delq nil (list "teaching" type kind)) 'org doc-dir nil
                                (intern (or kind type)))))))
         ;; Course lines under denote's front matter: what the PDF is named
         ;; and headed by (rm/teaching-pdf).  Editable like any keyword.
@@ -3951,31 +3973,30 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
                         (overlay-put o 'evaporate t))))))))
           (forward-line 1)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-extensions)
-  ;; Teaching sidebar: a class folder reads as a title, not a slug --
-  ;; hyphens shown as spaces, prose face (Atkinson via variable-pitch),
-  ;; regular weight.  Display-only: the slug on disk is untouched, and
-  ;; dired still reads the real name under the overlay.
+  ;; Teaching sidebar: class and document folders read as titles, not
+  ;; slugs -- hyphens shown as spaces, prose face (Atkinson via
+  ;; variable-pitch), regular weight.  Display-only: the slug on disk is
+  ;; untouched, and dired still reads the real name under the overlay.
   (defface rm/sidebar-class-face
     '((t :inherit variable-pitch :weight normal))
     "Class folder names in the teaching sidebar.")
   (defun rm/sidebar-class-titles (&rest _)
-    "Show class folders (ay/term/class) in the teaching sidebar as titles."
+    "Show class and document folders in the teaching sidebar as titles."
     (when (and (derived-mode-p 'dired-sidebar-mode)
                (string-prefix-p rm/teaching-directory (expand-file-name default-directory)))
       (save-excursion
         (goto-char (point-min))
         (while (not (eobp))
           (when-let* ((file (dired-get-filename nil t))
-                      (parts (and (file-directory-p file)
-                                  (rm/teaching--path-parts file)))
-                      (_ (and (nth 2 parts)
-                              (= 3 (length (split-string (file-relative-name file rm/teaching-directory) "/" t)))))
+                      (_ (file-directory-p file))
+                      (depth (length (split-string (file-relative-name file rm/teaching-directory) "/" t)))
+                      (_ (memq depth '(3 4)))   ; class, document
                       (end (dired-move-to-end-of-filename t))
                       (beg (dired-move-to-filename)))
             (unless (seq-some (lambda (o) (overlay-get o 'rm/class)) (overlays-at beg))
               (let ((o (make-overlay beg end)))
                 (overlay-put o 'rm/class t)
-                (overlay-put o 'display (string-replace "-" " " (nth 2 parts)))
+                (overlay-put o 'display (string-replace "-" " " (file-name-nondirectory file)))
                 (overlay-put o 'face 'rm/sidebar-class-face)
                 (overlay-put o 'evaporate t))))
           (forward-line 1)))))

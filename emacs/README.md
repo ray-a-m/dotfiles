@@ -374,19 +374,24 @@ teaching — same word, different axis, and the two meet under the same
   `presentation`, `quiz` — `rm/teaching-assignment-kinds`) → title.
   Denote writes the front matter, then `#+course:` `#+code:` `#+term:`
   `#+ay:` (parsed from the folder, editable), then the kind's skeleton
-  from `rm/teaching-templates`. The file opens in the main window, the
-  sidebar refreshes onto it, and it joins `org-agenda-files` at once.
-  `f`/`b` split-open as in every sidebar.
+  from `rm/teaching-templates`. Each document is a folder of its own
+  under the class — `Syllabus/`, `Essay-1/` — holding the `.org` and,
+  after `C-c P`, its PDF and DOCX; the sidebar shows these folders as
+  titles too. The file opens in the main window, the sidebar refreshes
+  onto it, and it joins `org-agenda-files` at once. `f`/`b` split-open as
+  in every sidebar.
 - The tree IS in the agenda: denote's `#+filetags: :teaching:<type>:` is
   inherited by every TODO, and `rm/agenda--item-project` files a teaching
   todo under its class directory name, so the agenda shows one section
   per course, tagged `:teaching:`.
 - `C-c P` in a teaching buffer runs `rm/teaching-pdf`: pandoc renders the
-  org to `Course-Title-CODE-ay-term_suffix.pdf` beside it (suffix
-  `syllabus`, else the document title), headed `Course Title (CODE)` and
-  subtitled `Document · Fall 2026–27`, and opens it to the right. No
-  driver, preamble or bib; pandoc still uses pdflatex underneath,
-  `--pdf-engine=` swaps it.
+  org to `Course-Title-CODE-ay-term_suffix.pdf` **and** `.docx` beside it
+  (suffix `syllabus`, else the document title), both headed
+  `Course Title (CODE)` and subtitled `Document · Fall 2026–27`, and
+  opens the PDF to the right. The PDF is set in Atkinson Hyperlegible
+  Next via xelatex (`-V mainfont`); the DOCX — real heading styles,
+  `lang=en-US` — is the screen-reader-accessible copy for students who
+  need one. No driver, preamble or bib.
 
 ## Keybindings
 
