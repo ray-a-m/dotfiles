@@ -1962,6 +1962,25 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
           (goto-char (point-max))
           (insert (propertize (concat "\n" rm/agenda-footer-text "\n")
                               'face 'nano-face-faded))))))
+  ;; A todo too long for the measure wraps (olivetti's visual-line); the
+  ;; continuation hangs under the todo's TEXT, not under the left edge,
+  ;; so the keyword column stays a column (his ask, 2026-08-19).
+  (defun rm/agenda-wrap-prefix ()
+    "Give each todo line a wrap-prefix reaching its text, past the keyword."
+    (let ((inhibit-read-only t))
+      (save-excursion
+        (goto-char (point-min))
+        (while (not (eobp))
+          ;; `org-todo-regexp' is nil in the agenda buffer; each line
+          ;; carries its source file's as a text property.
+          (let* ((bol (line-beginning-position)) (eol (line-end-position))
+                 (re (get-text-property bol 'org-todo-regexp)))
+            (when (and re (get-text-property bol 'org-marker)
+                       (re-search-forward (concat "\\(?:" re "\\) +") eol t))
+              (put-text-property bol eol 'wrap-prefix
+                                 (make-string (- (point) bol) ?\s))))
+          (forward-line 1)))))
+  (add-hook 'org-agenda-finalize-hook #'rm/agenda-wrap-prefix 89)
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-footer 90)
   ;; Source column: denote files would show as their raw filename
   ;; ("20260721T105802--technology__hub", truncated); show "title form"
@@ -3087,7 +3106,8 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;; (his ask, 2026-08-18 -- no new tag pill for todos).  Done after the
 ;; agenda is built, per line, since the project tag is not a fixed word.
 (defun rm/agenda--strip-log-tags ()
-  "Remove the tag string from every agenda line whose entry is in a referee log."
+  "Remove the tag string from every agenda line whose entry is in a referee
+log or a teaching document (their filetags are machinery, not labels)."
   (let ((inhibit-read-only t))
     (save-excursion
       (goto-char (point-min))
@@ -3095,7 +3115,8 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
         (when-let* ((m (or (get-text-property (point) 'org-hd-marker)
                            (get-text-property (point) 'org-marker)))
                     (f (buffer-file-name (marker-buffer m))))
-          (when (and (llm-project-referee-log-p f)
+          (when (and (or (llm-project-referee-log-p f)
+                         (string-prefix-p rm/teaching-directory f))
                      (re-search-forward org-tag-group-re (line-end-position) t))
             (delete-region (match-beginning 0) (line-end-position))
             (delete-horizontal-space)))
