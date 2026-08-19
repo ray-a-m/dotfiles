@@ -3917,6 +3917,18 @@ so the startup hook stays quiet when a frame opens on a file."
 ;; Terminal frames are untouched (<escape> is a GUI-only event there).
 ;; Unsaved edits are never at risk: this only changes what the window
 ;; displays; buffers and their modifications live on untouched.
+(defun rm/capture--empty-p ()
+  "Non-nil when the capture buffer holds nothing he typed.
+An empty heading title, and below it only blank lines, a timestamp or
+a property drawer -- the template as inserted."
+  (save-excursion
+    (save-restriction
+      (goto-char (point-min))
+      (and (or (not (org-at-heading-p)) (string-empty-p (org-get-heading t t t t)))
+           (progn
+             (forward-line 1)
+             (not (re-search-forward
+                   "^[ \t]*\\(?:[^[: \t\n]\\|\\[[^0-9]\\)" nil t)))))))
 (defun rm/escape ()
   "Back out: abort prompt / drop region / window-back / splash floor."
   (interactive)
@@ -3925,10 +3937,13 @@ so the startup hook stays quiet when a frame opens on a file."
    ((minibuffer-window-active-p (minibuffer-window)) (abort-recursive-edit))
    ((region-active-p) (deactivate-mark))
    ((> (recursion-depth) 0) (abort-recursive-edit))
-   ;; a capture in progress: ESC aborts it (org's C-c C-k) -- the
-   ;; inserted template leaves the target with it, so an ESCed empty
-   ;; todo never reaches inbox.org (C-c C-c finalizes, as before)
-   ((bound-and-true-p org-capture-mode) (org-capture-kill))
+   ;; a capture in progress: an EMPTY one is aborted (org's C-c C-k) --
+   ;; the inserted template leaves the target with it, so an ESCed empty
+   ;; todo never reaches inbox.org; one with text is FINALIZED (C-c C-c),
+   ;; not thrown away: ESC after writing means "done", and a written
+   ;; todo was lost this way on 2026-08-19 (M-c, C-g, ESC -- gone).
+   ((bound-and-true-p org-capture-mode)
+    (if (rm/capture--empty-p) (org-capture-kill) (org-capture-finalize)))
    ;; an empty, untitled vault note: `n' writes the file at creation, so
    ;; backing out of one you never wrote in DELETES it -- the note
    ;; sibling of the capture rule above (empty notes were piling up as
