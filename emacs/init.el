@@ -2514,19 +2514,23 @@ denote, so nothing is missed."
   ;; it.  A title is prompted because rm/denote-autotitle is vault-scoped.
   ;; The skeleton goes straight under the front matter: edit the headings
   ;; here and every new document follows.
-  (defvar rm/teaching-types '("syllabus" "assignment")
-    "Document types: the second filename keyword of a teaching file.")
+  (defvar rm/teaching-types '("syllabus" "assignment" "text")
+    "What n offers: document types (the second filename keyword of a
+teaching file) and `text', a required reading copied into the class's
+texts/ folder (rm/teaching-add-text), which is no document.")
   (defvar rm/teaching-assignment-kinds '("essay" "presentation" "quiz")
     "Kinds of assignment: the third filename keyword of an assignment file.")
   (defvar rm/teaching-templates
     '((syllabus . "* Instructor & office hours\n\n* Description\n\n* Texts\n\n* Requirements & grading\n\n* Schedule\n\n* Policies\n")
       (essay . "* Due\n\n* Prompt\n\n* Length & format\n\n* Criteria\n")
       (presentation . "* Date\n\n* Format & length\n\n* Expectations\n\n* Rubric\n")
-      (quiz . "* Date\n\n* Coverage\n\n* Format\n\n* Questions\n"))
+      (quiz . "* Date\n\n* Coverage\n\n* Format\n\n* Questions\n\n* Answer key :noexport:\n"))
     "Org skeleton per document (syllabus) or assignment kind, under the front matter.
 {{course}} {{code}} {{term}} placeholders, if used, are filled from the folder
 when the file is made; the PDF/DOCX title already carries them, so the
-syllabus skeleton does not repeat them.")
+syllabus skeleton does not repeat them.  A :noexport: heading (or a
+COMMENT one) stays out of C-c P's PDF and DOCX -- pandoc honours both --
+so the answer key lives in the quiz and the students' copy omits it.")
   (defun rm/teaching--academic-year ()
     "The current academic year as ayYY-YY, per `rm/teaching-ay-start-month'."
     (let* ((now (decode-time))
@@ -2598,12 +2602,16 @@ the .org and, after C-c P, its PDF and DOCX.  Opens in the main window
 (not the sidebar's), and the sidebar shows it."
     (interactive)
     (require 'denote)
+    (catch 'rm/teaching-text
     (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts dir)))
       (unless (and ay term class)
         (user-error "Point at (or inside) a class folder; K makes one"))
       (let* ((class-dir (file-name-as-directory
                          (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory)))
              (type (completing-read "Type: " rm/teaching-types nil t))
+             (_ (when (equal type "text")
+                  (rm/teaching-add-text class-dir)
+                  (throw 'rm/teaching-text nil)))
              (kind (when (equal type "assignment")
                      (completing-read "Assignment: " rm/teaching-assignment-kinds nil t)))
              ;; A syllabus is just the syllabus: no title to ask for.
@@ -2638,8 +2646,169 @@ the .org and, after C-c P, its PDF and DOCX.  Opens in the main window
                 (replace-match (cdr sub) t t))))
           (save-buffer))
         (add-to-list 'org-agenda-files path)
+        ;; the class's AI project, if it has one, sees the new document
+        (rm/teaching--ai-sync-bundle class-dir)
         (rm/teaching--sidebar-show path)
-        (select-window main))))
+        (select-window main)))))
+  (defun rm/teaching-add-text (class-dir)
+    "Copy a required reading into CLASS-DIR's texts/ folder (n, then `text').
+The file keeps its name.  texts/ is what the class's AI project reads
+\(rm/teaching-ai); nothing else is filed, no org, no denote name: a
+reading is a source, not a document."
+    (interactive (list (or (rm/teaching--class-dir default-directory)
+                           (user-error "Not in a class folder"))))
+    (let* ((texts (file-name-as-directory (expand-file-name "texts" class-dir)))
+           (src (read-file-name "Text (PDF or text file): "
+                                (if (file-directory-p "~/Downloads/") "~/Downloads/" "~/")
+                                nil t))
+           (dst (expand-file-name (file-name-nondirectory src) texts)))
+      (when (file-directory-p src) (user-error "A file, not a folder"))
+      (make-directory texts t)
+      (copy-file src dst 1)
+      (rm/teaching--sidebar-show dst)
+      (message "%s -> texts/" (file-name-nondirectory src))))
+  ;; --- Teaching AI (sidebar A) --------------------------------------------
+  ;; Each class can have an llm.el project of its own, kept IN the class
+  ;; folder (<class>/ai/: the project note, then its sessions), not in the
+  ;; vault -- teaching is not vault thought, and a term's material should
+  ;; archive as one folder.  llm.el finds it because rm/teaching-directory
+  ;; is in llm-project-directories (set in the llm block below), and makes
+  ;; the sessions beside the note.  The bundle: the texts/ folder as a
+  ;; folder link (every reading in it, now and later), the syllabus and
+  ;; every document of the class (n keeps it current), PDFs read by the
+  ;; model on demand (:LLM_PDF: read) since a term's readings outgrow a
+  ;; prompt.  First a: the note is made and shown, for the brief.  After:
+  ;; pick or start a session.  M-SPC l P from a session opens the note.
+  (defvar rm/teaching-ai-brief
+    "I teach {{code}}, {{course}}, in {{term}} at the University of Illinois Chicago. In this project you help me prepare the course, not my research: quiz questions, essay prompts, rubrics, discussion questions, lecture outlines, reading guides, and answer keys. Here finished student-facing text is the goal, written so I can paste it into the document.
+
+The bundle holds the syllabus, the course documents so far, and the required readings in the texts folder. Draw questions and answers from the readings, and name the passage each rests on (author, section or page). Do not invent readings, authors or page numbers. Pitch the material at an introductory undergraduate course unless I say otherwise.
+
+Keep answer keys, rubrics and grading notes apart from the student-facing text, under their own heading at the end, so I can keep them out of the students' copy.
+"
+    "The project brief a class's AI note starts with; {{course}} {{code}}
+{{term}} filled from the folder.  Edit the note afterwards like any brief;
+this is the first draft only.")
+  (defun rm/teaching--class-dir (dir)
+    "The class folder DIR is in (itself or below), as a directory name, or nil."
+    (pcase-let ((`(,ay ,term ,class) (rm/teaching--path-parts dir)))
+      (when (and ay term class)
+        (file-name-as-directory
+         (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory)))))
+  (defun rm/teaching--ai-slug (class-dir)
+    "The project keyword of CLASS-DIR: code, term, ay -- phil-104-fall-ay26-27.
+The term and year are in it so a course taught again is a new project."
+    (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts class-dir))
+                 (code (car (rm/teaching--class-meta class))))
+      (downcase (rm/teaching--slug (string-join (delq nil (list (if (string-empty-p code) class code)
+                                                                  term ay))
+                                                " ")))))
+  (defun rm/teaching--ai-title (class-dir)
+    "The project title of CLASS-DIR: \"PHIL 104 Fall AY2026-27\"."
+    (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts class-dir))
+                 (meta (rm/teaching--class-meta class)))
+      (string-join (delq nil (list (if (string-empty-p (car meta)) (cdr meta) (car meta))
+                                   (rm/teaching--term-display term ay)))
+                   " ")))
+  (defun rm/teaching--docs (class-dir)
+    "The documents of CLASS-DIR: its org files outside ai/ and texts/."
+    (cl-remove-if (lambda (f)
+                    (let ((rel (file-relative-name f class-dir)))
+                      (or (string-prefix-p "ai/" rel) (string-prefix-p "texts/" rel)
+                          (string-prefix-p "." (file-name-nondirectory f)))))
+                  (directory-files-recursively class-dir "\\.org\\'")))
+  (defun rm/teaching--ai-note (class-dir)
+    "CLASS-DIR's AI project note, or nil."
+    (require 'llm)
+    (llm-project-note-file (rm/teaching--ai-slug class-dir)))
+  (defun rm/teaching--ai-sync-bundle (class-dir &optional note)
+    "Link under * Bundle of CLASS-DIR's AI NOTE what it lacks: texts/, every document.
+Nothing is removed -- a link he took out stays out.  Silent when the
+class has no note.  Returns the note, or nil."
+    (when-let* ((note (or note (rm/teaching--ai-note class-dir))))
+      (let* ((texts (directory-file-name (expand-file-name "texts" class-dir)))
+             (wanted (cons texts (rm/teaching--docs class-dir)))
+             (key (lambda (f) (directory-file-name (file-truename f))))
+             (have (mapcar key (llm-project--links-under note "Bundle")))
+             (missing (cl-remove-if (lambda (f) (member (funcall key f) have)) wanted)))
+        (when missing
+          (with-current-buffer (find-file-noselect note)
+            (save-excursion
+              (save-restriction
+                (widen)
+                (goto-char (point-min))
+                (if (re-search-forward "^\\*+[ \t]+Bundle[ \t]*$" nil t)
+                    (progn (org-end-of-subtree t t)
+                           (skip-chars-backward " \t\n")
+                           (end-of-line))
+                  (goto-char (point-max))
+                  (unless (bolp) (insert "\n"))
+                  (insert "\n* Bundle"))
+                (dolist (f missing)
+                  (insert (format "\n- [[file:%s%s]]" f (if (file-directory-p f) "/" ""))))))
+            (save-buffer)))
+        note)))
+  (defun rm/teaching--ai-create-note (class-dir)
+    "Make CLASS-DIR's AI project note in <class>/ai/ and return its path.
+Title, brief from rm/teaching-ai-brief, the bundle on read mode, then
+the first sync links texts/ and the documents."
+    (require 'llm)
+    (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts class-dir))
+                 (meta (rm/teaching--class-meta class))
+                 (slug (rm/teaching--ai-slug class-dir))
+                 (ai-dir (file-name-as-directory (expand-file-name "ai" class-dir)))
+                 (brief (let ((b rm/teaching-ai-brief))
+                          (dolist (sub `(("{{course}}" . ,(cdr meta)) ("{{code}}" . ,(car meta))
+                                         ("{{term}}" . ,(rm/teaching--term-display term ay))))
+                            (setq b (string-replace (car sub) (cdr sub) b)))
+                          b)))
+      (make-directory ai-dir t)
+      (make-directory (expand-file-name "texts" class-dir) t)
+      (let ((path (save-window-excursion
+                    (let ((denote-directory ai-dir)
+                          (denote-save-buffers t))
+                      (denote (concat (rm/teaching--ai-title class-dir) llm-project-note-suffix)
+                              (list llm-project-form-keyword slug llm-project-note-keyword)
+                              'org ai-dir)))))
+        (with-current-buffer (find-file-noselect path)
+          (goto-char (point-max))
+          (unless (bolp) (insert "\n"))
+          (insert "\n" brief "\n* Bundle\n:PROPERTIES:\n:" llm-project-pdf-property ": read\n:END:")
+          (save-buffer))
+        (rm/teaching--ai-sync-bundle class-dir path)
+        path)))
+  (defun rm/teaching-ai (&optional dir)
+    "The AI of the class at DIR (sidebar A): its sessions, or its note the first time.
+No note yet: make it (brief, bundle) and show it, so the brief can be
+read before the first ask; M-SPC l s then starts a session.  A note:
+sync its bundle with the folder, then pick a session or start one."
+    (interactive)
+    (require 'llm)
+    (let* ((class-dir (or (rm/teaching--class-dir (or dir default-directory))
+                          (user-error "Point at (or inside) a class folder")))
+           (note (rm/teaching--ai-note class-dir))
+           (main (if (eq major-mode 'dired-sidebar-mode)
+                     (or (get-mru-window nil nil t) (selected-window))
+                   (selected-window))))
+      (with-selected-window main
+        (if (null note)
+            (progn
+              (find-file (rm/teaching--ai-create-note class-dir))
+              (rm/teaching--sidebar-show (buffer-file-name))
+              (message "AI project made for %s: read the brief, then M-SPC l s for a session"
+                       (rm/teaching--ai-title class-dir)))
+          (rm/teaching--ai-sync-bundle class-dir note)
+          (let* ((slug (rm/teaching--ai-slug class-dir))
+                 (sessions (llm--project-sessions slug))
+                 (new "New session…")
+                 (choice (if sessions
+                             (completing-read (format "%s session: " (rm/teaching--ai-title class-dir))
+                                              (cons new (mapcar #'car sessions)) nil t)
+                           new)))
+            (if (equal choice new)
+                (llm-session-new slug)
+              (find-file (cdr (assoc choice sessions)))))))
+      (select-window main)))
   (defun rm/denote-attach (file)
     "Copy FILE into the vault's Files/ bin and link it at point (C-c d a).
 Attachments stay plain files by design -- see README; promote one to a
@@ -3110,6 +3279,11 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   :init (setq org-side-tree-fontify nil))   ; plain text, our own faces
 (require 'llm)
 (llm-global-mode 1)
+;; Projects outside the vault: the teaching tree (a class's AI lives in
+;; <class>/ai/, see rm/teaching-ai).  llm.el scans it beside the vault and
+;; makes a class's sessions beside its note; the vault's pickers never
+;; see them.
+(setq llm-project-directories (list rm/teaching-directory))
 ;; Referee logs carry TODOs (filed under `research', see
 ;; rm/agenda--item-project).  The vault stays out of the agenda; the logs
 ;; join it by file -- the ones that exist here, the new ones as llm.el
@@ -4205,7 +4379,8 @@ An empty folder says so -- expanding it draws nothing, which reads as
   (define-key dired-sidebar-mode-map (kbd "h") #'rm/sidebar-close)
   ;; Teaching sidebar only: K makes a class folder (ay/term/class, the
   ;; line at point answering what it can), n files a document (type,
-  ;; title) in the class at point.  Elsewhere n keeps dired's next-line.
+  ;; title) or copies a text into the class at point, A opens the class's
+  ;; AI (rm/teaching-ai).  Elsewhere n keeps dired's next-line.
   (defun rm/sidebar--teaching-p ()
     (string-prefix-p rm/teaching-directory (expand-file-name default-directory)))
   (defun rm/sidebar-teaching-class ()
@@ -4220,8 +4395,15 @@ An empty folder says so -- expanding it draws nothing, which reads as
     (if (rm/sidebar--teaching-p)
         (rm/teaching-new-doc (rm/sidebar--dir-at-point))
       (dired-next-line 1)))
+  (defun rm/sidebar-teaching-ai ()
+    "The AI of the class at point (teaching sidebar, A): sessions, or the note first."
+    (interactive)
+    (unless (rm/sidebar--teaching-p)
+      (user-error "A is a class's AI: open the teaching sidebar (C-c k)"))
+    (rm/teaching-ai (rm/sidebar--dir-at-point)))
   (define-key dired-sidebar-mode-map (kbd "K") #'rm/sidebar-teaching-class)
   (define-key dired-sidebar-mode-map (kbd "n") #'rm/sidebar-teaching-doc)
+  (define-key dired-sidebar-mode-map (kbd "A") #'rm/sidebar-teaching-ai)
   ;; f / b: open the file at point in a split of the MAIN window -- right
   ;; and below, the same letters as C-c w f/b (one split vocabulary
   ;; everywhere).  The main window is found the way dired-sidebar itself

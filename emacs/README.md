@@ -371,7 +371,10 @@ teaching — same word, different axis, and the two meet under the same
   case kept; the sidebar shows it with spaces, prose face). `n`
   (`rm/teaching-new-doc`) on or in a class folder files a document:
   `syllabus` (no title asked) or `assignment` → kind (`essay`,
-  `presentation`, `quiz` — `rm/teaching-assignment-kinds`) → title.
+  `presentation`, `quiz` — `rm/teaching-assignment-kinds`) → title; or
+  `text`, which is no document: `rm/teaching-add-text` copies a required
+  reading (a PDF, say) into the class's `texts/` folder under its own
+  name, for the class's AI to read (below).
   Denote writes the front matter, then `#+course:` `#+code:` `#+term:`
   `#+ay:` (parsed from the folder, editable), then the kind's skeleton
   from `rm/teaching-templates`. Each document is a folder of its own
@@ -391,7 +394,31 @@ teaching — same word, different axis, and the two meet under the same
   opens the PDF to the right. The PDF is set in Atkinson Hyperlegible
   Next via xelatex (`-V mainfont`); the DOCX — real heading styles,
   `lang=en-US` — is the screen-reader-accessible copy for students who
-  need one. No driver, preamble or bib.
+  need one. No driver, preamble or bib. A `:noexport:` heading (or a
+  `COMMENT` one) stays out of both — pandoc honours them — so the quiz
+  skeleton ends in `* Answer key :noexport:`: the key lives in the quiz,
+  the students' copy omits it.
+- **A class's AI** (2026-08-19, on [llm.el](../../../projects/llm.el)):
+  `A` in the sidebar, on or in a class, is `rm/teaching-ai`. The first
+  time it makes the class an llm.el project **inside the class folder**,
+  `<class>/ai/` — the project note there, titled `Phil 104 Fall AY2026-27
+  Files`, keyword `phil-104-fall-ay26-27` (code, term, year: a course
+  taught again is a new project) — and opens it: the brief is
+  `rm/teaching-ai-brief` with the course filled in (edit it like any
+  brief), and `* Bundle` links the `texts/` **folder** (a folder link
+  bundles every PDF and text file in it, now and later), the syllabus and
+  every document of the class, with `:LLM_PDF: read` so the model reads a
+  reading on demand instead of the term's readings travelling in every
+  prompt (`M-x llm-project-toggle-pdf-read` flips it). From then on `A`
+  re-syncs the bundle with the folder (new documents are added, nothing
+  removed; `n` adds its document at once) and picks or starts a session.
+  Sessions are made **beside the note**, in `ai/`, not in the vault:
+  llm.el scans `rm/teaching-directory` (`llm-project-directories`) next
+  to the vault, so the project shows in the project tree (splash `l`)
+  and `M-SPC l s` / `M-SPC l P` work in it, while the vault pickers
+  never see any of it. A bundled teaching document is sent as text,
+  never treated as a paper — its buffer keeps org's `M-RET`. When the
+  term ends the whole class, AI included, archives as one folder.
 
 ## Keybindings
 
