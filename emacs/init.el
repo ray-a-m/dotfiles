@@ -1931,6 +1931,11 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
     (keymap-set org-agenda-mode-map "d" #'rm/agenda-delete)
     (keymap-set org-agenda-mode-map "u" #'rm/agenda-undo-delete)
     (keymap-set org-agenda-mode-map "e" #'rm/agenda-edit-entry)
+    ;; RET too: stock org-agenda-switch-to lands in the whole inbox.org at
+    ;; the heading, the rest of the file trailing below -- "what is all
+    ;; this under my note?" (2026-08-19).  The narrowed entry view is the
+    ;; one he means; C-c C-o / the file itself are a step away from there.
+    (keymap-set org-agenda-mode-map "RET" #'rm/agenda-edit-entry)
     (keymap-set org-agenda-mode-map "a" #'rm/agenda-new)
     (keymap-set org-agenda-mode-map "y" #'rm/agenda-yank)
     (keymap-set org-agenda-mode-map "p" #'rm/agenda-paste)
