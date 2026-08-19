@@ -1571,19 +1571,30 @@ name, not a project."
             (while (and (org-current-level) (> (org-current-level) 1))
               (org-up-heading-safe))
             (org-get-heading t t t t)))))))
+  (defvar rm/agenda-keyword-order '("NEXT" "TODO" "CONTINUING" "DONE")
+    "Sibling order in the project view, top to bottom (his ask, 2026-08-19):
+NEXT, then TODO, then CONTINUING, DONE last; A-Z within each.  A heading
+with no keyword (a project, a container) sorts after all of them.")
+  (defun rm/agenda--segment ()
+    "The heading at point as a sort key: (keyword-rank . lowercased title)."
+    (let ((kw (org-get-todo-state)))
+      (cons (or (and kw (cl-position kw rm/agenda-keyword-order :test #'equal))
+                (length rm/agenda-keyword-order))
+            (downcase (org-get-heading t t t t)))))
   (defun rm/agenda--outline-path (item)
-    "ITEM's heading titles from its project down to itself, each lowercased."
+    "ITEM's sort keys from its project down to itself (see rm/agenda--segment)."
     (when-let ((m (rm/agenda--item-marker item)))
       (org-with-point-at m
         (org-back-to-heading t)
-        (let ((path (list (downcase (org-get-heading t t t t)))))
+        (let ((path (list (rm/agenda--segment))))
           (while (org-up-heading-safe)
-            (push (downcase (org-get-heading t t t t)) path))
+            (push (rm/agenda--segment) path))
           path))))
   (defun rm/agenda--cmp-tree (a b)
-    "Order two entries as a pre-order tree walk (parent first, siblings A-Z).
-For `org-agenda-cmp-user-defined': compare outline paths segment by segment;
-a shorter path -- an ancestor -- sorts before its descendants."
+    "Order two entries as a pre-order tree walk: parent first; siblings by
+keyword (rm/agenda-keyword-order), then A-Z.  For `org-agenda-cmp-user-defined':
+compare outline paths segment by segment; a shorter path -- an ancestor --
+sorts before its descendants."
     (let ((pa (rm/agenda--outline-path a))
           (pb (rm/agenda--outline-path b)))
       (catch 'done
@@ -1591,8 +1602,10 @@ a shorter path -- an ancestor -- sorts before its descendants."
           (let ((sa (car pa)) (sb (car pb)))
             (cond ((null sa) (throw 'done -1))
                   ((null sb) (throw 'done +1))
-                  ((string-lessp sa sb) (throw 'done -1))
-                  ((string-lessp sb sa) (throw 'done +1))
+                  ((< (car sa) (car sb)) (throw 'done -1))
+                  ((> (car sa) (car sb)) (throw 'done +1))
+                  ((string-lessp (cdr sa) (cdr sb)) (throw 'done -1))
+                  ((string-lessp (cdr sb) (cdr sa)) (throw 'done +1))
                   (t (setq pa (cdr pa) pb (cdr pb))))))
         nil)))
   (defun rm/agenda-indent ()
@@ -1977,8 +1990,11 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
                  (re (get-text-property bol 'org-todo-regexp)))
             (when (and re (get-text-property bol 'org-marker)
                        (re-search-forward (concat "\\(?:" re "\\) +") eol t))
-              (put-text-property bol eol 'wrap-prefix
-                                 (make-string (- (point) bol) ?\s))))
+              ;; Pixel width, not columns: the keyword is a pill in a
+              ;; smaller condensed face, so N spaces would overshoot.
+              (let ((px (string-pixel-width (buffer-substring bol (point)))))
+                (put-text-property bol eol 'wrap-prefix
+                                   (propertize " " 'display `(space :width (,px)))))))
           (forward-line 1)))))
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-wrap-prefix 89)
   (add-hook 'org-agenda-finalize-hook #'rm/agenda-footer 90)
