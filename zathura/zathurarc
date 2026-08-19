@@ -2,3 +2,7 @@ set scroll-step 100
 
 map j navigate next
 map k navigate previous
+
+# Text selected with the mouse goes to the clipboard, not only to the
+# primary selection. Then M-p (yank) in Emacs pastes it; no Super+C step.
+set selection-clipboard clipboard
