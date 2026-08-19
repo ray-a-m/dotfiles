@@ -11,7 +11,8 @@ commands                                       C = Ctrl (CapsLock too) · M = Al
   Move to window ......... [C-h j k l]    Switch buffer ...... [M-ESC / M-a b]
   New note ............. [n / M-SPC n]    Undo / redo .......... [M-z / M-S-z]
   Papers ............... [p / M-SPC p]    Window menu .............. [M-SPC w]
-  Projects (llm) ..... [l / M-SPC l l]
+  Projects (llm) ..... [l / M-SPC l l]    Teaching ............. [k / M-SPC k]
+  Teaching doc (new) . [K / M-SPC K]
 
 find                                      form          matter
 
@@ -26,8 +27,8 @@ llm  ID--title__ai_<project>[_project]    musing        kant
   Aside .................. [M-SPC l a]    project       physics
   Branch ................. [M-SPC l b]    talk          science
   Bundle this subtree .... [M-SPC l B]    wip           teaching
-  Kill request ........... [M-SPC l k]                  (none = misc)
-  Link to block ............ [M-SPC L]
+  Kill request ........... [M-SPC l k]    teaching*     (none = misc)
+  Link to block ............ [M-SPC L]    *= ~/Dropbox/teaching, not vault
   New referee log ........ [M-SPC l n]    tasks
   Project note ........... [M-SPC l P]
     pick a project ... [C-u M-SPC l P]      push ................... [M-SPC G]

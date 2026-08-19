@@ -108,6 +108,27 @@ compiled PDF renderer.  Guard with `unless', not use-package's :if --
   "Return the absolute path of NAME inside `rm/org-directory'."
   (expand-file-name name rm/org-directory))
 
+(defvar rm/teaching-directory (expand-file-name "~/Dropbox/teaching/")
+  "Directory of teaching material: ay26-27/<term>/<class>/<denote file>.
+Outside the vault on purpose -- the denote pickers never see it -- but
+inside the agenda (see org-agenda-files).")
+
+(defvar rm/teaching-terms '("fall" "spring" "summer")
+  "Term names offered when filing a teaching document.  Existing term
+directories are offered too, and anything typed is accepted, so a
+quarter system is an edit here or just a typed answer.")
+
+(defvar rm/teaching-ay-start-month 8
+  "Month (1-12) the academic year starts.  August: Aug-Dec file under
+ayYY-(YY+1), Jan-Jul under ay(YY-1)-YY.")
+
+(defun rm/org-files-under (dir)
+  "All .org files under DIR, recursively, skipping Emacs lock/temp files.
+Nil when DIR does not exist.  Feeds `org-agenda-files'."
+  (when (file-directory-p dir)
+    (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
+                (directory-files-recursively (expand-file-name dir) "\\.org\\'"))))
+
 ;; --- Sensible built-in defaults -----------------------------------------
 ;; No packages here -- this is Emacs teaching you what Emacs is.
 
@@ -370,7 +391,8 @@ compiled PDF renderer.  Guard with `unless', not use-package's :if --
 ;; so C-a p p offers them from the very first session.
 (setq project-vc-extra-root-markers '(".project"))
 (with-eval-after-load 'project
-  (dolist (dir (list "~/scholarship/research-wip/" rm/notes-directory))
+  (dolist (dir (list "~/scholarship/research-wip/" rm/notes-directory
+                     rm/teaching-directory))
     (when (file-directory-p dir)
       (project-remember-projects-under (expand-file-name dir)))))
 
@@ -771,6 +793,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
                 (user-error "This buffer is not visiting a file")))
          (target
           (cond
+           ((string-prefix-p rm/teaching-directory f) 'teaching)
            ((string-match-p "/scholarship/website/" f) "site")
            ((string-match-p "/documents/cv/" f) "cv")
            ((string-match-p "/documents/dissertation/" f) "dissertation")
@@ -778,6 +801,12 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
             (match-string 1 f))
            (t (user-error "Nothing publishable here: %s" f)))))
     (when (buffer-modified-p) (save-buffer))
+    (if (eq target 'teaching)
+        (rm/teaching-pdf f)
+      (rm/publish--shell target))))
+(defun rm/publish--shell (target)
+  "Run the shell `publish' TARGET asynchronously, reporting in the echo area."
+  (progn
     (with-current-buffer (get-buffer-create "*rm-publish*")
       (erase-buffer))
     (message "Publishing %s…" target)
@@ -796,6 +825,32 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
              (message "publish %s failed — log in *rm-publish* (M-ESC reaches it)"
                       target))))))))
 (keymap-global-set "C-c P" #'rm/publish)
+
+;; Teaching documents go org -> PDF straight through pandoc: no driver,
+;; no preamble, no bib -- the machinery the papers need and a syllabus
+;; does not.  (pandoc's default engine is still pdflatex underneath;
+;; `--pdf-engine=' is the one flag to swap it.)  The PDF lands beside
+;; the .org and opens in a window to the side.
+(defun rm/teaching-pdf (file)
+  "Render the teaching org FILE to a PDF beside it with pandoc, then show it."
+  (interactive (list (or buffer-file-name (user-error "Not visiting a file"))))
+  (let ((pdf (concat (file-name-sans-extension file) ".pdf")))
+    (with-current-buffer (get-buffer-create "*rm-publish*") (erase-buffer))
+    (message "pandoc → %s…" (file-name-nondirectory pdf))
+    (make-process
+     :name "rm-teaching-pdf" :buffer "*rm-publish*"
+     ;; -M date= drops denote's timestamp from under the title; the
+     ;; document states its own dates in the body.
+     :command (list "pandoc" file "-o" pdf "-V" "geometry:margin=1in" "-M" "date=")
+     :sentinel
+     (lambda (p _e)
+       (when (memq (process-status p) '(exit signal))
+         (if (zerop (process-exit-status p))
+             (progn (message "PDF ✓ %s" (file-name-nondirectory pdf))
+                    (let ((b (find-file-noselect pdf)))
+                      (with-current-buffer b (when (fboundp 'revert-buffer) (revert-buffer t t t)))
+                      (display-buffer b '(display-buffer-in-direction (direction . right)))))
+           (message "pandoc failed — log in *rm-publish* (M-ESC reaches it)")))))))
 
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
@@ -927,14 +982,14 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
         ;; of a session (vs ~0.4s without it); thought-notes aren't task
         ;; lists.  Recursive (the trees are nested) and filtered to skip
         ;; Emacs lock/temp files.  New files need a restart (or re-eval) to
-        ;; join the agenda; the org dir itself rescans live.
+        ;; join the agenda; the org dir itself rescans live.  The teaching
+        ;; tree joins the same way (rm/teaching-new adds its file at once);
+        ;; its TODOs inherit :teaching: from the denote filetags.
         org-agenda-files
         (cons rm/org-directory
-              (when (file-directory-p "~/scholarship/research-wip/documents/")
-                (seq-remove (lambda (f) (string-prefix-p "." (file-name-nondirectory f)))
-                            (directory-files-recursively
-                             (expand-file-name "~/scholarship/research-wip/documents/")
-                             "\\.org\\'"))))
+              (append
+               (rm/org-files-under "~/scholarship/research-wip/documents/")
+               (rm/org-files-under rm/teaching-directory)))
         ;; The agenda REPLACES the buffer in the window you called it from --
         ;; from the splash that is the point of it (2026-08-18, reversing the
         ;; earlier 'other-window rule): `a' turns home into the task list
@@ -1408,14 +1463,21 @@ says: the log is research work on a paper, and its title is a file
 name, not a project."
     (when-let ((m (rm/agenda--item-marker item)))
       (org-with-point-at m
-        (if (and (fboundp 'llm-project-referee-log-p)
-                 (llm-project-referee-log-p
-                  (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
-            "research"
-          (org-back-to-heading t)
-          (while (and (org-current-level) (> (org-current-level) 1))
-            (org-up-heading-safe))
-          (org-get-heading t t t t)))))
+        (let ((file (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
+          (cond
+           ((and (fboundp 'llm-project-referee-log-p)
+                 (llm-project-referee-log-p file))
+            "research")
+           ;; A teaching document files under its class (the directory
+           ;; name, e.g. phil-101): one section per course, whatever the
+           ;; syllabus heading above the todo says.
+           ((and file (string-prefix-p rm/teaching-directory file))
+            (file-name-nondirectory (directory-file-name (file-name-directory file))))
+           (t
+            (org-back-to-heading t)
+            (while (and (org-current-level) (> (org-current-level) 1))
+              (org-up-heading-safe))
+            (org-get-heading t t t t)))))))
   (defun rm/agenda--outline-path (item)
     "ITEM's heading titles from its project down to itself, each lowercased."
     (when-let ((m (rm/agenda--item-marker item)))
@@ -2288,6 +2350,67 @@ denote, so nothing is missed."
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
+
+  ;; --- Teaching documents (splash K / C-c K) -----------------------------
+  ;; Syllabi, assignments, prompts: denote-named files of form `teaching'
+  ;; (then the document type), filed ay26-27/<term>/<class>/ under
+  ;; rm/teaching-directory.  Not a vault form -- rm/denote-forms and M-c
+  ;; never offer it -- and outside denote-directory, so f/g/l/d never list
+  ;; it.  A title is prompted because rm/denote-autotitle is vault-scoped.
+  ;; The skeleton goes straight under the front matter: edit the headings
+  ;; here and every new document follows.
+  (defvar rm/teaching-types
+    '("syllabus" "assignment" "essay" "presentation" "other")
+    "Document types: the second filename keyword of a teaching file.")
+  (defvar rm/teaching-templates
+    '((syllabus . "* Course\n\n* Instructor & office hours\n\n* Description\n\n* Texts\n\n* Requirements & grading\n\n* Schedule\n\n* Policies\n")
+      (assignment . "* Due\n\n* Task\n\n* Length & format\n\n* Criteria\n")
+      (essay . "* Due\n\n* Prompt\n\n* Length & format\n\n* Criteria\n")
+      (presentation . "* Date\n\n* Format & length\n\n* Expectations\n\n* Rubric\n")
+      (other . ""))
+    "Org skeleton per teaching document type, inserted under the front matter.")
+  (defun rm/teaching--academic-year ()
+    "The current academic year as ayYY-YY, per `rm/teaching-ay-start-month'."
+    (let* ((now (decode-time))
+           (y (decoded-time-year now))
+           (start (if (>= (decoded-time-month now) rm/teaching-ay-start-month) y (1- y))))
+      (format "ay%02d-%02d" (% start 100) (% (1+ start) 100))))
+  (defun rm/teaching--subdirs (dir)
+    "Names of the subdirectories of DIR, dot-dirs skipped; nil if DIR is absent."
+    (when (file-directory-p dir)
+      (seq-filter (lambda (n) (file-directory-p (expand-file-name n dir)))
+                  (directory-files dir nil "\\`[^.]"))))
+  (defun rm/teaching--pick (prompt candidates default)
+    "completing-read PROMPT over CANDIDATES, free text allowed, DEFAULT offered."
+    (let ((c (delete-dups (delq nil (copy-sequence candidates)))))
+      (string-trim (completing-read (format "%s (%s): " prompt (or default "new"))
+                                    c nil nil nil nil default))))
+  (defun rm/teaching-new ()
+    "Create a teaching document: academic year, term, class, type, title."
+    (interactive)
+    (require 'denote)
+    (let* ((root rm/teaching-directory)
+           (ay (rm/teaching--pick "Academic year"
+                                  (cons (rm/teaching--academic-year) (rm/teaching--subdirs root))
+                                  (rm/teaching--academic-year)))
+           (ay-dir (expand-file-name ay root))
+           (term (rm/teaching--pick "Term"
+                                    (append (rm/teaching--subdirs ay-dir) rm/teaching-terms)
+                                    (car (or (rm/teaching--subdirs ay-dir) rm/teaching-terms))))
+           (term-dir (expand-file-name term ay-dir))
+           (class (denote-sluggify-title
+                   (rm/teaching--pick "Class" (rm/teaching--subdirs term-dir)
+                                      (car (rm/teaching--subdirs term-dir)))))
+           (class-dir (file-name-as-directory (expand-file-name class term-dir)))
+           (type (completing-read "Type: " rm/teaching-types nil t))
+           (title (read-string "Title: ")))
+      (when (string-empty-p class) (user-error "A class is needed"))
+      (make-directory class-dir t)
+      (let* ((denote-directory root)
+             (denote-templates rm/teaching-templates)
+             (path (denote title (list "teaching" type) 'org class-dir nil (intern type))))
+        (add-to-list 'org-agenda-files path)
+        (find-file path))))
   (defun rm/denote-attach (file)
     "Copy FILE into the vault's Files/ bin and link it at point (C-c d a).
 Attachments stay plain files by design -- see README; promote one to a
@@ -3269,6 +3392,8 @@ so the startup hook stays quiet when a frame opens on a file."
 
             (define-key map (kbd "n") #'rm/denote-note)         ; new note
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
+            (define-key map (kbd "k") #'rm/teaching-sidebar)    ; teaching tree
+            (define-key map (kbd "K") #'rm/teaching-new)        ; new teaching doc
             (define-key map (kbd "f") #'rm/denote-find)         ; the note picker
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
             (define-key map (kbd "a") #'rm/agenda-projects)     ; todos, grouped by
@@ -3343,11 +3468,13 @@ so the startup hook stays quiet when a frame opens on a file."
 ;; The splash's single keys that fit under M-SPC (= C-c) without a clash
 ;; are global too, so the splash need not be visited for them (his ask,
 ;; 2026-08-18): n note, p papers, s scratch, a agenda, d list, 1-9
-;; bookmarks were already; f find, t todo, c commands join.  l is the
-;; llm map (its l l opens the project tree); g h w stay splash-only.
+;; bookmarks were already; f find, t todo, c commands join; k teaching
+;; sidebar and K new teaching doc (2026-08-19).  l is the llm map (its
+;; l l opens the project tree); g h w stay splash-only.
 (keymap-global-set "C-c f" #'rm/denote-find)
 (keymap-global-set "C-c t" #'rm/capture-task)
 (keymap-global-set "C-c c" #'rm/welcome-commands)
+(keymap-global-set "C-c K" #'rm/teaching-new)      ; k (sidebar) binds in dired-sidebar
 ;; ESC, single press: universal "back out of where I am".
 ;; Prompts abort; a marked region deactivates; otherwise one literal
 ;; step back through the SELECTED WINDOW's own buffer history (every
@@ -3648,6 +3775,7 @@ dismisses the splash."
   :defer t
   :bind (("C-c p" . rm/papers-sidebar)   ; notes browsing lives in C-c d now;
                                          ; vault sidebar: M-x rm/notes-sidebar or <f8>
+         ("C-c k" . rm/teaching-sidebar)
          ("<f8>"  . dired-sidebar-toggle-sidebar))
   :init
   (defun rm/notes-sidebar ()
@@ -3671,6 +3799,12 @@ page re-exports its HTML into research-public."
     (interactive)
     (let ((default-directory
            (expand-file-name "~/scholarship/website/")))
+      (dired-sidebar-toggle-sidebar)))
+  (defun rm/teaching-sidebar ()
+    "Toggle a dired sidebar rooted at the teaching tree (splash `k').
+ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
+    (interactive)
+    (let ((default-directory rm/teaching-directory))
       (dired-sidebar-toggle-sidebar)))
   :config
   (setq dired-sidebar-theme 'none          ; no icons -- plain names

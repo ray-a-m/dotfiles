@@ -347,6 +347,37 @@ ported — `\emph`/escapes converted to HTML, anything else refused
 loudly). `publish <slug>` re-exports the page in the same push, so
 publishing a paper puts it on the site with zero editing.
 
+## Teaching documents (2026-08-19)
+
+Syllabi, assignments, essay prompts, presentation instructions live in
+`~/Dropbox/teaching/` as `ayYY-YY/<term>/<class>/<denote file>` — e.g.
+`ay26-27/fall/phil-101/20260819T101500--syllabus__teaching_syllabus.org`.
+The files are denote-named with form `teaching` first and the document
+type second (`syllabus` `assignment` `essay` `presentation` `other`), but
+the tree is deliberately **not the vault**: it sits outside
+`denote-directory`, so `f`/`g`/`l`/`d`, consult-denote, backlinks and
+`M-c` classify never see it, and `teaching` is not in `rm/denote-forms`.
+(The `teaching` *matter* keyword still exists for vault notes *about*
+teaching — same word, different axis, and the two meet under the same
+`:teaching:` agenda tag.)
+
+- Splash `k` / `C-c k` toggles a dired sidebar rooted at the tree
+  (`rm/teaching-sidebar`; the `.project` marker makes it a project root).
+- Splash `K` / `C-c K` (`rm/teaching-new`) files a new document:
+  academic year (default from `rm/teaching-ay-start-month`, August) →
+  term (`rm/teaching-terms` ∪ existing dirs, free text — quarters are an
+  edit or a typed answer) → class (sluggified; new makes the directory)
+  → type → title. Denote writes the front matter and the type's skeleton
+  from `rm/teaching-templates` goes straight under it, so the headings are
+  already laid out on open. The new file joins `org-agenda-files` at once.
+- The tree IS in the agenda: denote's `#+filetags: :teaching:<type>:` is
+  inherited by every TODO, and `rm/agenda--item-project` files a teaching
+  todo under its class directory name, so the agenda shows one section
+  per course, tagged `:teaching:`.
+- `C-c P` in a teaching buffer runs `rm/teaching-pdf`: pandoc renders the
+  org to a PDF beside it and opens it to the right. No driver, preamble
+  or bib; pandoc still uses pdflatex underneath, `--pdf-engine=` swaps it.
+
 ## Keybindings
 
 Stock Emacs everywhere, with **`C-a` as the command prefix** (bound straight
