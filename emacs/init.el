@@ -895,6 +895,17 @@ in the buffer's blue; the DOCX
                ;; document states its own dates in the body.
                (common (list file "-M" "date=" "-M" (concat "title=" head)
                              "-M" (concat "subtitle=" sub) "-M" "lang=en-US")))
+    ;; The name follows #+course/#+code and the folder, so an edit to those
+    ;; renames the output; a document's folder is its own, so any OTHER
+    ;; *_<suffix>.pdf/.docx there is a stale build of this document.  To
+    ;; the trash, not deleted outright.
+    (let ((suffix (substring (file-name-nondirectory base)
+                             (1+ (or (cl-position ?_ (file-name-nondirectory base) :from-end t) -1)))))
+      (dolist (old (directory-files (file-name-directory file) t
+                                    (concat "_" (regexp-quote suffix) "\\.\\(pdf\\|docx\\)\\'")))
+        (unless (member old (list pdf docx))
+          (let ((delete-by-moving-to-trash t)) (delete-file old t))
+          (message "stale %s → trash" (file-name-nondirectory old)))))
     (with-current-buffer (get-buffer-create "*rm-publish*") (erase-buffer))
     (message "pandoc → %s…" (file-name-nondirectory base))
     (make-process
@@ -2961,6 +2972,13 @@ tags, and the agenda groups by them."
     (cond
      ((derived-mode-p 'org-agenda-mode)
       (rm/task-classify-project t))
+     ;; A teaching document is filed by its class folder, and its todos
+     ;; show under the class in the agenda: there is nothing to classify,
+     ;; and refiling a todo into inbox.org would pull it out of the
+     ;; document (M-c on a quiz todo did exactly that path, 2026-08-19).
+     ((and buffer-file-name
+           (string-prefix-p rm/teaching-directory (expand-file-name buffer-file-name)))
+      (user-error "Teaching: filed by its class already; its todos stay in the document"))
      ;; require, not featurep: M-c on a raw-opened vault note in a fresh
      ;; session must still classify, not fall through to the task branch
      ((and buffer-file-name
