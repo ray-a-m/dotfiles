@@ -287,7 +287,8 @@ runs `latexmk -pvc` for continuous compile-on-save preview (zathura
 refreshes; no inverse search — SyncTeX maps to the generated `.tex`);
 `publish` regenerates everything headless via `emacs -Q --batch` before
 building. A `** TODO …` jotted mid-document reaches the global agenda
-(`org-agenda-files` includes `research-wip/documents/**/*.org`); on export
+(`org-agenda-files` includes `research-wip/documents/**/*.org`; a listed
+file that has since been deleted is skipped, not asked about); on export
 the TODO headline LINE vanishes while everything beneath it exports as
 paper prose (2026-07-23 inversion — the old drop-the-subtree rule silently
 hid real sections). Reminder text that must not reach the PDF goes in `#`
@@ -467,9 +468,11 @@ land on `C-x C-c`, close-the-frame). The custom layer on top:
 | `C-c b` | insert a citation via completion (citar over the Zotero bibs): `\textcite{...}` in prose, `C-u` = `\parencite`; inside a hand-typed `\cite{`'s braces it completes just the key. Typing inside the braces also pops keys as-you-type (corfu + a bib-parsing capf, org and LaTeX buffers) |
 | `C-c C-c` | compile via LatexMk (in `.tex`, and in any org-authored research document: exports the artifacts, then builds); in a website page it re-exports the HTML |
 | `S-TAB` | cycle the document outline (in `.tex`) |
-| `ESC` | universal back: abort prompt → drop region → dismiss a sidebar → one step back through this window's buffer history (machinery popups skipped; the splash counts as a stop) → when the trail ends, a popup window closes; the frame's last real window (sidebars don't count) dismisses an open sidebar first, then floors on the splash (one splash only — ESC on a duplicate closes it) |
+| `ESC` | universal back: abort prompt → drop region → in a capture: an empty one is discarded, a written one is kept (finalized, then shown in the agenda) → dismiss a sidebar → one step back through this window's buffer history (machinery popups skipped; the splash counts as a stop) → when the trail ends, a popup window closes; the frame's last real window (sidebars don't count) dismisses an open sidebar first, then floors on the splash (one splash only — ESC on a duplicate closes it) |
 | `M-ESC` | switch buffer (consult, previewing, most recent first) — the forward leap opposite ESC |
-| `M-c` | classify: vault note → form+matter rename; task heading / agenda entry / live capture → filed under an inbox project (completion, a new name creates the project), then asked whether to date it |
+| `M-c` | classify: vault note → form+matter rename; task heading / agenda entry / live capture → filed under an inbox project (completion, a new name creates the project), then asked whether to date it; once filed, the agenda comes up with point on the entry. In a teaching document it stops — a teaching todo is filed by its class already |
+| *agenda* `RET` / `e` | `RET` on an inbox entry = `e`: the entry alone, narrowed (`*edit: …*`; ESC restores the agenda). `RET` on a todo that lives in a document (a teaching file, a paper, a referee log) visits that file shown from its top, point on the todo |
+| *agenda* `j` `k` `h` `l` `r` `d` `u` `a` `y` `p` `s` `v` `SPC` | move / earlier-later / set todo state / delete (undo with `u`) / new todo (`name/` = project or sub-todo) / yank / paste under a project / schedule / visual range mark / bulk toggle — yazi vocabulary, all in `inbox.org` |
 | `C-c s` | pop the \*scratch\* buffer |
 | `C-c SPC` | straight home: the splash in the current window — the teleport when ESC's step-by-step walk is too long (`C-c w SPC` is the same destination in a new split) |
 | `q` | dismiss the welcome screen |
