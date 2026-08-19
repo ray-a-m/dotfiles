@@ -3873,6 +3873,35 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
                         (overlay-put o 'evaporate t))))))))
           (forward-line 1)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-extensions)
+  ;; Teaching sidebar: a class folder reads as a title, not a slug --
+  ;; hyphens shown as spaces, prose face (Atkinson via variable-pitch),
+  ;; regular weight.  Display-only: the slug on disk is untouched, and
+  ;; dired still reads the real name under the overlay.
+  (defface rm/sidebar-class-face
+    '((t :inherit variable-pitch :weight normal))
+    "Class folder names in the teaching sidebar.")
+  (defun rm/sidebar-class-titles (&rest _)
+    "Show class folders (ay/term/class) in the teaching sidebar as titles."
+    (when (and (derived-mode-p 'dired-sidebar-mode)
+               (string-prefix-p rm/teaching-directory (expand-file-name default-directory)))
+      (save-excursion
+        (goto-char (point-min))
+        (while (not (eobp))
+          (when-let* ((file (dired-get-filename nil t))
+                      (parts (and (file-directory-p file)
+                                  (rm/teaching--path-parts file)))
+                      (_ (and (nth 2 parts)
+                              (= 3 (length (split-string (file-relative-name file rm/teaching-directory) "/" t)))))
+                      (end (dired-move-to-end-of-filename t))
+                      (beg (dired-move-to-filename)))
+            (unless (seq-some (lambda (o) (overlay-get o 'rm/class)) (overlays-at beg))
+              (let ((o (make-overlay beg end)))
+                (overlay-put o 'rm/class t)
+                (overlay-put o 'display (string-replace "-" " " (nth 2 parts)))
+                (overlay-put o 'face 'rm/sidebar-class-face)
+                (overlay-put o 'evaporate t))))
+          (forward-line 1)))))
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-class-titles)
   ;; dired-omit-mode does NOT reach dired-subtree's inserted lines (its
   ;; own filter hook needs the dired-filter package), so expanded folders
   ;; would show README.md & co.  Expunge them ourselves with the same
@@ -3895,6 +3924,7 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
   (with-eval-after-load 'dired-subtree
     ;; add-hook prepends: omit runs first, then extension hiding.
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions)
+    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-class-titles)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-subtree))
   ;; Hide clutter -- the sidebar goes further than the dired-wide omit
   ;; (see the dired section above): its buffer-local regexp also drops
@@ -3923,7 +3953,8 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
               (dired-omit-mode 1)
               ;; initial readin predates the mode, so run both once here
               (rm/sidebar-hide-heading)
-              (rm/sidebar-hide-extensions)))
+              (rm/sidebar-hide-extensions)
+              (rm/sidebar-class-titles)))
   ;; Vim-style tree navigation on plain hjkl -- the pane is read-only, so
   ;; the letters are free, and dired's single-letter legacy binds are traps
   ;; (j prompted "Goto file:", k killed lines).  l: expand a dir (again:
