@@ -353,7 +353,7 @@ Syllabi, assignments, essay prompts, presentation instructions live in
 `~/Dropbox/teaching/` as `ayYY-YY/<term>/<class>/<denote file>` — e.g.
 `ay26-27/fall/phil-101/20260819T101500--syllabus__teaching_syllabus.org`.
 The files are denote-named with form `teaching` first and the document
-type second (`syllabus` `assignment` `essay` `presentation` `other`), but
+type second (`syllabus`, or `assignment` + kind), but
 the tree is deliberately **not the vault**: it sits outside
 `denote-directory`, so `f`/`g`/`l`/`d`, consult-denote, backlinks and
 `M-c` classify never see it, and `teaching` is not in `rm/denote-forms`.
@@ -367,19 +367,26 @@ teaching — same word, different axis, and the two meet under the same
   plain prompts with defaults for whatever the line at point does not
   already name (year from `rm/teaching-ay-start-month`, August; term from
   `rm/teaching-terms` — free text, so quarters are just typed), then the
-  class (spaces → hyphens, case kept). `n` (`rm/teaching-new-doc`) on or in a class folder
-  files a document: type → title. Denote writes the front matter and the
-  type's skeleton from `rm/teaching-templates` goes straight under it, so
-  the headings are already laid out on open. The file opens in the main
-  window, the sidebar refreshes onto it, and it joins `org-agenda-files`
-  at once. `f`/`b` split-open as in every sidebar.
+  course code and title; the folder is `CODE-Title` (spaces → hyphens,
+  case kept; the sidebar shows it with spaces, prose face). `n`
+  (`rm/teaching-new-doc`) on or in a class folder files a document:
+  `syllabus` (no title asked) or `assignment` → kind (`essay`,
+  `presentation`, `quiz` — `rm/teaching-assignment-kinds`) → title.
+  Denote writes the front matter, then `#+course:` `#+code:` `#+term:`
+  `#+ay:` (parsed from the folder, editable), then the kind's skeleton
+  from `rm/teaching-templates`. The file opens in the main window, the
+  sidebar refreshes onto it, and it joins `org-agenda-files` at once.
+  `f`/`b` split-open as in every sidebar.
 - The tree IS in the agenda: denote's `#+filetags: :teaching:<type>:` is
   inherited by every TODO, and `rm/agenda--item-project` files a teaching
   todo under its class directory name, so the agenda shows one section
   per course, tagged `:teaching:`.
 - `C-c P` in a teaching buffer runs `rm/teaching-pdf`: pandoc renders the
-  org to a PDF beside it and opens it to the right. No driver, preamble
-  or bib; pandoc still uses pdflatex underneath, `--pdf-engine=` swaps it.
+  org to `Course-Title-CODE-ay-term_suffix.pdf` beside it (suffix
+  `syllabus`, else the document title), headed `Course Title (CODE)` and
+  subtitled `Document · Fall 2026–27`, and opens it to the right. No
+  driver, preamble or bib; pandoc still uses pdflatex underneath,
+  `--pdf-engine=` swaps it.
 
 ## Keybindings
 

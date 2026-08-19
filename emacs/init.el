@@ -831,24 +831,64 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 ;; does not.  (pandoc's default engine is still pdflatex underneath;
 ;; `--pdf-engine=' is the one flag to swap it.)  The PDF lands beside
 ;; the .org and opens in a window to the side.
+(defun rm/teaching--keyword (file key)
+  "Value of the org KEY (\"course\", \"code\", ...) in FILE's buffer, or nil."
+  (with-current-buffer (find-file-noselect file)
+    (save-excursion
+      (goto-char (point-min))
+      (when (re-search-forward (format "^#\\+%s:[ \t]*\\(.*\\)$" (regexp-quote key)) nil t)
+        (let ((v (string-trim (match-string 1)))) (unless (string-empty-p v) v))))))
+(defun rm/teaching--pdf-name (file)
+  "The PDF name for teaching FILE: Course-Title-CODE-ay-term_suffix.pdf.
+Course and code come from the #+course/#+code lines (falling back to
+the class folder); the suffix is `syllabus' for a syllabus, else the
+document's title."
+  (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts (file-name-directory file)))
+               (meta (rm/teaching--class-meta (or class "")))
+               (course (or (rm/teaching--keyword file "course") (cdr meta)))
+               (code (or (rm/teaching--keyword file "code") (car meta)))
+               (base (file-name-nondirectory file))
+               (type (and (string-match "__teaching_\\([^_.]+\\)" base) (match-string 1 base)))
+               (suffix (if (equal type "syllabus") "syllabus"
+                         (rm/teaching--slug (or (rm/teaching--keyword file "title") "document")))))
+    (concat (rm/teaching--slug (string-join (delq nil (list course code ay term)) " "))
+            "_" suffix ".pdf")))
 (defun rm/teaching-pdf (file)
-  "Render the teaching org FILE to a PDF beside it with pandoc, then show it."
+  "Render the teaching org FILE to a PDF beside it with pandoc, then show it.
+Named Course-Title-CODE-ay-term_suffix.pdf, headed by the course and
+code, subtitled by the document and term (see rm/teaching--pdf-name)."
   (interactive (list (or buffer-file-name (user-error "Not visiting a file"))))
-  (let ((pdf (concat (file-name-sans-extension file) ".pdf")))
+  (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts (file-name-directory file)))
+               (meta (rm/teaching--class-meta (or class "")))
+               (course (or (rm/teaching--keyword file "course") (cdr meta)))
+               (code (or (rm/teaching--keyword file "code") (car meta)))
+               (doc (or (rm/teaching--keyword file "title") ""))
+               (pdf (expand-file-name (rm/teaching--pdf-name file) (file-name-directory file)))
+               (head (if (and code (not (string-empty-p code)))
+                         (format "%s (%s)" course code)
+                       course))
+               (sub (string-join
+                     (delq nil (list (unless (string-empty-p doc) doc)
+                                     (when (and term ay)
+                                       (format "%s %s" (capitalize term)
+                                               (replace-regexp-in-string
+                                                "\\`ay\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\'" "20\\1–\\2" ay)))))
+                     " · ")))
     (with-current-buffer (get-buffer-create "*rm-publish*") (erase-buffer))
     (message "pandoc → %s…" (file-name-nondirectory pdf))
     (make-process
      :name "rm-teaching-pdf" :buffer "*rm-publish*"
      ;; -M date= drops denote's timestamp from under the title; the
      ;; document states its own dates in the body.
-     :command (list "pandoc" file "-o" pdf "-V" "geometry:margin=1in" "-M" "date=")
+     :command (list "pandoc" file "-o" pdf "-V" "geometry:margin=1in" "-M" "date="
+                    "-M" (concat "title=" head) "-M" (concat "subtitle=" sub))
      :sentinel
      (lambda (p _e)
        (when (memq (process-status p) '(exit signal))
          (if (zerop (process-exit-status p))
              (progn (message "PDF ✓ %s" (file-name-nondirectory pdf))
                     (let ((b (find-file-noselect pdf)))
-                      (with-current-buffer b (when (fboundp 'revert-buffer) (revert-buffer t t t)))
+                      (with-current-buffer b (ignore-errors (revert-buffer t t t)))
                       (display-buffer b '(display-buffer-in-direction (direction . right)))))
            (message "pandoc failed — log in *rm-publish* (M-ESC reaches it)")))))))
 
@@ -2359,16 +2399,16 @@ denote, so nothing is missed."
   ;; it.  A title is prompted because rm/denote-autotitle is vault-scoped.
   ;; The skeleton goes straight under the front matter: edit the headings
   ;; here and every new document follows.
-  (defvar rm/teaching-types
-    '("syllabus" "assignment" "essay" "presentation" "other")
+  (defvar rm/teaching-types '("syllabus" "assignment")
     "Document types: the second filename keyword of a teaching file.")
+  (defvar rm/teaching-assignment-kinds '("essay" "presentation" "quiz")
+    "Kinds of assignment: the third filename keyword of an assignment file.")
   (defvar rm/teaching-templates
     '((syllabus . "* Course\n\n* Instructor & office hours\n\n* Description\n\n* Texts\n\n* Requirements & grading\n\n* Schedule\n\n* Policies\n")
-      (assignment . "* Due\n\n* Task\n\n* Length & format\n\n* Criteria\n")
       (essay . "* Due\n\n* Prompt\n\n* Length & format\n\n* Criteria\n")
       (presentation . "* Date\n\n* Format & length\n\n* Expectations\n\n* Rubric\n")
-      (other . ""))
-    "Org skeleton per teaching document type, inserted under the front matter.")
+      (quiz . "* Date\n\n* Coverage\n\n* Format\n\n* Questions\n"))
+    "Org skeleton per document (syllabus) or assignment kind, under the front matter.")
   (defun rm/teaching--academic-year ()
     "The current academic year as ayYY-YY, per `rm/teaching-ay-start-month'."
     (let* ((now (decode-time))
@@ -2393,6 +2433,14 @@ denote, so nothing is missed."
        "[^[:alnum:]-]" ""
        (replace-regexp-in-string "[[:space:]_/]+" "-" (string-trim name))))
      "-+" "-+"))
+  (defun rm/teaching--class-meta (class)
+    "Split a CLASS folder slug into (code . course), hyphens read as spaces.
+PHIL-104-Intro-to-Political-Philosophy -> (\"PHIL 104\" . \"Intro to Political Philosophy\");
+a slug with no leading code gives (\"\" . whole)."
+    (if (string-match "\\`\\([[:alpha:]]+-[[:digit:]]+[[:alpha:]]*\\)-\\(.+\\)\\'" class)
+        (cons (string-replace "-" " " (match-string 1 class))
+              (string-replace "-" " " (match-string 2 class)))
+      (cons "" (string-replace "-" " " class))))
   (defun rm/teaching--sidebar-show (path)
     "Refresh a showing teaching sidebar and land its point on PATH."
     (when-let ((w (and (fboundp 'dired-sidebar-showing-sidebar-p)
@@ -2404,13 +2452,16 @@ denote, so nothing is missed."
   (defun rm/teaching-new-class (&optional dir)
     "Make a class folder ay/term/class; DIR (the sidebar line) answers what it can.
 Plain prompts with defaults -- RET accepts -- only for the parts DIR
-does not name; the class is always asked."
+does not name; the course code and title are always asked, and the
+folder is CODE-Title (rm/teaching--class-meta reads it back)."
     (interactive)
     (require 'denote)
     (pcase-let* ((`(,d-ay ,d-term ,_) (rm/teaching--path-parts dir))
                  (ay (or d-ay (read-string "Academic year: " nil nil (rm/teaching--academic-year))))
                  (term (or d-term (read-string "Term: " nil nil (car rm/teaching-terms))))
-                 (class (rm/teaching--slug (read-string "Class: ")))
+                 (code (string-trim (read-string "Course code (e.g. PHIL 104): ")))
+                 (name (string-trim (read-string "Course title: ")))
+                 (class (rm/teaching--slug (concat code " " name)))
                  (class-dir (file-name-as-directory
                              (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory))))
       (when (string-empty-p class) (user-error "A class is needed"))
@@ -2418,7 +2469,8 @@ does not name; the class is always asked."
       (rm/teaching--sidebar-show (directory-file-name class-dir))
       (message "%s" (abbreviate-file-name class-dir))))
   (defun rm/teaching-new-doc (&optional dir)
-    "Create a teaching document in the class folder DIR: type, then title.
+    "Create a teaching document in the class folder DIR.
+Syllabus, or assignment (essay / presentation / quiz) then a title.
 Opens in the main window (not the sidebar's), and the sidebar shows it."
     (interactive)
     (require 'denote)
@@ -2428,7 +2480,11 @@ Opens in the main window (not the sidebar's), and the sidebar shows it."
       (let* ((class-dir (file-name-as-directory
                          (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory)))
              (type (completing-read "Type: " rm/teaching-types nil t))
-             (title (read-string "Title: "))
+             (kind (when (equal type "assignment")
+                     (completing-read "Assignment: " rm/teaching-assignment-kinds nil t)))
+             ;; A syllabus is just the syllabus: no title to ask for.
+             (title (if (equal type "syllabus") "Syllabus" (read-string "Title: ")))
+             (meta (rm/teaching--class-meta class))
              (main (if (eq major-mode 'dired-sidebar-mode)
                        (or (get-mru-window nil nil t) (selected-window))
                      (selected-window)))
@@ -2436,7 +2492,18 @@ Opens in the main window (not the sidebar's), and the sidebar shows it."
                      (let ((denote-directory rm/teaching-directory)
                            (denote-templates rm/teaching-templates)
                            (denote-save-buffers t)) ; on disk at once: the sidebar shows it
-                       (denote title (list "teaching" type) 'org class-dir nil (intern type))))))
+                       (denote title (delq nil (list "teaching" type kind)) 'org class-dir nil
+                               (intern (or kind type)))))))
+        ;; Course lines under denote's front matter: what the PDF is named
+        ;; and headed by (rm/teaching-pdf).  Editable like any keyword.
+        (with-current-buffer (find-file-noselect path)
+          (save-excursion
+            (goto-char (point-min))
+            (when (re-search-forward "^#\\+identifier:.*$" nil t)
+              (forward-line 1)
+              (insert (format "#+course:     %s\n#+code:       %s\n#+term:       %s\n#+ay:         %s\n"
+                              (cdr meta) (car meta) term ay))))
+          (save-buffer))
         (add-to-list 'org-agenda-files path)
         (rm/teaching--sidebar-show path)
         (select-window main))))
