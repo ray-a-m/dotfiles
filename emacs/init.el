@@ -1069,6 +1069,10 @@ in the buffer's blue; the DOCX
               (append
                (rm/org-files-under "~/scholarship/research-wip/documents/")
                (rm/org-files-under rm/teaching-directory)))
+        ;; A file in the list that is gone (a teaching document deleted and
+        ;; remade, 2026-08-19) is skipped, not asked about: the stock
+        ;; "[R]emove or [A]bort?" prompt, answered A, left the agenda blank.
+        org-agenda-skip-unavailable-files t
         ;; The agenda REPLACES the buffer in the window you called it from --
         ;; from the splash that is the point of it (2026-08-18, reversing the
         ;; earlier 'other-window rule): `a' turns home into the task list
