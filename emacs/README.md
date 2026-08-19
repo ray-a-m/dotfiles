@@ -367,7 +367,7 @@ teaching — same word, different axis, and the two meet under the same
   plain prompts with defaults for whatever the line at point does not
   already name (year from `rm/teaching-ay-start-month`, August; term from
   `rm/teaching-terms` — free text, so quarters are just typed), then the
-  class (sluggified). `n` (`rm/teaching-new-doc`) on or in a class folder
+  class (spaces → hyphens, case kept). `n` (`rm/teaching-new-doc`) on or in a class folder
   files a document: type → title. Denote writes the front matter and the
   type's skeleton from `rm/teaching-templates` goes straight under it, so
   the headings are already laid out on open. The file opens in the main

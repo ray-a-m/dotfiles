@@ -2382,6 +2382,17 @@ denote, so nothing is missed."
                                                      rm/teaching-directory)
                                  "/" t)))
         (list (nth 0 parts) (nth 1 parts) (nth 2 parts)))))
+  (defun rm/teaching--slug (name)
+    "NAME as a folder slug: spaces to hyphens, punctuation dropped, case KEPT.
+\"PHIL 104: Intro to Political Philosophy\" -> PHIL-104-Intro-to-Political-Philosophy
+(the sidebar shows it back with spaces)."
+    (string-trim
+     (replace-regexp-in-string
+      "-\\{2,\\}" "-"
+      (replace-regexp-in-string
+       "[^[:alnum:]-]" ""
+       (replace-regexp-in-string "[[:space:]_/]+" "-" (string-trim name))))
+     "-+" "-+"))
   (defun rm/teaching--sidebar-show (path)
     "Refresh a showing teaching sidebar and land its point on PATH."
     (when-let ((w (and (fboundp 'dired-sidebar-showing-sidebar-p)
@@ -2399,7 +2410,7 @@ does not name; the class is always asked."
     (pcase-let* ((`(,d-ay ,d-term ,_) (rm/teaching--path-parts dir))
                  (ay (or d-ay (read-string "Academic year: " nil nil (rm/teaching--academic-year))))
                  (term (or d-term (read-string "Term: " nil nil (car rm/teaching-terms))))
-                 (class (denote-sluggify-title (read-string "Class: ")))
+                 (class (rm/teaching--slug (read-string "Class: ")))
                  (class-dir (file-name-as-directory
                              (expand-file-name (concat ay "/" term "/" class) rm/teaching-directory))))
       (when (string-empty-p class) (user-error "A class is needed"))
