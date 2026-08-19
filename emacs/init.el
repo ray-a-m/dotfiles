@@ -2351,7 +2351,7 @@ denote, so nothing is missed."
       (lambda () (interactive) (rm/denote-new form))
       (format "Create a new %s note in the vault." form)))
 
-  ;; --- Teaching documents (splash K / C-c K) -----------------------------
+  ;; --- Teaching documents (K in the teaching sidebar) --------------------
   ;; Syllabi, assignments, prompts: denote-named files of form `teaching'
   ;; (then the document type), filed ay26-27/<term>/<class>/ under
   ;; rm/teaching-directory.  Not a vault form -- rm/denote-forms and M-c
@@ -3410,7 +3410,7 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "n") #'rm/denote-note)         ; new note
             (define-key map (kbd "p") #'rm/papers-sidebar)      ; papers
             (define-key map (kbd "k") #'rm/teaching-sidebar)    ; teaching tree
-            (define-key map (kbd "K") #'rm/teaching-new)        ; new teaching doc
+                                        ; (K = new doc lives in the sidebar)
             (define-key map (kbd "f") #'rm/denote-find)         ; the note picker
             (define-key map (kbd "g") #'rm/denote-grep)         ; grep bodies
             (define-key map (kbd "a") #'rm/agenda-projects)     ; todos, grouped by
@@ -3486,12 +3486,11 @@ so the startup hook stays quiet when a frame opens on a file."
 ;; are global too, so the splash need not be visited for them (his ask,
 ;; 2026-08-18): n note, p papers, s scratch, a agenda, d list, 1-9
 ;; bookmarks were already; f find, t todo, c commands join; k teaching
-;; sidebar and K new teaching doc (2026-08-19).  l is the llm map (its
-;; l l opens the project tree); g h w stay splash-only.
+;; sidebar (2026-08-19; K = new doc is a sidebar key, not a splash one).
+;; l is the llm map (its l l opens the project tree); g h w stay splash-only.
 (keymap-global-set "C-c f" #'rm/denote-find)
 (keymap-global-set "C-c t" #'rm/capture-task)
 (keymap-global-set "C-c c" #'rm/welcome-commands)
-(keymap-global-set "C-c K" #'rm/teaching-new)      ; k (sidebar) binds in dired-sidebar
 ;; ESC, single press: universal "back out of where I am".
 ;; Prompts abort; a marked region deactivates; otherwise one literal
 ;; step back through the SELECTED WINDOW's own buffer history (every

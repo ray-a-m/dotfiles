@@ -12,7 +12,7 @@ commands                                       C = Ctrl (CapsLock too) · M = Al
   New note ............. [n / M-SPC n]    Undo / redo .......... [M-z / M-S-z]
   Papers ............... [p / M-SPC p]    Window menu .............. [M-SPC w]
   Projects (llm) ..... [l / M-SPC l l]    Teaching ............. [k / M-SPC k]
-  Teaching doc (new) . [K / M-SPC K]
+    new doc (in sidebar) ......... [K]
 
 find                                      form          matter
 

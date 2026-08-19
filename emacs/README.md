@@ -363,7 +363,8 @@ teaching — same word, different axis, and the two meet under the same
 
 - Splash `k` / `C-c k` toggles a dired sidebar rooted at the tree
   (`rm/teaching-sidebar`; the `.project` marker makes it a project root).
-- Splash `K` / `C-c K` (`rm/teaching-new`) files a new document:
+- `K` in that sidebar (`rm/teaching-new`, with the folder at point
+  pre-answering year/term/class) files a new document:
   academic year (default from `rm/teaching-ay-start-month`, August) →
   term (`rm/teaching-terms` ∪ existing dirs, free text — quarters are an
   edit or a typed answer) → class (sluggified; new makes the directory)
