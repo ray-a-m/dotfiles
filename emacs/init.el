@@ -867,7 +867,8 @@ document's title."
 (defun rm/teaching-pdf (file)
   "Render the teaching org FILE to a PDF and a DOCX beside it, then show the PDF.
 Both named Course-Title-CODE-ay-term_suffix (rm/teaching--pdf-name),
-headed by the course and code, subtitled by the document and term.
+headed by the course (and code, unless the course name already carries it),
+subtitled by the document and term.
 The PDF is set in Atkinson Hyperlegible Next through xelatex, emphasis
 in the buffer's blue; the DOCX
 (real heading styles, document language set) is the screen-reader copy."
@@ -880,7 +881,10 @@ in the buffer's blue; the DOCX
                (base (expand-file-name (rm/teaching--pdf-name file) (file-name-directory file)))
                (pdf (concat base ".pdf"))
                (docx (concat base ".docx"))
-               (head (if (and code (not (string-empty-p code)))
+               ;; Append the code only when the course name does not already
+               ;; carry it ("Phil 104: Intro…" must not become "… (Phil 104)").
+               (head (if (and code (not (string-empty-p code))
+                              (not (string-match-p (regexp-quote code) course)))
                          (format "%s (%s)" course code)
                        course))
                (sub (string-join
