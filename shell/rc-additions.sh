@@ -137,10 +137,15 @@ publish() {
         git add -- style.css fonts .nojekyll
         git diff --cached --quiet || { git commit -m "." && git push; }
         # Provenance, same as the documents: tag the website source this
-        # deploy was built from.  Same-day republish moves the tag.
+        # deploy was built from.  The sources auto-commit first so the tag
+        # always marks the exact built state -- website only; research-wip
+        # stays hand-committed (M-SPC g) and keeps its dirty-tree warning.
+        # Same-day republish moves the tag.
+        git -C "$site_src" add -A
+        git -C "$site_src" diff --cached --quiet ||
+          git -C "$site_src" commit -m "publish site"
+        git -C "$site_src" push
         tag="site-$(date +%F)"
-        git -C "$site_src" diff --quiet HEAD ||
-          echo "publish: note — website tree is dirty; $tag marks the last commit, not the exact built state"
         git -C "$site_src" tag -f "$tag"
         git -C "$site_src" push --force origin "refs/tags/$tag"
       )
