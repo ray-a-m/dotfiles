@@ -2944,13 +2944,21 @@ The term and year are in it so a course taught again is a new project."
     "CLASS-DIR's AI project note, or nil."
     (require 'llm)
     (llm-project-note-file (rm/teaching--ai-slug class-dir)))
+  (defvar rm/teaching-ai-sources
+    '("~/scholarship/website/for-students.org")
+    "Shared sources every class bundle links, beyond the class's own tree.
+Files or folders all classes draw on -- the website's for-students
+page carries the hidden-curriculum links.  The sync adds what a
+bundle lacks; taking a line out of one class's bundle keeps it out.")
   (defun rm/teaching--ai-sync-bundle (class-dir &optional note)
-    "Link under * Bundle of CLASS-DIR's AI NOTE what it lacks: texts/, every document.
+    "Link under * Bundle of CLASS-DIR's AI NOTE what it lacks: texts/,
+every document, the shared `rm/teaching-ai-sources'.
 Nothing is removed -- a link he took out stays out.  Silent when the
 class has no note.  Returns the note, or nil."
     (when-let* ((note (or note (rm/teaching--ai-note class-dir))))
       (let* ((texts (directory-file-name (expand-file-name "texts" class-dir)))
-             (wanted (cons texts (rm/teaching--docs class-dir)))
+             (wanted (append (cons texts (rm/teaching--docs class-dir))
+                             (mapcar #'expand-file-name rm/teaching-ai-sources)))
              (key (lambda (f) (directory-file-name (file-truename f))))
              (have (mapcar key (llm-project--links-under note "Bundle")))
              (missing (cl-remove-if (lambda (f) (member (funcall key f) have)) wanted)))
