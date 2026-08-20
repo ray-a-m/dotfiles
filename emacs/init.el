@@ -2668,8 +2668,10 @@ folder is CODE-Title (rm/teaching--class-meta reads it back)."
     "Create a teaching document in the class folder DIR.
 Syllabus, or assignment (essay / presentation / quiz) then a title.
 Each document is a folder of its own under the class -- <Title>/ holding
-the .org and, after C-c P, its PDF and DOCX.  Opens in the main window
-(not the sidebar's), and the sidebar shows it."
+the .org and, after C-c P, its PDF and DOCX.  Quizzes come in numbers,
+so their folders group under the class's Quizzes/ instead of sitting
+flat.  Opens in the main window (not the sidebar's), and the sidebar
+shows it."
     (interactive)
     (require 'denote)
     (catch 'rm/teaching-text
@@ -2688,7 +2690,10 @@ the .org and, after C-c P, its PDF and DOCX.  Opens in the main window
              (title (if (equal type "syllabus") "Syllabus" (read-string "Title: ")))
              (meta (rm/teaching--class-meta class))
              (doc-dir (file-name-as-directory
-                       (expand-file-name (rm/teaching--slug title) class-dir)))
+                       (expand-file-name (rm/teaching--slug title)
+                                         (if (equal kind "quiz")
+                                             (expand-file-name "Quizzes" class-dir)
+                                           class-dir))))
              (main (if (eq major-mode 'dired-sidebar-mode)
                        (or (get-mru-window nil nil t) (selected-window))
                      (selected-window)))
