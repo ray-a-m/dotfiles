@@ -4335,12 +4335,20 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
   ;; Hide dired's banner line (absolute path + free space); the header line
   ;; shows the root directory's name instead.
   (defun rm/sidebar-hide-heading ()
-    "Make the sidebar's dired banner line invisible."
+    "Make the sidebar's dired banner line invisible.
+Point must then never rest on that line: the cursor renders on the
+first visible entry while dired sees the banner, so every command
+answers \"No file on this line\" (his repro: the teaching sidebar
+after a refresh, 2026-08-20).  A nudge in this hook is not enough --
+dired restores point after readin on both the open and revert paths --
+so the overlay is cursor-intangible and `cursor-intangible-mode' (on in
+the mode hook) bounces point off after every command."
     (when (derived-mode-p 'dired-sidebar-mode)
       (save-excursion
         (goto-char (point-min))
         (let ((o (make-overlay (line-beginning-position) (line-beginning-position 2))))
           (overlay-put o 'invisible t)
+          (overlay-put o 'cursor-intangible t)
           (overlay-put o 'evaporate t)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-heading)
   ;; Hide .org / .md extensions, Obsidian-style: an invisible overlay over
@@ -4380,7 +4388,7 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
           (when-let* ((file (dired-get-filename nil t))
                       (_ (file-directory-p file))
                       (depth (length (split-string (file-relative-name file rm/teaching-directory) "/" t)))
-                      (_ (memq depth '(3 4)))   ; class, document
+                      (_ (memq depth '(3 4 5)))   ; class, document, quiz under Quizzes/
                       (end (dired-move-to-end-of-filename t))
                       (beg (dired-move-to-filename)))
             (unless (seq-some (lambda (o) (overlay-get o 'rm/class)) (overlays-at beg))
@@ -4440,6 +4448,7 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
                                       (expand-file-name default-directory)))
                                 "/"))
               (dired-omit-mode 1)
+              (cursor-intangible-mode 1)  ; keeps point off the hidden banner
               ;; initial readin predates the mode, so run both once here
               (rm/sidebar-hide-heading)
               (rm/sidebar-hide-extensions)
