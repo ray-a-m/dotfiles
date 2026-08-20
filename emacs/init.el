@@ -614,7 +614,155 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 (keymap-global-set "M-v" #'rm/visual-toggle)
 (keymap-global-set "M-d" #'rm/visual-cut)
 (keymap-global-set "M-y" #'rm/visual-copy)
-(keymap-global-set "M-p" #'yank)
+;; M-p is paste-DWIM: a FILE on the clipboard (Copy in yazi or a file
+;; manager) ATTACHES instead of pasting -- the file is copied into the
+;; portable tree this buffer belongs to and a RELATIVE org link lands at
+;; point.  The trees themselves travel (Dropbox: vault / org / teaching;
+;; git: research-wip / research-public), and relative links survive a
+;; different home directory (the Android Emacs).  Text on the clipboard
+;; pastes as ever; so does a path to a TEXT file (you wanted the path).
+;; Routing, by buffer:
+;;   vault note          -> Files/           (rm/denote-attach's bin)
+;;   org dir (inbox)     -> files/
+;;   teaching, image     -> beside the document (a quiz's figure)
+;;   teaching, the rest  -> <class>/texts/   (the class AI reads it)
+;;   website page        -> research-public/files/, git-added so the next
+;;                          `publish site' ships it -- PUBLIC from then on
+;;   research-wip doc    -> figures/ beside it (org-latex: \includegraphics)
+;;   anywhere else       -> refused, message names the homes (dotfiles and
+;;                          code repos deliberately out: no blobs in config)
+;; Images insert bare [[file:...]] -- a description would suppress org's
+;; inline display -- and render at once.
+(defvar rm/paste-text-extensions
+  '("org" "md" "txt" "el" "tex" "sty" "bib" "csv" "tsv" "json" "yaml" "yml"
+    "sh" "py" "js" "ts" "css" "html" "xml" "toml" "conf" "log" "lua")
+  "Extensions M-p keeps pasting as text (the path), never attaching.")
+(defvar rm/paste-image-extensions
+  '("png" "jpg" "jpeg" "svg" "webp" "gif" "avif")
+  "Extensions routed as figures and shown inline after insert.")
+(defun rm/paste--clipboard-files ()
+  "The files on the clipboard, or nil.
+Reads the uri-list flavor a file manager's Copy offers, else plain
+text holding an absolute (or ~/) path per line -- yazi's copy-path.
+Directories don't count; neither does anything that isn't on disk."
+  (require 'url-util)
+  (let* ((text (or (ignore-errors (gui-get-selection 'CLIPBOARD 'text/uri-list))
+                   (ignore-errors (current-kill 0))))
+         (files
+          (when (stringp text)
+            (seq-keep
+             (lambda (line)
+               (setq line (string-trim line))
+               (cond
+                ((string-prefix-p "file://" line)
+                 (decode-coding-string (url-unhex-string (substring line 7))
+                                       'utf-8))
+                ((string-prefix-p "/" line) line)
+                ((string-prefix-p "~/" line) (expand-file-name line))))
+             (split-string text "[\r\n]+" t)))))
+    (when (and files (seq-every-p #'file-regular-p files))
+      files)))
+(defun rm/paste--attachable-p (files)
+  "Non-nil when every one of FILES is a non-text file."
+  (seq-every-p (lambda (f)
+                 (not (member (downcase (or (file-name-extension f) ""))
+                              rm/paste-text-extensions)))
+               files))
+(defun rm/paste--image-p (file)
+  (member (downcase (or (file-name-extension file) ""))
+          rm/paste-image-extensions))
+(defun rm/paste--route (file)
+  "Where FILE belongs for this buffer: (DEST-DIR . LINK-DIR).
+LINK-DIR is the directory part of the link to insert (\"\" = beside
+the buffer).  The website's differs from disk-relative on purpose:
+the link must resolve from the PUBLISHED page (/<name>/index.html;
+about.org publishes at the root), not from the source tree."
+  (let* ((buf (expand-file-name buffer-file-name))
+         (here (file-name-directory buf)))
+    (cond
+     ((string-prefix-p rm/teaching-directory buf)
+      (require 'denote)                 ; the teaching helpers load with it
+      (let ((class (or (rm/teaching--class-dir here)
+                       (user-error "Not inside a class folder"))))
+        (if (and (rm/paste--image-p file)
+                 (not (file-equal-p here class))
+                 (not (member (file-name-nondirectory (directory-file-name here))
+                              '("ai" "texts"))))
+            (cons here "")
+          (let ((texts (expand-file-name "texts/" class)))
+            (cons texts (file-name-as-directory
+                         (file-relative-name texts here)))))))
+     ((string-prefix-p rm/notes-directory buf)
+      (cons (expand-file-name "Files/" rm/notes-directory) "Files/"))
+     ((string-prefix-p rm/org-directory buf)
+      (cons (expand-file-name "files/" rm/org-directory) "files/"))
+     ((string-match-p "/scholarship/website/" buf)
+      (cons (expand-file-name "~/scholarship/research-public/files/")
+            (if (equal (file-name-nondirectory buf) "about.org")
+                "files/"
+              "../files/")))
+     ((string-match-p "/scholarship/research-wip/" buf)
+      (cons (expand-file-name "figures/" here) "figures/"))
+     (t (user-error
+         "No portable home for a file here (vault, org, teaching, website, research-wip)")))))
+(defun rm/paste--place (file dir)
+  "Copy FILE into DIR; return the destination path.
+Same name and size = already attached, reuse without copying; a
+DIFFERENT file under a taken name gets a -2 suffix -- nothing is
+ever clobbered."
+  (make-directory dir t)
+  (let* ((name (file-name-nondirectory file))
+         (dest (expand-file-name name dir))
+         (n 2))
+    (while (and (file-exists-p dest)
+                (not (equal (file-attribute-size (file-attributes dest))
+                            (file-attribute-size (file-attributes file)))))
+      (setq dest (expand-file-name
+                  (format "%s-%d.%s" (file-name-sans-extension name) n
+                          (or (file-name-extension name) ""))
+                  dir)
+            n (1+ n)))
+    (unless (file-exists-p dest)
+      (copy-file file dest))
+    dest))
+(defun rm/paste--title (name)
+  "A link description from file NAME: reading-guide.pdf -> Reading guide."
+  (let ((s (string-replace "_" " "
+            (string-replace "-" " " (file-name-sans-extension name)))))
+    (if (string-empty-p s) name
+      (concat (upcase (substring s 0 1)) (substring s 1)))))
+(defun rm/paste-attach (files)
+  "Attach FILES per `rm/paste--route' and link them at point."
+  (let (imagep)
+    (dolist (file files)
+      (pcase-let* ((`(,dir . ,linkdir) (rm/paste--route file))
+                   (dest (rm/paste--place file dir))
+                   (name (file-name-nondirectory dest))
+                   (link (concat linkdir name)))
+        (when (string-match-p "/research-public/" dest)
+          (call-process "git" nil nil nil "-C"
+                        (expand-file-name "~/scholarship/research-public")
+                        "add" dest)
+          (message "%s staged in research-public -- PUBLIC on next publish site" name))
+        (unless (bolp) (unless (looking-back "[ \t]" 1) (insert " ")))
+        (cond
+         ((not (derived-mode-p 'org-mode)) (insert link))
+         ((rm/paste--image-p file) (setq imagep t)
+          (insert (format "[[file:%s]]" link)))
+         (t (insert (format "[[file:%s][%s]]" link (rm/paste--title name)))))
+        (when (cdr files) (insert "\n"))))
+    (when (and imagep (derived-mode-p 'org-mode))
+      (org-display-inline-images))))
+(defun rm/paste-dwim (&optional arg)
+  "Paste, or attach the file on the clipboard (M-p).
+A non-text file on the clipboard copies into this buffer's portable
+tree with a relative link at point; anything else yanks as ever."
+  (interactive "*P")
+  (let ((files (and buffer-file-name (rm/paste--clipboard-files))))
+    (if (and files (rm/paste--attachable-p files))
+        (rm/paste-attach files)
+      (yank arg))))
+(keymap-global-set "M-p" #'rm/paste-dwim)
 (keymap-global-set "M-4" #'backward-paragraph)
 (keymap-global-set "M-6" #'forward-paragraph)
 
