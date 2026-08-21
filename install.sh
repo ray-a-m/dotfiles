@@ -437,6 +437,18 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing herdr from AUR"
         yay -S --noconfirm herdr-bin
     fi
+    # NetBird: WireGuard mesh VPN client. The daemon runs from our own
+    # systemd/system/netbird.service (installed by the unit flow above),
+    # not the package's templated netbird@.service -- see the unit file's
+    # header. Enable here rather than in the unit loop's pass because on a
+    # first run the unit is copied before this binary exists. Joining the
+    # network is a one-time per-machine step with a setup key (a secret,
+    # so it never goes in this repo): sudo netbird up --setup-key <key>
+    if command -v yay &>/dev/null && ! pacman -Q netbird-bin &>/dev/null; then
+        echo "==> Installing NetBird from AUR"
+        yay -S --noconfirm netbird-bin
+        sudo systemctl enable --now netbird 2>/dev/null || true
+    fi
     # beads (bd): dependency-graph issue tracker and persistent memory for
     # coding agents. Agent-facing only -- personal tasks stay in org-agenda.
     # Each repo gets its own .beads/ database; databases stay local (no

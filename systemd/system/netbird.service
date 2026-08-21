@@ -1,0 +1,53 @@
+# NetBird client daemon (WireGuard mesh VPN).
+#
+# The AUR netbird-bin package ships only a templated netbird@.service whose
+# socket lives at /var/run/netbird/%i.sock -- a non-default path that would
+# force --daemon-addr onto every `netbird` CLI call. This unit is that file
+# de-templated back to the CLI's default socket (/var/run/netbird.sock), so
+# plain `netbird up` / `netbird status` just work. Sandboxing kept as
+# upstream ships it.
+#
+# Joining the network is a one-time per-machine step with a setup key
+# (a secret -- never commit it): sudo netbird up --setup-key <key>
+
+[Unit]
+Description=NetBird Client
+Documentation=https://netbird.io/docs
+After=network-online.target syslog.target NetworkManager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/netbird
+ExecStart=/usr/bin/netbird service run --log-file /var/log/netbird/client.log --daemon-addr unix:///var/run/netbird.sock $FLAGS
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+CacheDirectory=netbird
+ConfigurationDirectory=netbird
+LogsDirectory=netbird
+RuntimeDirectory=netbird
+StateDirectory=netbird
+
+# sandboxing
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateMounts=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+# needed to load wg module for kernel-mode WireGuard
+ProtectKernelModules=no
+ProtectKernelTunables=no
+ProtectSystem=yes
+RemoveIPC=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target
