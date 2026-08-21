@@ -1067,7 +1067,8 @@ headed by the course (and code, unless the course name already carries it),
 subtitled by the document and term.
 The PDF is set in Atkinson Hyperlegible Next through xelatex, emphasis
 in the buffer's blue; the DOCX
-(real heading styles, document language set) is the screen-reader copy."
+(real heading styles, document language set) is the screen-reader copy.
+Todo subtrees and :noexport: sections stay out of both."
   (interactive (list (or buffer-file-name (user-error "Not visiting a file"))))
   (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts (file-name-directory file)))
                (meta (rm/teaching--class-meta (or class "")))
@@ -1089,8 +1090,16 @@ in the buffer's blue; the DOCX
                      " · "))
                ;; -M date= drops denote's timestamp from under the title; the
                ;; document states its own dates in the body.
+               ;; The lua filter drops every todo subtree: a teaching
+               ;; document carries my tasks as well as the student's text,
+               ;; and only the text is theirs.  No `unless file-exists-p'
+               ;; guard here on purpose — a missing filter must fail the
+               ;; export, not quietly print my tasks into a handout.
                (common (list file "-M" "date=" "-M" (concat "title=" head)
-                             "-M" (concat "subtitle=" sub) "-M" "lang=en-US")))
+                             "-M" (concat "subtitle=" sub) "-M" "lang=en-US"
+                             "--lua-filter"
+                             (expand-file-name "teaching-drop-todos.lua"
+                                               user-emacs-directory))))
     ;; The name follows #+course/#+code and the folder, so an edit to those
     ;; renames the output; a document's folder is its own, so any OTHER
     ;; *_<suffix>.pdf/.docx there is a stale build of this document.  To
