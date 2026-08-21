@@ -235,13 +235,13 @@ texclear() {
 }
 
 # Build a double-spaced, narrower-margin copy of a paper for handoff. Runs
-# from the paper folder; output goes to ~/Downloads so the paper folder stays
+# from the paper folder; output goes to ~/Documents so the paper folder stays
 # clean. No wrapper file persists — overrides are passed inline via \def.
 # Usage: doublespace [file] [output-name]
 #   doublespace                      → the org source in $PWD → <name>-doublespaced.pdf
-#   doublespace paper.org            → ~/Downloads/<paper>/paper-doublespaced.pdf
-#   doublespace paper.org foo        → ~/Downloads/<paper>/foo.pdf
-#   doublespace paper.org foo.pdf    → ~/Downloads/<paper>/foo.pdf  (trailing .pdf optional)
+#   doublespace paper.org            → ~/Documents/<paper>/paper-doublespaced.pdf
+#   doublespace paper.org foo        → ~/Documents/<paper>/foo.pdf
+#   doublespace paper.org foo.pdf    → ~/Documents/<paper>/foo.pdf  (trailing .pdf optional)
 # Org is the authoring surface, so the argument is optional and names the org
 # source. A bare name or a .tex still resolves to the same document.
 doublespace() {
@@ -296,7 +296,7 @@ doublespace() {
   fi
   local paper_slug
   paper_slug=$(basename "$PWD")
-  local out_dir="$HOME/Downloads/$paper_slug"
+  local out_dir="$HOME/Documents/$paper_slug"
   local build_dir
   build_dir=$(mktemp -d -t doublespace.XXXXXX)
   mkdir -p "$out_dir"
