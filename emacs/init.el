@@ -788,14 +788,61 @@ tree with a relative link at point; anything else yanks as ever."
   (vertico-mode 1)
   ;; The note picker (splash f/g) shows its candidates in the ORIGINAL
   ;; window, not the minibuffer overlay: vertico-buffer via multiform,
-  ;; scoped to exactly those two commands.
+  ;; scoped to exactly these commands.  The classify prompts (M-c) go
+  ;; through vertico-buffer too, but in a strip BELOW the note/task --
+  ;; never covering it (2026-08-21); the date calendar then takes the
+  ;; same slot (the *Calendar* display-buffer-alist rule).
   (require 'vertico-multiform)
   (require 'vertico-buffer)
-  (setq vertico-multiform-commands '((rm/denote-find buffer)
-                                     (rm/denote-grep buffer)
-                                     (rm/denote-list buffer))
+  (setq vertico-multiform-commands
+        '((rm/denote-find buffer)
+          (rm/denote-grep buffer)
+          (rm/denote-list buffer)
+          (rm/denote-classify buffer
+                              (vertico-buffer-display-action
+                               . (display-buffer-below-selected
+                                  (window-height . 13)
+                                  ;; a bare strip: nano's bar is a HEADER
+                                  ;; line, and it would just say
+                                  ;; "*Minibuf-1*" here (2026-08-21)
+                                  (window-parameters
+                                   . ((mode-line-format . none)
+                                      (header-line-format . none)))))))
         vertico-buffer-display-action '(display-buffer-same-window))
-  (vertico-multiform-mode 1))
+  (vertico-multiform-mode 1)
+  ;; hjkl in the classify menus (project pick, the schedule question):
+  ;; j/k move, l selects like RET, h backs out -- Raymond navigates
+  ;; these, he does not type (2026-08-21).  From NON-empty input the
+  ;; four keys self-insert again, so filtering and new-project names
+  ;; still work; only a fresh name STARTING with h/j/k/l needs its
+  ;; first letter another way.
+  (defvar-keymap rm/vertico-hjkl-map
+    "h" #'rm/vertico-hjkl-h
+    "j" #'rm/vertico-hjkl-j
+    "k" #'rm/vertico-hjkl-k
+    "l" #'rm/vertico-hjkl-l)
+  (defun rm/vertico-hjkl--nav-p ()
+    "Navigate only while the minibuffer input is empty."
+    (string-empty-p (minibuffer-contents-no-properties)))
+  (defun rm/vertico-hjkl-j ()
+    "Next candidate from empty input; else insert j."
+    (interactive)
+    (if (rm/vertico-hjkl--nav-p) (vertico-next 1) (self-insert-command 1 ?j)))
+  (defun rm/vertico-hjkl-k ()
+    "Previous candidate from empty input; else insert k."
+    (interactive)
+    (if (rm/vertico-hjkl--nav-p) (vertico-previous 1) (self-insert-command 1 ?k)))
+  (defun rm/vertico-hjkl-l ()
+    "Select the highlighted candidate from empty input; else insert l."
+    (interactive)
+    (if (rm/vertico-hjkl--nav-p) (vertico-exit) (self-insert-command 1 ?l)))
+  (defun rm/vertico-hjkl-h ()
+    "Back out of the menu from empty input; else insert h."
+    (interactive)
+    (if (rm/vertico-hjkl--nav-p) (abort-minibuffers) (self-insert-command 1 ?h)))
+  (defun rm/vertico-hjkl-setup ()
+    "Compose hjkl navigation into this minibuffer's keymap."
+    (use-local-map (make-composed-keymap rm/vertico-hjkl-map (current-local-map)))))
 
 (use-package orderless
   :init
@@ -1684,9 +1731,10 @@ Returns a marker on the chosen `*' heading; DEFAULT-MARKER seeds the default."
                          (org-with-point-at default-marker
                            (org-get-heading t t t t))))
            (name (string-trim
-                  (completing-read
-                   (format "Project%s: " (if default (format " (%s)" default) ""))
-                   (mapcar #'car alist) nil nil nil nil default)))
+                  (minibuffer-with-setup-hook #'rm/vertico-hjkl-setup
+                    (completing-read
+                     (format "Project%s: " (if default (format " (%s)" default) ""))
+                     (mapcar #'car alist) nil nil nil nil default))))
            (hit (assoc name alist)))
       (cond ((string-empty-p name) (user-error "No project chosen"))
             (hit (cdr hit))
@@ -2249,6 +2297,17 @@ date).  Stock `s' was `org-save-all-org-buffers'; M-a M-s already saves."
   (add-to-list 'display-buffer-alist
                '("\\*Org Agenda\\*"
                  (display-buffer-reuse-window display-buffer-same-window))))
+
+;; The date-prompt calendar (org-schedule, from a classify or the agenda)
+;; opens in a strip below the window the command was issued in -- the slot
+;; the classify picker just used -- not whatever other window display-buffer
+;; finds first (it landed on the splash, 2026-08-21).  Top level, not in a
+;; use-package :config: it must hold before the first deferred load.
+;; org-read-date's save-window-excursion puts the windows back after.
+(add-to-list 'display-buffer-alist
+             '("\\*Calendar\\*"
+               (display-buffer-reuse-window display-buffer-below-selected)
+               (window-height . 9)))
 
 ;; --- Papers in Org: body-only LaTeX export --------------------------------
 ;; paper.org files under research-wip/documents/papers/<slug>/ export to the
@@ -3102,20 +3161,61 @@ its new siblings, so the last title match is the one just filed."
     "Ask whether to schedule the entry at POM; non-nil when it got a date.
 Classifying and scheduling are separate decisions -- most todos want a project
 and no date -- so this only ASKS, and only when the entry carries no
-SCHEDULED/DEADLINE yet: `n' leaves it undated, `y' opens
-`org-schedule's date prompt.  Asked BEFORE the entry is filed, so from a
-capture the date question comes up while the capture window is still standing,
-not after it has closed.  M-g (C-g) at the question backs out of the classify
+SCHEDULED/DEADLINE yet: a yes/no menu in the picker's strip (l or RET
+on yes opens `org-schedule's date prompt, no leaves it undated).
+Asked BEFORE the entry is filed, so from a capture the date question
+comes up while the capture window is still standing, not after it has
+closed.  h or M-g (C-g) at the question backs out of the classify
 altogether -- nothing has moved yet.  The calendar push is held back here
-(`rm/task--classifying') and fired once the entry has landed."
+(`rm/task--classifying') and fired once the entry has landed.
+Not `org-with-point-at': its wide-buffer wrapper un-narrows the buffer for
+the whole body, so from a capture the entire inbox showed on screen behind
+the question (2026-08-21).  Widen only when POM sits outside the
+restriction -- from a capture it never does, and the narrowing stands."
     (when pom
-      (org-with-point-at pom
-        (unless (or (org-get-scheduled-time (point))
-                    (org-get-deadline-time (point)))
-          (when (y-or-n-p "Schedule it? ")
-            (let ((rm/task--classifying t)) (org-schedule nil))
-            (when buffer-file-name (save-buffer))   ; nil in a capture buffer
-            t)))))
+      (save-excursion
+        (when (markerp pom) (set-buffer (marker-buffer pom)))
+        (save-restriction
+          (unless (<= (point-min) pom (point-max))
+            (widen))
+          (goto-char pom)
+          (unless (or (org-get-scheduled-time (point))
+                      (org-get-deadline-time (point)))
+            ;; The question rides the same vertico strip as the project
+            ;; picker: vertico-multiform keys on the classify command, so
+            ;; this completing-read gets the identical framing below the
+            ;; task window -- no bespoke question window, no stray cursor
+            ;; in the echo area (2026-08-21).  On yes the strip hands over
+            ;; to the date calendar, held there by
+            ;; `display-buffer-overriding-action', which outranks every
+            ;; other display-buffer rule.
+            ;; this-command by now is the FIRST minibuffer's exit command,
+            ;; and vertico-multiform keys on it -- rebind so this second
+            ;; prompt gets the same strip as the project picker.  The
+            ;; sort-defeating collection keeps yes FIRST: l confirms,
+            ;; j l declines.
+            (when (equal "yes"
+                         (minibuffer-with-setup-hook #'rm/vertico-hjkl-setup
+                           (let ((this-command 'rm/denote-classify))
+                             (completing-read
+                              "Schedule it? "
+                              (lambda (str pred action)
+                                (if (eq action 'metadata)
+                                    '(metadata
+                                      (display-sort-function . identity)
+                                      (cycle-sort-function . identity))
+                                  (complete-with-action
+                                   action '("yes" "no") str pred)))
+                              nil t))))
+              (save-window-excursion
+                (let ((display-buffer-overriding-action
+                       '((display-buffer-reuse-window
+                          display-buffer-below-selected)
+                         (window-height . 9)))
+                      (rm/task--classifying t))
+                  (org-schedule nil)))
+              (when buffer-file-name (save-buffer))   ; nil in a capture buffer
+              t))))))
   (defun rm/task-classify-project (&optional agenda)
     "File the task at hand under a project chosen by name, then offer a date.
 Projects are the top-level `*' headings in inbox.org -- the replacement
@@ -3141,7 +3241,12 @@ first, schedule only when the todo actually wants a day."
                   (and agenda (rm/agenda--project-at-point))))
            (file (buffer-file-name (marker-buffer dest)))
            (head (org-with-point-at dest (org-get-heading t t t t)))
-           (rfloc (list head file nil (marker-position dest)))
+           ;; the MARKER, not its position frozen as an integer: the
+           ;; schedule step next inserts a SCHEDULED line into the entry
+           ;; at the top of inbox.org, shifting every heading after it --
+           ;; a frozen position then points into the PREVIOUS subtree and
+           ;; the refile files under a neighbour (2026-08-21)
+           (rfloc (list head file nil dest))
            (dated (rm/task--offer-schedule (or marker (point)))))
       ;; The whole move runs with the calendar push held back -- the capture
       ;; finalize fires one of its own, through a marker the refile below
