@@ -1137,6 +1137,97 @@ in the buffer's blue; the DOCX
                       (display-buffer b '(display-buffer-in-direction (direction . right)))))
            (message "pandoc pdf failed — log in *rm-publish* (M-ESC reaches it)")))))))
 
+;; A quiz is a teaching document whose questions the model wrote into an
+;; llm block.  M-P turns that block into a Canvas QTI package beside the
+;; .org: every question, its options and its answer key in one upload
+;; (Canvas > Settings > Import Course Content > QTI .zip file), instead of
+;; typing twenty questions into the Canvas editor by hand.  C-c P still
+;; makes the PDF and the DOCX; the two are separate because the paper copy
+;; and the Canvas copy are wanted at different moments.
+;; org-quiz-qti.py (beside this init) owns the format and refuses to build
+;; a quiz it cannot parse cleanly.
+(defun rm/teaching--quiz-block ()
+  "The llm block holding the quiz to export, or nil for the whole file.
+Point inside a block picks that block, which is how a file carrying
+several drafts says which one is the quiz.  A file with exactly one block
+needs no point.  A file with none is a quiz written by hand, and the whole
+file is the quiz.  Several blocks with point in none of them is the one
+error: guessing is how last week's draft reaches Canvas."
+  (and (fboundp 'llm-block-at-point)
+       (or (llm-block-at-point '("llm"))
+           ;; llm-block--all is llm.el's own internal; this init is the
+           ;; same hand, so it may use it.  Reconsider if llm.el is ever
+           ;; published.
+           (let ((all (llm-block--all '("llm"))))
+             (pcase (length all)
+               (0 nil)
+               (1 (car all))
+               (n (user-error
+                   "%d llm blocks here — put point in the quiz you want" n)))))))
+
+(defun rm/teaching--publish-first-line ()
+  "The first line of the *rm-publish* log, for the echo area."
+  (with-current-buffer (get-buffer-create "*rm-publish*")
+    (save-excursion
+      (goto-char (point-min))
+      (string-trim (buffer-substring-no-properties
+                    (point) (line-end-position))))))
+
+(defun rm/teaching-qti ()
+  "Export the quiz in this buffer to a Canvas QTI zip beside the .org.
+The quiz is the llm block point sits in, or the whole file when there is
+no llm block (`rm/teaching--quiz-block').
+The zip is named like the PDF and the DOCX (`rm/teaching--pdf-name'), so
+a stale build of the same document goes to the trash first, and it takes
+the document's #+title as the quiz name in Canvas.
+Canvas shuffles the answers per student unless a question names its
+options by position, which the script detects on its own."
+  (interactive)
+  (let* ((file (or buffer-file-name (user-error "Not visiting a file")))
+         (dir (file-name-directory file)))
+    (unless (string-prefix-p (expand-file-name rm/teaching-directory)
+                             (expand-file-name file))
+      (user-error "Not a teaching document: %s" file))
+    (when (buffer-modified-p) (save-buffer))
+    (let* ((block (rm/teaching--quiz-block))
+           (text (and block (llm-block-contents block)))
+           (base (expand-file-name (rm/teaching--pdf-name file) dir))
+           (zip (concat base ".zip"))
+           (title (or (rm/teaching--keyword file "title") "Quiz"))
+           (script (expand-file-name "org-quiz-qti.py" user-emacs-directory))
+           ;; No block: hand the script the file itself.  Its guards — a
+           ;; repeated stem number, an unmarked answer — are what catch a
+           ;; file holding more than one quiz.
+           (src (if text (make-temp-file "rm-quiz-" nil ".org" text) file))
+           (suffix (substring (file-name-nondirectory base)
+                              (1+ (or (cl-position ?_ (file-name-nondirectory base)
+                                                   :from-end t)
+                                      -1)))))
+      (unwind-protect
+          (progn
+            (unless (file-exists-p script)
+              (user-error "Missing %s" script))
+            ;; Same rule as the PDF: a document's folder is its own, so any
+            ;; other *_<suffix>.zip there is a stale build of this quiz.
+            (dolist (old (directory-files dir t (concat "_" (regexp-quote suffix) "\\.zip\\'")))
+              (unless (equal old zip)
+                (let ((delete-by-moving-to-trash t)) (delete-file old t))
+                (message "stale %s → trash" (file-name-nondirectory old))))
+            (with-current-buffer (get-buffer-create "*rm-publish*") (erase-buffer))
+            (let ((status (call-process "python3" nil "*rm-publish*" nil
+                                        script src zip title)))
+              (if (eq status 0)
+                  (message "QTI ✓ %s — %s" (file-name-nondirectory zip)
+                           (rm/teaching--publish-first-line))
+                (message "QTI failed — %s (log in *rm-publish*, M-ESC reaches it)"
+                         (rm/teaching--publish-first-line))
+                (display-buffer "*rm-publish*"))))
+        ;; src is the visited file itself when there was no block: never
+        ;; delete that one.
+        (when text (delete-file src))))))
+
+(keymap-global-set "M-P" #'rm/teaching-qti)
+
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
 ;; existing nvim/latexmk/zathura flow.
