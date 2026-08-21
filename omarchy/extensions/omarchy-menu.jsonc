@@ -58,6 +58,7 @@
   "server.proxmox": {"icon": "󰒍", "label": "Proxmox", "action": "gtk-launch server-proxmox"},
   "server.adguard": {"icon": "󰒃", "label": "AdGuard Home", "action": "gtk-launch server-adguard"},
   "server.dockge": {"icon": "󰡨", "label": "Dockge", "action": "gtk-launch server-dockge"},
+  "server.qbittorrent": {"icon": "󰇚", "label": "qBittorrent", "action": "gtk-launch server-qbittorrent"},
 
   // System, rebuilt under its own id ("power") for full control of row order.
   // Logout is omitted on purpose: securing this machine means Lock, and a
