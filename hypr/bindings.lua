@@ -14,11 +14,8 @@ o.bind("SUPER + CTRL + RETURN", "Terminal", 'uwsm-app -- xdg-terminal-exec --dir
 -- SUPER+SHIFT+ALT+B defaults already do exactly what the old config
 -- restated, so they are left alone.
 
--- Music/Scribbles special workspaces (scripts auto-populate when empty).
--- SUPER+SHIFT+N is "Editor" in the Quattro essentials — unbind first.
-hl.unbind("SUPER + SHIFT + N")
+-- Music special workspace (the script auto-populates it when empty).
 o.bind("SUPER + SHIFT + M", "Music (toggle special:music; auto-launch if empty)", "~/.config/hypr/scripts/music.sh")
-o.bind("SUPER + SHIFT + N", "Scribbles (toggle special:notes; auto-yazi if empty)", "~/.config/hypr/scripts/scribbles.sh")
 
 -- File manager: yazi. Nautilus is not installed on this machine, so its
 -- default binds would be dead — unbind them.

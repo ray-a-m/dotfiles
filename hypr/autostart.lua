@@ -21,7 +21,3 @@ o.exec_on_start("sleep 2 && ~/.config/omarchy/hooks/theme-set")
 -- them back if ever moved.
 o.launch_on_start("kitty --class spotify-player -e spotify_player")
 o.launch_on_start("kitty --class cmus -e cmus")
-
--- Scribbles (special:notes) is NOT pre-populated at session start. The bind
--- in bindings.lua calls hypr/scripts/scribbles.sh, which auto-launches yazi
--- rooted at ~/Dropbox/scribbles/ when the workspace is empty.

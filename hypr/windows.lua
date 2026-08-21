@@ -6,7 +6,6 @@
 -- pull them back if ever moved).
 o.window("^spotify-player$", { workspace = "special:music silent" })
 o.window("^cmus$", { workspace = "special:music silent" })
-o.window("^notes$", { workspace = "special:notes" })
 
 -- Pill-fork omarchy bar (raymond.bar plugin): the bar window is fully
 -- transparent and each section paints a translucent pill. Without

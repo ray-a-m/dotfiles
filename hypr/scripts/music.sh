@@ -6,8 +6,9 @@
 #   silent windowrules in hypr/windows.conf route them onto special:music,
 #   and since we toggled the workspace into view first, they appear in place.
 #
-# Mirrors the detection pattern in scribbles.sh: `hyprctl clients` prints
-# `workspace: <id> (<name>)`, so we grep for `(special:music)`.
+# Detection pattern: `hyprctl clients` prints `workspace: <id> (<name>)`,
+# so we grep for `(special:music)` — a bare `workspace: special:music`
+# grep never matches, and every press would spawn a new window.
 
 # Quattro: the Lua config provider evaluates the dispatch argument as Lua,
 # so the classic `togglespecialworkspace music` form is a syntax error.
