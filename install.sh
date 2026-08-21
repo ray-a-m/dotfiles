@@ -69,7 +69,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd \
+                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd syncthing \
                 pandoc-cli qpdf aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation ttf-roboto-mono \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli
@@ -388,12 +388,6 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Ensuring Chromium can sign in to Google accounts"
         touch ~/.config/chromium-flags.conf
         omarchy-install-chromium-google-account
-    fi
-    if command -v omarchy-install-dropbox &>/dev/null && \
-       command -v pacman &>/dev/null && \
-       ! pacman -Q dropbox &>/dev/null; then
-        echo "==> Installing Dropbox (will need browser auth after)"
-        omarchy-install-dropbox
     fi
     # Extra packages I always want present on an Omarchy box. Aether is in
     # the omarchy pacman repo (theme creator); zoom is AUR-only.

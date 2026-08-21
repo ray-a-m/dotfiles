@@ -43,7 +43,6 @@
   "research.zotero": {"icon": "", "label": "Zotero", "action": "gtk-launch zotero"},
 
   "files": {"icon": "󰉋", "label": "Files"},
-  "files.dropbox": {"icon": "", "label": "Dropbox", "action": "gtk-launch dropbox"},
   "files.personal": {"icon": "", "label": "Personal", "action": "gtk-launch personal-gdrive"},
   "files.uic": {"icon": "", "label": "UIC", "action": "gtk-launch uic-gdrive"},
 
@@ -54,11 +53,9 @@
   // Self-hosted services (homelab). URLs live in the launchers in
   // dotfiles-private/applications/ (this repo is public); they open over the
   // mesh VPN, so they work away from home while the mesh client runs.
-  "server": {"icon": "󰒋", "label": "Server"},
-  "server.proxmox": {"icon": "󰒍", "label": "Proxmox", "action": "gtk-launch server-proxmox"},
-  "server.adguard": {"icon": "󰒃", "label": "AdGuard Home", "action": "gtk-launch server-adguard"},
-  "server.dockge": {"icon": "󰡨", "label": "Dockge", "action": "gtk-launch server-dockge"},
-  "server.qbittorrent": {"icon": "󰇚", "label": "qBittorrent", "action": "gtk-launch server-qbittorrent"},
+  // No submenu: Homepage is the landing surface for every service,
+  // Proxmox included, so Server opens it directly.
+  "server": {"icon": "󰒋", "label": "Server", "action": "gtk-launch server-homepage"},
 
   // System, rebuilt under its own id ("power") for full control of row order.
   // Logout is omitted on purpose: securing this machine means Lock, and a

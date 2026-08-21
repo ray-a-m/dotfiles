@@ -33,12 +33,8 @@ function layoutHasWidget(layout, id) {
 // LocalSend's item shows no state, offers only Open and Quit, and its primary
 // click is a no-op, so Share > Receive is the whole surface. Hiding it by hand
 // doesn't stick either: LocalSend picks a fresh tray id every launch.
-// Dropbox is suppressed outright, not routed to the hover drawer: the
-// omarchy.dropbox widget left the layout and Raymond wants no dropbox
-// presence in the bar at all (the client itself keeps running).
 function ownedByOmarchy(item, layout) {
   return itemNamed(item, "localsend")
-    || itemNamed(item, "dropbox")
 }
 
 if (typeof module !== "undefined") {

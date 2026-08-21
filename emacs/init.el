@@ -98,17 +98,17 @@ compiled PDF renderer.  Guard with `unless', not use-package's :if --
 ;; already-bound value alone.  That is what lets the phone and the laptop
 ;; share one config.
 
-(defvar rm/notes-directory (expand-file-name "~/Dropbox/notes/")
+(defvar rm/notes-directory (expand-file-name "~/notes/")
   "Directory of the denote thought vault.")
 
-(defvar rm/org-directory (expand-file-name "~/Dropbox/org/")
+(defvar rm/org-directory (expand-file-name "~/org/")
   "Directory of the agenda and capture files.  Synced, but NOT the vault.")
 
 (defun rm/org-file (name)
   "Return the absolute path of NAME inside `rm/org-directory'."
   (expand-file-name name rm/org-directory))
 
-(defvar rm/teaching-directory (expand-file-name "~/Dropbox/teaching/")
+(defvar rm/teaching-directory (expand-file-name "~/teaching/")
   "Directory of teaching material: ay26-27/<term>/<class>/<denote file>.
 Outside the vault on purpose -- the denote pickers never see it -- but
 inside the agenda (see org-agenda-files).")
@@ -617,7 +617,7 @@ navigate from with the splash's single keys (f, l, a, n, ...)."
 ;; M-p is paste-DWIM: a FILE on the clipboard (Copy in yazi or a file
 ;; manager) ATTACHES instead of pasting -- the file is copied into the
 ;; portable tree this buffer belongs to and a RELATIVE org link lands at
-;; point.  The trees themselves travel (Dropbox: vault / org / teaching;
+;; point.  The trees themselves travel (Syncthing: vault / org / teaching;
 ;; git: research-wip / research-public), and relative links survive a
 ;; different home directory (the Android Emacs).  Text on the clipboard
 ;; pastes as ever; so does a path to a TEXT file (you wanted the path).

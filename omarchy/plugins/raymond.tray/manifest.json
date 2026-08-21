@@ -4,7 +4,7 @@
   "name": "System tray (no drawer)",
   "version": "1.0.0",
   "author": "Raymond Maung",
-  "description": "Stock tray fork: pinned items only — no hover drawer, no chevron, and dropbox/localsend suppressed outright. Replaces omarchy.tray in the layout (a third-party plugin cannot claim the omarchy.* id, and third-party widgets/ subdirs are never scanned, so editing the raymond.bar clone's copy did nothing).",
+  "description": "Stock tray fork: pinned items only — no hover drawer, no chevron, and localsend suppressed outright. Replaces omarchy.tray in the layout (a third-party plugin cannot claim the omarchy.* id, and third-party widgets/ subdirs are never scanned, so editing the raymond.bar clone's copy did nothing).",
   "kinds": ["bar-widget"],
   "entryPoints": { "barWidget": "Tray.qml" },
   "barWidget": {
