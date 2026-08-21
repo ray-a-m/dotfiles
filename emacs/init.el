@@ -395,10 +395,11 @@ Nil when DIR does not exist.  Feeds `org-agenda-files'."
 ;; --- Projects (built-in project.el) --------------------------------------
 ;; The "land on a file fast" path, next to the sidebar's browse-around path:
 ;; C-a p p switches project, C-a p f finds a file in it -- with orderless,
-;; "hig pap" lands on higgs/paper.tex in a few keystrokes.  research-wip is
-;; a git repo so it's a project already; the notes vault is plain files, so
-;; an empty .project marker file makes it one too.  Both are pre-registered
-;; so C-a p p offers them from the very first session.
+;; "hig pap" lands on higgs/paper.tex in a few keystrokes.  research-wip
+;; and the notes vault are both plain trees (Syncthing carries them; git
+;; runs server-side), so an empty .project marker file makes each one a
+;; project.  Both are pre-registered so C-a p p offers them from the very
+;; first session.
 (setq project-vc-extra-root-markers '(".project"))
 (with-eval-after-load 'project
   (dolist (dir (list "~/scholarship/research-wip/" rm/notes-directory
