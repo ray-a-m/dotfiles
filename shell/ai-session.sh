@@ -8,5 +8,8 @@ for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" "$HOME/code/homelab
     timeout 20 git -C "$r" pull --ff-only -q 2>/dev/null \
         || echo "stale: $r (pull failed — offline, dirty, or diverged)"
 done
-claude
+# Fullscreen renderer on this box only -- Raymond keeps the laptop on
+# the classic TUI, so the preference rides the per-invocation overlay
+# instead of the shared settings.json.
+claude --settings '{"tui": "fullscreen"}'
 exec zsh
