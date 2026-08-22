@@ -60,6 +60,14 @@ save() {
 # research-wip; the .tex are gitignored artifacts.  emacs -Q on purpose: no
 # daemon dependency, no init.el -- the export module + the shared
 # org-paper.setup carry everything the batch path needs.
+# Attach to the ai LXC's tmux session (creating it on first use), over
+# the LAN or the mesh. The session survives a closed lid or terminal;
+# claude --resume survives the process. Run from a plain kitty window,
+# not from inside a local tmux (nested tmux prefix pain).
+serverauto() {
+  ssh -t ai 'tmux new-session -A -s main'
+}
+
 _org_export_body() {
   local org="$1"
   [[ -f "$org" ]] || return 0
