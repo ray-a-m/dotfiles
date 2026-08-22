@@ -84,6 +84,26 @@ _org_export_site() {
 # for raymondmaung.com, `publish ring` for philwebring.org).
 # Usage: publish cv | publish dissertation | publish site | publish ring
 #        | publish <paper-name>
+# Take whatever the other box pushed before generating output.  Both
+# research-public and the website sources are committed from this laptop
+# AND from the `ai' LXC (which owns `publish site'), so a publish that
+# only pushes will diverge.  --rebase keeps the history linear;
+# --autostash tolerates a dirty tree.  An unreachable remote is a note,
+# the same as the staging rsync below -- a divergence that will not
+# rebase is fatal, because the push after it would fail anyway.
+_pub_pull() {
+  local repo="$1"
+  [[ -d "$repo/.git" ]] || return 0
+  if ! git -C "$repo" fetch -q 2>/dev/null; then
+    echo "publish: note — cannot reach $(basename "$repo")'s remote, using the local tree"
+    return 0
+  fi
+  if ! git -C "$repo" pull --rebase --autostash -q; then
+    echo "publish: $(basename "$repo") diverged and will not rebase cleanly — resolve it there, then retry"
+    return 1
+  fi
+}
+
 publish() {
   local name="$1"
   if [[ -z "$name" ]]; then
@@ -116,6 +136,8 @@ publish() {
       fi
       (
         set -e
+        _pub_pull "$site_dest"
+        _pub_pull "$site_src"
         # Pages only -- shared/ is config.  Each page is git-added by its
         # derived output path (mirrors rm/org-site--output-file), so the
         # commit stays scoped to what this publish generated.
@@ -248,6 +270,7 @@ publish() {
   fi
   (
     set -e
+    _pub_pull "$HOME/scholarship/research-public"
     cd "$src_dir"
     if [[ "$name" == dissertation ]]; then
       # Chapters \inputpaperbody the papers' body.tex, the frontmatter prose
