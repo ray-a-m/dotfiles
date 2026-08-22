@@ -60,12 +60,37 @@ save() {
 # research-wip; the .tex are gitignored artifacts.  emacs -Q on purpose: no
 # daemon dependency, no init.el -- the export module + the shared
 # org-paper.setup carry everything the batch path needs.
-# Attach to the ai LXC's tmux session (creating it on first use), over
-# the LAN or the mesh. The session survives a closed lid or terminal;
-# claude --resume survives the process. Run from a plain kitty window,
-# not from inside a local tmux (nested tmux prefix pain).
+# Pull every multi-homed repo on this laptop: the config layer
+# (dotfiles, dotfiles-private, homelab) plus the two-writer publish
+# repos (website, research-public). ff-only and quiet -- one line per
+# repo that actually moved or failed, nothing for the common case.
+# research-wip is absent on purpose: its laptop tree is Syncthing-synced
+# and the services cron owns its git. NOTE: a pulled dotfiles change is
+# on disk but not reloaded (Emacs daemon, hypr) -- reload deliberately.
+auto() {
+  local r before
+  for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private"            "$HOME/code/homelab" "$HOME/scholarship/website"            "$HOME/scholarship/research-public"; do
+    [ -d "$r/.git" ] || continue
+    before=$(git -C "$r" rev-parse HEAD)
+    if ! timeout 20 git -C "$r" pull --ff-only -q 2>/dev/null; then
+      echo "auto: $(basename "$r") — pull failed (offline, dirty, or diverged)"
+      continue
+    fi
+    if [ "$before" != "$(git -C "$r" rev-parse HEAD)" ]; then
+      echo "auto: $(basename "$r") updated"
+    fi
+  done
+}
+
+# Attach to the ai LXC's tmux session over the LAN or the mesh. On
+# first creation the session pulls the config layer and starts Claude
+# (shell/ai-session.sh); on reattach it just attaches -- Claude's own
+# SessionStart hook keeps the Claude layer fresh from there. The
+# session survives a closed lid or terminal; claude --resume survives
+# the process. Run from a plain kitty window, not from inside a local
+# tmux (nested tmux prefix pain).
 serverauto() {
-  ssh -t ai 'tmux new-session -A -s main'
+  ssh -t ai 'tmux new-session -A -s main "$HOME/code/dotfiles/shell/ai-session.sh"'
 }
 
 _org_export_body() {
