@@ -1001,6 +1001,7 @@ tree with a relative link at point; anything else yanks as ever."
           (cond
            ((string-prefix-p rm/teaching-directory f) 'teaching)
            ((string-match-p "/scholarship/website/" f) "site")
+           ((string-match-p "/projects/philwebring/" f) "ring")
            ((string-match-p "/documents/cv/" f) "cv")
            ((string-match-p "/documents/dissertation/" f) "dissertation")
            ((string-match "/documents/papers/\\([^/]+\\)/" f)
@@ -2444,6 +2445,13 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
                                            user-emacs-directory))
                 (rm/org-paper-compile)))))
 
+(defconst rm/org-site-source-regexp
+  "/\\(scholarship/website\\|projects/philwebring/site\\)/.*\\.org\\'"
+  "Path shape of an org-authored site page, for the cheap save-hook guard.
+Mirrors the :source roots in `rm/org-sites' (org-site-export.el).  Kept
+as a plain regexp so the hook can reject the common case -- every other
+org file you save -- without loading the export module.")
+
 ;; The website (~/scholarship/website -> raymondmaung.com) gets the same
 ;; treatment: saving a page re-exports its HTML into the research-public
 ;; working tree (uncommitted -- `publish site' in a shell commits and
@@ -2453,8 +2461,7 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
 (defun rm/org-site--maybe-export-on-save ()
   "Regenerate the generated HTML when the saved buffer is a website page."
   (when (and buffer-file-name
-             (string-match-p "/scholarship/website/.*\\.org\\'"
-                             buffer-file-name))
+             (string-match-p rm/org-site-source-regexp buffer-file-name))
     (require 'org-site-export
              (expand-file-name "org-site-export.el" user-emacs-directory))
     (when (rm/org-site-buffer-p)
@@ -2464,8 +2471,7 @@ the precise pattern lives in `rm/org-paper-buffer-p' there."
   (add-hook 'org-ctrl-c-ctrl-c-final-hook
             (lambda ()
               (when (and buffer-file-name
-                         (string-match-p "/scholarship/website/.*\\.org\\'"
-                                         buffer-file-name))
+                         (string-match-p rm/org-site-source-regexp buffer-file-name))
                 (require 'org-site-export
                          (expand-file-name "org-site-export.el"
                                            user-emacs-directory))
@@ -3983,9 +3989,9 @@ welcome.org's `commands' line carries the same indent literally.")
 
 (defun rm/bookmark--panel ()
   "Return the splash Bookmarks block: a header, then the entries.
-First a fixed website entry (`w' -- the raymondmaung.com sources
-sidebar, not a numbered slot), then the set slots only.  An empty slot
-does not appear.  Centred under the logo by `rm/welcome--centre'."
+First the two fixed site entries (`w' -- the raymondmaung.com sources
+sidebar; `W' -- the philwebring ones), neither a numbered slot, then
+the set slots only.  An empty slot does not appear.  Centred under the logo by `rm/welcome--centre'."
   (let* ((hint "set = [M-SPC B]")
          ;; Right-flush the hint so [M-SPC B] ends in the [N] key column (38).
          (header (concat "Bookmarks"
@@ -3994,10 +4000,11 @@ does not appear.  Centred under the logo by `rm/welcome--centre'."
                          hint))
          ;; Same shape as rm/bookmark--line, so [w] lands in the [N] column.
          (website (format "  website %s [w]" (make-string (- 31 7) ?.)))
+         (ring    (format "  philwebring %s [W]" (make-string (- 31 11) ?.)))
          (taken (seq-filter (lambda (n) (aref rm/bookmarks (1- n)))
                             (number-sequence 1 9))))
     (rm/welcome--centre
-     (concat header "\n\n" website
+     (concat header "\n\n" website "\n" ring
              (when taken
                (concat "\n" (mapconcat #'rm/bookmark--line taken "\n")))))))
 
@@ -4264,6 +4271,9 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "w") #'rm/website-sidebar)     ; website pages
                                         ; (sidebar, like p; listed first in
                                         ; the Bookmarks block)
+            (define-key map (kbd "W") #'rm/philwebring-sidebar) ; philwebring
+                                        ; pages -- the second org-authored
+                                        ; site, shifted like k/K and a/A
             (define-key map (kbd "c") #'rm/welcome-commands)    ; peek commands
             (use-local-map map))
           (read-only-mode 1)
@@ -4668,6 +4678,15 @@ page re-exports its HTML into research-public."
     (interactive)
     (let ((default-directory
            (expand-file-name "~/scholarship/website/")))
+      (dired-sidebar-toggle-sidebar)))
+  (defun rm/philwebring-sidebar ()
+    "Toggle a dired sidebar rooted at the philwebring sources (splash `W').
+The pages of philwebring.org, one .org each -- `l' visits; saving a
+page re-exports its HTML into the gitignored public/ build tree, and
+`publish ring' deploys that tree to the homelab."
+    (interactive)
+    (let ((default-directory
+           (expand-file-name "~/projects/philwebring/site/")))
       (dired-sidebar-toggle-sidebar)))
   (defun rm/teaching-sidebar ()
     "Toggle a dired sidebar rooted at the teaching tree (splash `k').

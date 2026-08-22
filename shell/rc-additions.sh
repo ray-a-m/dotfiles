@@ -80,8 +80,10 @@ _org_export_site() {
 }
 
 # Build a research-wip doc and publish its PDF to research-public, or
-# rebuild and deploy the website (`publish site`).
-# Usage: publish cv | publish dissertation | publish site | publish <paper-name>
+# rebuild and deploy one of the two org-authored sites (`publish site`
+# for raymondmaung.com, `publish ring` for philwebring.org).
+# Usage: publish cv | publish dissertation | publish site | publish ring
+#        | publish <paper-name>
 publish() {
   local name="$1"
   if [[ -z "$name" ]]; then
@@ -148,6 +150,50 @@ publish() {
         tag="site-$(date +%F)"
         git -C "$site_src" tag -f "$tag"
         git -C "$site_src" push --force origin "refs/tags/$tag"
+      )
+      return $?
+      ;;
+    ring)
+      # philwebring.org: re-export every page, assemble the build tree,
+      # then rsync it to the homelab over Netbird.  Unlike `site', the
+      # push is NOT the deploy -- nothing serves this from GitHub.  Caddy
+      # serves /srv/www/philwebring on the services container, so the
+      # rsync IS the deploy, and the build tree stays gitignored.
+      #
+      # No provenance tag and no source commit here (both of which `site'
+      # does): the ring repo is scheduled for a delete-and-recreate with
+      # fresh history before it goes public (bead philwebring-ag2), so
+      # tags on this history would not survive.  Commit sources the
+      # ordinary way instead.
+      #
+      # `ring' is a reserved name, like site/cv/dissertation.
+      local ring_src="$HOME/projects/philwebring"
+      local ring_pages="$ring_src/site"
+      local ring_out="$ring_src/public"
+      local ring_host="services"
+      local ring_dest="/srv/www/philwebring/"
+      if [[ ! -d "$ring_pages" ]]; then
+        echo "publish: no philwebring sources at $ring_pages"
+        return 1
+      fi
+      (
+        set -e
+        mkdir -p "$ring_out"
+        # Pages only -- shared/ is config.
+        find "$ring_pages" -name '*.org' -not -path '*/shared/*' | sort |
+          while IFS= read -r org; do
+            _org_export_site "$org" || exit 1
+          done
+        cp "$ring_pages/shared/style.css" "$ring_out/style.css"
+        # The ring MECHANICS stay hand-written at the repo root, the same
+        # way shared/template.html does: they are behaviour, not prose.
+        # members.json is the roster and the ring's source of truth.
+        cp "$ring_src/members.json" "$ring_src/ring.js" "$ring_out/"
+        cp "$ring_src/next.html" "$ring_src/prev.html" "$ring_src/random.html" \
+           "$ring_out/"
+        # --delete so a removed page disappears from the server too.
+        rsync -az --delete "$ring_out/" "$ring_host:$ring_dest"
+        echo "publish: philwebring deployed to $ring_host:$ring_dest"
       )
       return $?
       ;;

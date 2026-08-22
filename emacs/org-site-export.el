@@ -45,18 +45,67 @@
 
 (require 'ox-html)
 
-(defconst rm/org-site-source-root
-  (expand-file-name "~/scholarship/website/")
-  "Root of the org-authored website sources.")
+(defconst rm/org-sites
+  '(("site"
+     :source "~/scholarship/website/"
+     :output "~/scholarship/research-public/"
+     :home   "about")
+    ("ring"
+     :source "~/projects/philwebring/site/"
+     :output "~/projects/philwebring/public/"
+     :home   "index"))
+  "Every org-authored site, keyed by the name `publish' takes.
 
-(defconst rm/org-site-output-root
-  (expand-file-name "~/scholarship/research-public/")
-  "Where the generated pages land (the tree GitHub Pages serves).")
+Each entry carries three paths:
 
-(defconst rm/org-site-home-page "about"
+  :source  root of the .org page sources
+  :output  where the generated HTML lands
+  :home    basename of the page that becomes the site root index.html
+
+The two sites differ in what serves the output.  raymondmaung.com
+exports into the research-public working tree, which GitHub Pages
+serves, so its output is committed.  philwebring.org exports into a
+gitignored build directory that `publish ring' rsyncs to the homelab,
+so its output is never committed -- the server is the only consumer.
+
+One exporter covers both because a page is only its body: everything
+site-specific lives in that site's own shared/template.html and
+shared/style.css.  The published-papers and cv-body tokens are
+personal-site features, but they are token-driven, so a page that
+does not emit the token is simply unaffected.")
+
+;; The three paths of the site currently exporting.  Every entry point
+;; binds them from `rm/org-sites' (see `rm/org-site--with-site'), so the
+;; mapping and template code below reads one site's paths without
+;; knowing which site it is.
+(defvar rm/org-site-source-root nil
+  "Root of the org page sources for the site currently exporting.")
+
+(defvar rm/org-site-output-root nil
+  "Where the generated pages land for the site currently exporting.")
+
+(defvar rm/org-site-home-page nil
   "Basename of the top-level page that exports to the site root.
 That page becomes /index.html; every other <name>.org becomes
 /<name>/index.html.  Mirrored in the publish shell function.")
+
+(defun rm/org-site-root (site key)
+  "Expanded KEY path (`:source' or `:output') of SITE in `rm/org-sites'."
+  (let ((entry (or (cdr (assoc site rm/org-sites))
+                   (user-error "site: no such site %S" site))))
+    (expand-file-name (plist-get entry key))))
+
+(defun rm/org-site-for-file (file)
+  "Name of the site whose :source root contains FILE, or nil.
+shared/ holds config -- template, css, fonts -- not pages, so a file
+under it belongs to no site."
+  (and file
+       (string-match-p "\\.org\\'" file)
+       (not (string-match-p "/shared/" file))
+       (car (seq-find (lambda (entry)
+                        (string-prefix-p (rm/org-site-root (car entry) :source)
+                                         (expand-file-name file)))
+                      rm/org-sites))))
 
 (defvar rm/org-site--current-root ""
   "The {{ROOT}} prefix of the page currently exporting.
@@ -331,12 +380,11 @@ to exactly one trailing newline."
 ;; --- source -> output mapping -------------------------------------------
 
 (defun rm/org-site-buffer-p ()
-  "Non-nil when the current buffer is a website page source.
-Pages only -- shared/ holds config (template, css, fonts), not pages."
-  (and buffer-file-name
-       (string-prefix-p rm/org-site-source-root buffer-file-name)
-       (string-match-p "\\.org\\'" buffer-file-name)
-       (not (string-match-p "/shared/" buffer-file-name))))
+  "Name of the site the current buffer is a page of, or nil.
+Pages only -- shared/ holds config (template, css, fonts), not pages.
+Returns the site NAME rather than t, so callers that must bind the
+site's roots get them from the same test that gated them."
+  (rm/org-site-for-file buffer-file-name))
 
 (defun rm/org-site--output-file (org-file)
   "The generated HTML page ORG-FILE exports to.
@@ -371,12 +419,18 @@ serves it (the WordPress-era URLs)."
 
 (defun rm/org-site-export ()
   "Export the current page: body through site-html, into the shell,
-written to its research-public location (uncommitted -- `publish site'
-is the gate that commits and pushes)."
+written to its own site's output location (uncommitted -- the matching
+`publish' target is the gate that deploys)."
   (interactive)
-  (unless (rm/org-site-buffer-p)
-    (user-error "Not a website page (%s)" buffer-file-name))
-  (let* ((src buffer-file-name)
+  (let* ((site (or (rm/org-site-buffer-p)
+                   (user-error "Not a website page (%s)" buffer-file-name)))
+         ;; Dynamic: the mapping and template helpers below read these
+         ;; rather than taking the site as an argument.
+         (rm/org-site-source-root (rm/org-site-root site :source))
+         (rm/org-site-output-root (rm/org-site-root site :output))
+         (rm/org-site-home-page
+          (plist-get (cdr (assoc site rm/org-sites)) :home))
+         (src buffer-file-name)
          (out (rm/org-site--output-file src))
          (rm/org-site--current-root (rm/org-site--root src))
          (rel (file-relative-name out rm/org-site-output-root))
@@ -402,7 +456,7 @@ is the gate that commits and pushes)."
                                            (cdr pair) html t t)))
     (make-directory (file-name-directory out) t)
     (write-region html nil out nil 'silent)
-    (message "site: %s" (file-relative-name out rm/org-site-output-root))))
+    (message "%s: %s" site (file-relative-name out rm/org-site-output-root))))
 
 (defun rm/org-site-export-file (file)
   "Batch entry point (used by the publish shell function): export FILE."
