@@ -154,6 +154,26 @@ publish() {
         tag="site-$(date +%F)"
         git -C "$site_src" tag -f "$tag"
         git -C "$site_src" push --force origin "refs/tags/$tag"
+        # Second destination, same bytes: the homelab, over Netbird, the
+        # way `publish ring' deploys.  Caddy serves this at
+        # lab.raymondmaung.com while the real name stays on GitHub Pages
+        # (homelab/WEBSITE-MIGRATION.md).  Copying research-public rather
+        # than re-exporting is deliberate -- the staged site is then the
+        # same tree GitHub serves, so any difference between the two is a
+        # difference in HOSTING, which is the only thing being tested.
+        #
+        # Non-fatal, and it must stay that way until the cutover: the
+        # push above is still the real deploy, so an unreachable server
+        # is an inconvenience, not a failed publish.  Once the apex moves
+        # to the tunnel this rsync BECOMES the deploy and the `|| echo'
+        # has to go -- a silent failure would then leave the live site
+        # stale with no sign of it.
+        if rsync -az --delete --exclude '.git' \
+             "$site_dest/" services:/srv/www/personal/; then
+          echo "publish: site staged to services:/srv/www/personal"
+        else
+          echo "publish: note — server unreachable, staging copy skipped"
+        fi
       )
       return $?
       ;;
