@@ -336,6 +336,64 @@ A new macro in cv.org must get a clause here before it publishes."
     ;; the wrapper is style.css's hook for CV-wide styling (font step-down)
     (concat "<div class=\"cv\">\n" (string-trim (buffer-string)) "\n</div>")))
 
+;; --- fingerprinted assets -----------------------------------------------
+;;
+;; The stylesheet ships under a content-hashed name -- style.<hash>.css
+;; -- and the template's {{STYLE}} token resolves to it.  The point is
+;; that a changed file gets a NEW URL, so there is nothing stale to
+;; invalidate: updates are instant by construction, and the asset can
+;; then be served with a one-year immutable header instead of being
+;; revalidated on every visit.  Both sites get this; the ring needs it
+;; most, because ring.js resolves hops from members.json at runtime and
+;; a visitor holding a stale copy walks a stale ring.
+;;
+;; members.json is deliberately NOT fingerprinted: it is data fetched at
+;; runtime rather than an asset referenced from HTML, so nothing would
+;; rewrite the reference.  It stays no-cache at the server.
+
+(defconst rm/org-site-stylesheet "shared/style.css"
+  "The stylesheet each site keeps, relative to its source root.")
+
+(defun rm/org-site--fingerprint (file)
+  "First 8 hex characters of FILE's SHA-256.
+Read literally: the hash must follow the bytes on disk, not a decoded
+and re-encoded copy of them."
+  (substring (secure-hash 'sha256
+                          (with-temp-buffer
+                            (set-buffer-multibyte nil)
+                            (insert-file-contents-literally file)
+                            (buffer-string)))
+             0 8))
+
+(defun rm/org-site--stylesheet-source ()
+  "Absolute path of the current site's stylesheet."
+  (let ((f (expand-file-name rm/org-site-stylesheet rm/org-site-source-root)))
+    (unless (file-readable-p f)
+      (user-error "site: no stylesheet at %s" f))
+    f))
+
+(defun rm/org-site-stylesheet-name ()
+  "Fingerprinted file name of the current site's stylesheet."
+  (format "style.%s.css" (rm/org-site--fingerprint
+                          (rm/org-site--stylesheet-source))))
+
+(defun rm/org-site--sync-stylesheet (name)
+  "Copy the current stylesheet into the output root as NAME.
+Drops any other style*.css sitting there, so a rebuild leaves exactly
+one and old hashes never accumulate.  Scoped to that one pattern at the
+top level -- the personal site's output root is the whole
+research-public tree."
+  (let ((dest (expand-file-name name rm/org-site-output-root)))
+    (make-directory rm/org-site-output-root t)
+    (dolist (old (directory-files rm/org-site-output-root t
+                                  "\\`style\\(\\.[0-9a-f]+\\)?\\.css\\'"))
+      (unless (equal old dest) (delete-file old)))
+    (unless (and (file-exists-p dest)
+                 (equal (rm/org-site--fingerprint dest)
+                        (rm/org-site--fingerprint (rm/org-site--stylesheet-source))))
+      (copy-file (rm/org-site--stylesheet-source) dest t))
+    name))
+
 ;; --- the site-html backend ----------------------------------------------
 
 (defun rm/org-site--strip-random-ids (output _backend _info)
@@ -439,7 +497,10 @@ written to its own site's output location (uncommitted -- the matching
          (title (or (cadr (assoc "TITLE" (org-collect-keywords '("TITLE"))))
                     (user-error "site: %s needs a #+TITLE" src)))
          (body (org-export-as 'site-html nil nil t))
-         (html (rm/org-site--template)))
+         (html (rm/org-site--template))
+         ;; Written on every export, not only by `publish', so a saved
+         ;; page previews against the stylesheet its own HTML names.
+         (style (rm/org-site--sync-stylesheet (rm/org-site-stylesheet-name))))
     ;; mark the nav link that targets this page (before the token
     ;; substitution, so the href still carries the ROOT token exactly);
     ;; style.css underlines the marked link.  A subpage with no nav
@@ -451,6 +512,7 @@ written to its own site's output location (uncommitted -- the matching
     ;; literal substitution (t t): titles and bodies may contain \ or &
     (dolist (pair `(("{{TITLE}}" . ,title)
                     ("{{ROOT}}"  . ,rm/org-site--current-root)
+                    ("{{STYLE}}" . ,style)
                     ("{{BODY}}"  . ,body)))
       (setq html (replace-regexp-in-string (regexp-quote (car pair))
                                            (cdr pair) html t t)))

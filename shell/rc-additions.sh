@@ -131,12 +131,16 @@ publish() {
             fi
             git -C "$site_dest" add -- "$out"
           done
-        cp "$site_src/shared/style.css" "$site_dest/style.css"
+        # The stylesheet is NOT copied here: the exporter writes it under
+        # its content-hashed name (style.<hash>.css) and drops the
+        # previous one, so the pages and the file they name can never
+        # drift apart.  The pathspec stages the new name and the old
+        # one's deletion together.
         mkdir -p "$site_dest/fonts"
         cp "$site_src/shared/fonts/"*.woff2 "$site_dest/fonts/"
         touch "$site_dest/.nojekyll"    # no Jekyll pass -- pure static
         cd "$site_dest"
-        git add -- style.css fonts .nojekyll
+        git add -A -- 'style*.css' fonts .nojekyll
         git diff --cached --quiet || { git commit -m "." && git push; }
         # Provenance, same as the documents: tag the website source this
         # deploy was built from.  The sources auto-commit first so the tag
@@ -184,13 +188,27 @@ publish() {
           while IFS= read -r org; do
             _org_export_site "$org" || exit 1
           done
-        cp "$ring_pages/shared/style.css" "$ring_out/style.css"
+        # The stylesheet arrives from the exporter already content-hashed.
+        # ring.js gets the same treatment here, because the hop pages
+        # that reference it are hand-written rather than templated: the
+        # sources keep the plain name and the BUILT copies carry the
+        # hashed one.  Fingerprinting matters most for this file -- it
+        # resolves hops from members.json at runtime, so a visitor
+        # holding a stale copy walks a stale ring.
+        ring_js="ring.$(sha256sum "$ring_src/ring.js" | cut -c1-8).js"
+        rm -f "$ring_out"/ring.js "$ring_out"/ring.*.js
+        cp "$ring_src/ring.js" "$ring_out/$ring_js"
         # The ring MECHANICS stay hand-written at the repo root, the same
         # way shared/template.html does: they are behaviour, not prose.
-        # members.json is the roster and the ring's source of truth.
-        cp "$ring_src/members.json" "$ring_src/ring.js" "$ring_out/"
-        cp "$ring_src/next.html" "$ring_src/prev.html" "$ring_src/random.html" \
-           "$ring_out/"
+        # members.json is the roster and the ring's source of truth; it
+        # is fetched at runtime rather than referenced from HTML, so
+        # nothing could rewrite a hashed name -- it stays no-cache at
+        # the server instead.
+        cp "$ring_src/members.json" "$ring_out/"
+        for hop in next prev random; do
+          sed "s|src=\"ring\.js\"|src=\"$ring_js\"|" \
+            "$ring_src/$hop.html" > "$ring_out/$hop.html"
+        done
         # --delete so a removed page disappears from the server too.
         rsync -az --delete "$ring_out/" "$ring_host:$ring_dest"
         echo "publish: philwebring deployed to $ring_host:$ring_dest"
