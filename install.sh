@@ -93,6 +93,56 @@ install_linux_deps() {
     fi
 }
 
+
+# ---------------------------------------------------------------------------
+# Server flavor (--server): headless boxes like the homelab `ai` LXC
+# (homelab/AI-LXC-DISCUSSION.md). Shell, git, nvim, tmux, emacs batch
+# export -- no desktop layer, no TeX Live (PDF builds stay on the
+# laptop; the LXC publishes the org-exported sites only). A deliberate
+# early-exit branch rather than guards through the desktop flow below,
+# so the two paths cannot half-apply to each other's machines.
+if [ "${1:-}" = "--server" ]; then
+    echo "==> Server install (headless): packages"
+    sudo apt-get update
+    sudo apt-get install -y \
+        neovim nodejs npm zoxide fzf ripgrep fd-find unzip \
+        build-essential emacs-nox rsync jq tmux gh eza \
+        zsh zsh-autosuggestions zsh-syntax-highlighting \
+        kitty-terminfo
+
+    echo "==> Server install: symlinking nvim, emacs, tmux configs"
+    for app in nvim emacs tmux; do
+        if [ -e ~/.config/$app ] && [ ! -L ~/.config/$app ]; then
+            mv ~/.config/$app ~/.config/$app.bak
+        fi
+        ln -sfn "$DOTFILES_DIR/$app" ~/.config/$app
+    done
+    if [ ! -d ~/.tmux/plugins/tpm ]; then
+        git clone --depth 1 https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    fi
+
+    echo "==> Server install: wiring shell additions"
+    SHELL_SOURCE_LINE='source "$HOME/code/dotfiles/shell/rc-additions.sh"'
+    for rc in ~/.zshrc ~/.bashrc; do
+        touch "$rc"
+        grep -Fxq "$SHELL_SOURCE_LINE" "$rc" || echo "$SHELL_SOURCE_LINE" >> "$rc"
+    done
+
+    prune_orphan_links "$HOME/.config" "$DOTFILES_DIR"
+    for d in "$HOME"/.config/*/; do
+        prune_orphan_links "${d%/}" "$DOTFILES_DIR"
+    done
+
+    # The private overlay (Claude config, skills) applies on servers too.
+    if [ -x "$HOME/code/dotfiles-private/install.sh" ]; then
+        echo "==> Running private-overlay installer"
+        "$HOME/code/dotfiles-private/install.sh"
+    fi
+
+    echo "==> Server install done. Launch nvim once to finish plugin install."
+    exit 0
+fi
+
 case "$OS" in
     Linux)  install_linux_deps ;;
     *)      echo "Unsupported OS: $OS"; exit 1 ;;
