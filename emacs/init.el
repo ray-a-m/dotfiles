@@ -4668,62 +4668,50 @@ one `l' away instead."
            (expand-file-name "~/scholarship/research-wip/")))
       (dired-sidebar-toggle-sidebar)))
   (defconst rm/site-roots
-    '("~/scholarship/website/"        ; raymondmaung.com
-      "~/projects/philwebring/")      ; philwebring.org
-    "The org-authored sites, as the splash `w' sidebar lists them.
-Repo roots, not page roots: the ring keeps its roster and its hop pages
-beside site/, and those are edited too.  Mirrors the sites registered
-in `rm/org-sites' (org-site-export.el).")
+    '(("website"     . "~/scholarship/website/")        ; raymondmaung.com
+      ("philwebring" . "~/projects/philwebring/"))      ; philwebring.org
+    "The org-authored sites: the name `w' shows, and the tree it stands for.
+Repo roots, not page roots -- the ring keeps its roster and its hop
+pages beside site/, and those are edited too.  Mirrors the sites
+registered in `rm/org-sites' (org-site-export.el).")
 
-  (defconst rm/site--sidebar-name ":sites"
-    "Buffer name of the two-site overview.
-Lets `rm/website-sidebar' tell the overview from a sidebar that
-follow-file has re-rooted into one site.")
+  (defconst rm/site-tree
+    (expand-file-name "emacs/sites/"
+                      (or (getenv "XDG_STATE_HOME") "~/.local/state/"))
+    "Directory of symlinks, one per entry in `rm/site-roots'.
+The two sites live under different parents (~/scholarship and
+~/projects), so no real directory holds both.  Gathering them as links
+under one root is what lets `w' be an ordinary sidebar rooted at a real
+directory -- the same shape as `p' -- instead of a bespoke dired that
+misses the banner hiding, the header line, and the omit rules.
+
+Generated state, not config: `rm/site-tree-ensure' rebuilds it, so a
+new machine or a moved site needs no manual step.")
+
+  (defun rm/site-tree-ensure ()
+    "Make `rm/site-tree' match `rm/site-roots', links and all."
+    (make-directory rm/site-tree t)
+    ;; Links whose entry is gone (a renamed or retired site).
+    (dolist (f (directory-files rm/site-tree t "\\`[^.]"))
+      (unless (assoc (file-name-nondirectory f) rm/site-roots)
+        (delete-file f)))
+    (pcase-dolist (`(,name . ,target) rm/site-roots)
+      (let ((link (expand-file-name name rm/site-tree))
+            (dest (directory-file-name (expand-file-name target))))
+        (unless (equal (file-symlink-p link) dest)
+          (when (file-symlink-p link) (delete-file link))
+          (make-symbolic-link dest link t)))))
 
   (defun rm/website-sidebar ()
-    "Toggle a dired sidebar listing the org-authored site sources (splash `w').
-Both sites in ONE tree: RET walks into a site, exactly as `p' walks
-from research-wip into cv or a paper.  Dired's explicit file-list form
--- (DIRNAME FILE ...) -- is what puts two roots from different trees in
-one buffer, and the names are written relative to home so they fit the
-sidebar width.
-
-Saving a page re-exports it; `publish' (M-SPC P) deploys the one site
-the buffer belongs to.
-
-Visiting a page re-roots the sidebar into that single site
-(`dired-sidebar-should-follow-file'), so `w' from there rebuilds the
-overview instead of hiding it -- one key back to both sites, rather
-than hide-then-show."
+    "Toggle a dired sidebar over the org-authored sites (splash `w').
+Both sites in one tree: `l' walks into a site, exactly as `p' walks
+from research-wip into cv or a paper.  Saving a page re-exports it, and
+`publish' (M-SPC P) deploys the one site the buffer belongs to."
     (interactive)
-    (let ((showing (and (dired-sidebar-showing-sidebar-p)
-                        (dired-sidebar-buffer))))
-      (if (and showing (equal (buffer-name showing) rm/site--sidebar-name))
-          (dired-sidebar-hide-sidebar)
-        (let* ((home (expand-file-name "~/"))
-               (default-directory home)
-               (buf (dired-noselect
-                     (cons home
-                           (mapcar (lambda (root)
-                                     (directory-file-name
-                                      (file-relative-name
-                                       (expand-file-name root) home)))
-                                   rm/site-roots)))))
-          ;; A stale overview buffer would push `rename-buffer' to
-          ;; ":sites<2>" and break the toggle test above.
-          (dolist (b (buffer-list))
-            (when (and (not (eq b buf))
-                       (equal (buffer-name b) rm/site--sidebar-name))
-              (kill-buffer b)))
-          (with-current-buffer buf (rename-buffer rm/site--sidebar-name))
-          ;; One sidebar at a time, the same rule
-          ;; `dired-sidebar-toggle-sidebar' follows.
-          (when (and dired-sidebar-use-one-instance showing
-                     (not (eq showing buf)))
-            (kill-buffer showing))
-          (dired-sidebar-show-sidebar buf)
-          (when dired-sidebar-pop-to-sidebar-on-toggle-open
-            (pop-to-buffer buf))))))
+    (rm/site-tree-ensure)
+    (let ((default-directory rm/site-tree))
+      (dired-sidebar-toggle-sidebar)))
+
   (defun rm/teaching-sidebar ()
     "Toggle a dired sidebar rooted at the teaching tree (splash `k').
 ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
@@ -4847,6 +4835,48 @@ the mode hook) bounces point off after every command."
   ;; and artifact extensions everyone omits.  Subtree expansions are out
   ;; of dired-omit's reach -- rm/sidebar-omit-subtree (above) covers them.
   (setq dired-omit-verbose nil)
+  (defun rm/sidebar-site-tree-look ()
+    "Make the sites tree read as directories rather than as links.
+`rm/site-tree' gathers roots from different parents as symlinks.
+dired-sidebar deliberately shows symlink targets (it sets
+`dired-hide-details-hide-symlink-targets' to nil), and font-lock
+colours the names with `dired-symlink'.  In this one buffer the entries
+stand for the sites themselves, so neither is wanted."
+    (when (equal (expand-file-name default-directory) rm/site-tree)
+      (setq-local dired-hide-details-hide-symlink-targets t)
+      (dired-hide-details-update-invisibility-spec)
+      (face-remap-add-relative 'dired-symlink 'dired-directory)))
+  (defun rm/sidebar-hide-link-targets (&rest _)
+    "Hide the \" -> target\" tail of the symlink lines in the sites tree.
+`dired-hide-details-hide-symlink-targets' covers the target path but
+NOT the arrow before it, so a site would read \"website -> \".  The
+entries stand for the sites themselves; the tail is noise.  Same
+display-only shape as `rm/sidebar-hide-extensions': the buffer text is
+intact, so dired still resolves the real link."
+    (when (and (derived-mode-p 'dired-sidebar-mode)
+               (equal (expand-file-name default-directory) rm/site-tree))
+      (save-excursion
+        (goto-char (point-min))
+        (while (not (eobp))
+          ;; Anchor on the arrow, not on `dired-move-to-end-of-filename':
+          ;; that returns end-of-line when the link NAME also occurs
+          ;; inside its target (philwebring -> .../philwebring), which
+          ;; left exactly that line showing its arrow.
+          (let ((bol (line-beginning-position))
+                (eol (line-end-position)))
+            (goto-char bol)
+            (when (and (search-forward " -> " eol t)
+                       (not (seq-some (lambda (o) (overlay-get o 'rm/site-link))
+                                      (overlays-at (match-beginning 0)))))
+              (let ((o (make-overlay (match-beginning 0) eol)))
+                (overlay-put o 'rm/site-link t)
+                (overlay-put o 'invisible t)
+                (overlay-put o 'evaporate t)))
+            (goto-char eol))
+          (forward-line 1)))))
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-link-targets)
+  (add-hook 'dired-sidebar-mode-hook #'rm/sidebar-site-tree-look)
+  (add-hook 'dired-sidebar-mode-hook #'rm/sidebar-hide-link-targets)
   (add-hook 'dired-sidebar-mode-hook
             (lambda ()
               (setq-local line-spacing 3   ; airier rows
