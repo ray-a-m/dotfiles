@@ -169,8 +169,8 @@ publish() {
         # has to go -- a silent failure would then leave the live site
         # stale with no sign of it.
         if rsync -az --delete --exclude '.git' \
-             "$site_dest/" services:/srv/www/personal/; then
-          echo "publish: site staged to services:/srv/www/personal"
+             "$site_dest/" edge:/srv/www/personal/; then
+          echo "publish: site staged to edge:/srv/www/personal"
         else
           echo "publish: note — server unreachable, staging copy skipped"
         fi
@@ -181,8 +181,9 @@ publish() {
       # philwebring.org: re-export every page, assemble the build tree,
       # then rsync it to the homelab over Netbird.  Unlike `site', the
       # push is NOT the deploy -- nothing serves this from GitHub.  Caddy
-      # serves /srv/www/philwebring on the services container, so the
-      # rsync IS the deploy, and the build tree stays gitignored.
+      # serves /srv/www/philwebring on the edge container (its own LXC
+      # since 2026-08-22), so the rsync IS the deploy, and the build
+      # tree stays gitignored.
       #
       # No provenance tag and no source commit here (both of which `site'
       # does): the ring repo is scheduled for a delete-and-recreate with
@@ -194,7 +195,7 @@ publish() {
       local ring_src="$HOME/projects/philwebring"
       local ring_pages="$ring_src/site"
       local ring_out="$ring_src/public"
-      local ring_host="services"
+      local ring_host="edge"
       local ring_dest="/srv/www/philwebring/"
       if [[ ! -d "$ring_pages" ]]; then
         echo "publish: no philwebring sources at $ring_pages"
