@@ -69,7 +69,10 @@ save() {
 # on disk but not reloaded (Emacs daemon, hypr) -- reload deliberately.
 auto() {
   local r before
-  for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private"            "$HOME/code/homelab" "$HOME/scholarship/website"            "$HOME/scholarship/research-public"; do
+  for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
+           "$HOME/code/homelab" "$HOME/scholarship/website" \
+           "$HOME/scholarship/research-public" \
+           "$HOME/projects/philwebring"; do
     [ -d "$r/.git" ] || continue
     before=$(git -C "$r" rev-parse HEAD)
     if ! timeout 20 git -C "$r" pull --ff-only -q 2>/dev/null; then
