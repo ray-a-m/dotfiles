@@ -111,6 +111,7 @@ if [ "${1:-}" = "--server" ]; then
         kitty-terminfo
 
     echo "==> Server install: symlinking nvim, emacs, tmux configs"
+    mkdir -p ~/.config
     for app in nvim emacs tmux; do
         if [ -e ~/.config/$app ] && [ ! -L ~/.config/$app ]; then
             mv ~/.config/$app ~/.config/$app.bak
