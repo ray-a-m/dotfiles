@@ -3989,9 +3989,9 @@ welcome.org's `commands' line carries the same indent literally.")
 
 (defun rm/bookmark--panel ()
   "Return the splash Bookmarks block: a header, then the entries.
-First the two fixed site entries (`w' -- the raymondmaung.com sources
-sidebar; `W' -- the philwebring ones), neither a numbered slot, then
-the set slots only.  An empty slot does not appear.  Centred under the logo by `rm/welcome--centre'."
+First a fixed sites entry (`w' -- the sidebar listing both org-authored
+site sources, not a numbered slot), then the set slots only.  An empty
+slot does not appear.  Centred under the logo by `rm/welcome--centre'."
   (let* ((hint "set = [M-SPC B]")
          ;; Right-flush the hint so [M-SPC B] ends in the [N] key column (38).
          (header (concat "Bookmarks"
@@ -3999,12 +3999,11 @@ the set slots only.  An empty slot does not appear.  Centred under the logo by `
                                       ?\s)
                          hint))
          ;; Same shape as rm/bookmark--line, so [w] lands in the [N] column.
-         (website (format "  website %s [w]" (make-string (- 31 7) ?.)))
-         (ring    (format "  philwebring %s [W]" (make-string (- 31 11) ?.)))
+         (website (format "  sites %s [w]" (make-string (- 31 5) ?.)))
          (taken (seq-filter (lambda (n) (aref rm/bookmarks (1- n)))
                             (number-sequence 1 9))))
     (rm/welcome--centre
-     (concat header "\n\n" website "\n" ring
+     (concat header "\n\n" website
              (when taken
                (concat "\n" (mapconcat #'rm/bookmark--line taken "\n")))))))
 
@@ -4268,12 +4267,9 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "d") #'rm/denote-list)         ; list by words
                                         ; (was l until 2026-08-16)
             (define-key map (kbd "s") #'rm/scratch)             ; scratch
-            (define-key map (kbd "w") #'rm/website-sidebar)     ; website pages
-                                        ; (sidebar, like p; listed first in
-                                        ; the Bookmarks block)
-            (define-key map (kbd "W") #'rm/philwebring-sidebar) ; philwebring
-                                        ; pages -- the second org-authored
-                                        ; site, shifted like k/K and a/A
+            (define-key map (kbd "w") #'rm/website-sidebar)     ; BOTH sites, one
+                                        ; tree (sidebar, like p; listed
+                                        ; first in the Bookmarks block)
             (define-key map (kbd "c") #'rm/welcome-commands)    ; peek commands
             (use-local-map map))
           (read-only-mode 1)
@@ -4671,23 +4667,63 @@ one `l' away instead."
     (let ((default-directory
            (expand-file-name "~/scholarship/research-wip/")))
       (dired-sidebar-toggle-sidebar)))
+  (defconst rm/site-roots
+    '("~/scholarship/website/"        ; raymondmaung.com
+      "~/projects/philwebring/")      ; philwebring.org
+    "The org-authored sites, as the splash `w' sidebar lists them.
+Repo roots, not page roots: the ring keeps its roster and its hop pages
+beside site/, and those are edited too.  Mirrors the sites registered
+in `rm/org-sites' (org-site-export.el).")
+
+  (defconst rm/site--sidebar-name ":sites"
+    "Buffer name of the two-site overview.
+Lets `rm/website-sidebar' tell the overview from a sidebar that
+follow-file has re-rooted into one site.")
+
   (defun rm/website-sidebar ()
-    "Toggle a dired sidebar rooted at the website sources (splash `w').
-The pages of raymondmaung.com, one .org each -- `l' visits; saving a
-page re-exports its HTML into research-public."
+    "Toggle a dired sidebar listing the org-authored site sources (splash `w').
+Both sites in ONE tree: RET walks into a site, exactly as `p' walks
+from research-wip into cv or a paper.  Dired's explicit file-list form
+-- (DIRNAME FILE ...) -- is what puts two roots from different trees in
+one buffer, and the names are written relative to home so they fit the
+sidebar width.
+
+Saving a page re-exports it; `publish' (M-SPC P) deploys the one site
+the buffer belongs to.
+
+Visiting a page re-roots the sidebar into that single site
+(`dired-sidebar-should-follow-file'), so `w' from there rebuilds the
+overview instead of hiding it -- one key back to both sites, rather
+than hide-then-show."
     (interactive)
-    (let ((default-directory
-           (expand-file-name "~/scholarship/website/")))
-      (dired-sidebar-toggle-sidebar)))
-  (defun rm/philwebring-sidebar ()
-    "Toggle a dired sidebar rooted at the philwebring sources (splash `W').
-The pages of philwebring.org, one .org each -- `l' visits; saving a
-page re-exports its HTML into the gitignored public/ build tree, and
-`publish ring' deploys that tree to the homelab."
-    (interactive)
-    (let ((default-directory
-           (expand-file-name "~/projects/philwebring/site/")))
-      (dired-sidebar-toggle-sidebar)))
+    (let ((showing (and (dired-sidebar-showing-sidebar-p)
+                        (dired-sidebar-buffer))))
+      (if (and showing (equal (buffer-name showing) rm/site--sidebar-name))
+          (dired-sidebar-hide-sidebar)
+        (let* ((home (expand-file-name "~/"))
+               (default-directory home)
+               (buf (dired-noselect
+                     (cons home
+                           (mapcar (lambda (root)
+                                     (directory-file-name
+                                      (file-relative-name
+                                       (expand-file-name root) home)))
+                                   rm/site-roots)))))
+          ;; A stale overview buffer would push `rename-buffer' to
+          ;; ":sites<2>" and break the toggle test above.
+          (dolist (b (buffer-list))
+            (when (and (not (eq b buf))
+                       (equal (buffer-name b) rm/site--sidebar-name))
+              (kill-buffer b)))
+          (with-current-buffer buf (rename-buffer rm/site--sidebar-name))
+          ;; One sidebar at a time, the same rule
+          ;; `dired-sidebar-toggle-sidebar' follows.
+          (when (and dired-sidebar-use-one-instance showing
+                     (not (eq showing buf)))
+            (kill-buffer showing))
+          (dired-sidebar-show-sidebar buf)
+          (when dired-sidebar-pop-to-sidebar-on-toggle-open
+            (pop-to-buffer buf))))))
   (defun rm/teaching-sidebar ()
     "Toggle a dired sidebar rooted at the teaching tree (splash `k').
 ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
