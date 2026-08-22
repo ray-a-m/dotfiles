@@ -3714,12 +3714,14 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
   :config (citar-denote-mode 1))
 
 ;; --- llm.el: research and referee-edit in org, on denote -------------------
-;; In development at ~/projects/llm.el; loaded straight from the working tree
+;; In development at ~/code/llm.el (moved from ~/projects 2026-08-22: the
+;; package runs in THIS Emacs, so it lives with the machine-bound trees --
+;; ~/projects is the ai LXC's now); loaded straight from the working tree
 ;; so every edit stays in that repo (no symlink, no copy into elpa/).  The
 ;; load-path line goes when the package has a home.  llm-global-mode turns
 ;; llm-mode on in ai-keyed denote files: M-RET asks, C-c l (M-SPC l) is the
-;; prefix.  Spec: ~/projects/llm.el/SPEC.org.
-(add-to-list 'load-path (expand-file-name "~/projects/llm.el"))
+;; prefix.  Spec: ~/code/llm.el/SPEC.org.
+(add-to-list 'load-path (expand-file-name "~/code/llm.el"))
 ;; org-side-tree: the branch viewer (M-SPC l t) is the session's outline as
 ;; an indented tree in a side window.
 (use-package org-side-tree
