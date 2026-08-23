@@ -67,6 +67,9 @@ save() {
 # research-wip is absent on purpose: its laptop tree is Syncthing-synced
 # and the services cron owns its git. NOTE: a pulled dotfiles change is
 # on disk but not reloaded (Emacs daemon, hypr) -- reload deliberately.
+# The pull ends in Claude. `auto' is the only way this laptop starts a
+# session, so no session runs on a stale config layer. Arguments pass
+# through, so `auto --resume' works. Claude exits back to this shell.
 auto() {
   local r before
   for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
@@ -83,6 +86,7 @@ auto() {
       echo "auto: $(basename "$r") updated"
     fi
   done
+  claude "$@"
 }
 
 # Attach to the ai LXC's tmux session over the LAN or the mesh. On
