@@ -1042,6 +1042,91 @@ tree with a relative link at point; anything else yanks as ever."
                       target))))))))
 (keymap-global-set "C-c P" #'rm/publish)
 
+;; philwebring's roster.  A slug is not a name: it is the token a member
+;; puts in their hop links, and any slug that resolves walks the ring.
+;; A guessable slug therefore lets a non-member use the ring without
+;; joining it, so slugs are drawn from entropy rather than from the
+;; person -- the roster maps the token back to the name, and nothing
+;; else needs to.
+(defconst rm/ring-members "~/projects/philwebring/members.json"
+  "The philwebring roster: the ring's source of truth, array order = ring order.")
+
+(defconst rm/ring-slug-alphabet "abcdefghjkmnpqrstuvwxyz23456789"
+  "Characters a slug is built from: lowercase, no l/i/1/o/0 pairs.
+Slugs get read off a screen and typed into a snippet, so the shapes that
+look alike stay out.")
+
+(defconst rm/ring-slug-length 8
+  "Characters per slug.  31 characters to the 8th is about 40 bits --
+guessing one against the live server takes a billion page loads.")
+
+(defun rm/ring-slug ()
+  "Return one fresh slug, from the system's entropy.
+`random' would do for a name; it will not do for a token, so the bytes
+come from /dev/urandom.  Bytes at the tail of the range are dropped
+rather than folded, which would favor the first characters of the
+alphabet."
+  (let ((n (length rm/ring-slug-alphabet))
+        (out "") (bytes nil))
+    (while (< (length out) rm/ring-slug-length)
+      (unless bytes
+        (setq bytes (with-temp-buffer
+                      ;; head, not `insert-file-contents-literally': that
+                      ;; one wants to seek, and /dev/urandom cannot.
+                      (set-buffer-multibyte nil)
+                      (call-process "head" nil t nil "-c" "64" "/dev/urandom")
+                      (string-to-list (buffer-string)))))
+      (let ((b (pop bytes)))
+        (when (and b (< b (* n (/ 256 n))))
+          (setq out (concat out (string (aref rm/ring-slug-alphabet (mod b n))))))))
+    out))
+
+(defun rm/ring-members-read ()
+  "The roster as a list of alists, in ring order."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name rm/ring-members))
+    (goto-char (point-min))
+    (json-parse-buffer :object-type 'alist :array-type 'list)))
+
+(defun rm/ring-add-member (name url)
+  "Add NAME at URL to the philwebring roster under a fresh slug.
+Appends to the ring, so a new member joins at the end of the loop.  The
+slug lands in the kill ring with the snippet that carries it: that pair
+is what goes back in the reply to their mail.  `publish ring' (M-SPC P)
+is what puts it live."
+  (interactive
+   (list (read-string "Member name: ")
+         (read-string "Site URL (https://): " "https://")))
+  (when (or (string-empty-p (string-trim name))
+            (not (string-prefix-p "https://" url)))
+    (user-error "A member needs a name and an https URL"))
+  (let* ((members (rm/ring-members-read))
+         (taken (mapcar (lambda (m) (alist-get 'slug m)) members))
+         (slug (let ((s (rm/ring-slug)))
+                 (while (member s taken) (setq s (rm/ring-slug)))
+                 s))
+         (file (expand-file-name rm/ring-members)))
+    (with-current-buffer (find-file-noselect file)
+      (erase-buffer)
+      (insert (json-encode
+               (append members
+                       (list (list (cons 'slug slug)
+                                   (cons 'name (string-trim name))
+                                   (cons 'url url))))))
+      (json-pretty-print-buffer)
+      (goto-char (point-max))
+      (unless (bolp) (insert "\n"))
+      (save-buffer))
+    (kill-new (format "<p>
+  <a href=\"https://philwebring.org/prev.html?from=%s\">&larr;</a>
+  <a href=\"https://philwebring.org/\">philwebring</a>
+  <a href=\"https://philwebring.org/random.html?from=%s\">random</a>
+  <a href=\"https://philwebring.org/next.html?from=%s\">&rarr;</a>
+</p>" slug slug slug))
+    (message "%s joined as %s — snippet on the kill ring; M-SPC P to publish"
+             (string-trim name) slug)
+    slug))
+
 ;; Teaching documents go org -> PDF straight through pandoc: no driver,
 ;; no preamble, no bib -- the machinery the papers need and a syllabus
 ;; does not.  (pandoc's default engine is still pdflatex underneath;
@@ -4867,6 +4952,32 @@ the mode hook) bounces point off after every command."
                         (overlay-put o 'evaporate t))))))))
           (forward-line 1)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-extensions)
+  (defun rm/sidebar-artifact-names (&rest _)
+    "Show a teaching document's generated files by their tail.
+The PDF, the DOCX and the Canvas package share the whole course name,
+so at sidebar width one document's three artifacts read as three
+identical rows.  What tells them apart is the tail, so the head becomes
+an ellipsis.  Display only: the name on disk is untouched, and dired
+still reads the real one under the overlay."
+    (when (and (derived-mode-p 'dired-sidebar-mode)
+               (string-prefix-p rm/teaching-directory (expand-file-name default-directory)))
+      (save-excursion
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((fn (dired-get-filename 'no-dir t)))
+            (when (and fn (string-match "_\\(?:[^_]+\\.\\(?:pdf\\|docx\\|zip\\)\\)\\'" fn))
+              (let ((head (1+ (match-beginning 0))))
+                (when-let ((end (dired-move-to-end-of-filename t)))
+                  (let* ((beg (- end (length fn)))
+                         (cut (+ beg head)))
+                    (unless (seq-some (lambda (o) (overlay-get o 'rm/artifact))
+                                      (overlays-at beg))
+                      (let ((o (make-overlay beg cut)))
+                        (overlay-put o 'rm/artifact t)
+                        (overlay-put o 'display "…")
+                        (overlay-put o 'evaporate t))))))))
+          (forward-line 1)))))
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-artifact-names)
   ;; Teaching sidebar: class and document folders read as titles, not
   ;; slugs -- hyphens shown as spaces, prose face (Atkinson via
   ;; variable-pitch), regular weight.  Display-only: the slug on disk is
@@ -4968,16 +5079,77 @@ intact, so dired still resolves the real link."
   (add-hook 'dired-after-readin-hook #'rm/sidebar-hide-link-targets)
   (add-hook 'dired-sidebar-mode-hook #'rm/sidebar-site-tree-look)
   (add-hook 'dired-sidebar-mode-hook #'rm/sidebar-hide-link-targets)
+  (defconst rm/sidebar-omit-base
+    (concat "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'"
+            "\\|\\`auto\\'\\|\\`ltximg\\'"
+            "\\|\\`\\(?:body\\|paper\\|dissertation\\|maung_cv"
+            "\\|introduction\\|dedication\\|acknowledgements"
+            "\\|summary\\|vita\\)\\.tex\\'")
+    "What every sidebar hides: dotfiles, repo furniture, build exhaust.
+The site sidebar hides more on top of this -- see `rm/sidebar-omit-refresh'.")
+
+  (defconst rm/site-sidebar-keep
+    '(("~/projects/philwebring/" "members.json" "site"))
+    "Per site repo root, the only entries the `w' sidebar shows.
+The ring's root carries its mechanics (ring.js, the hop pages) and the
+repo's own furniture beside the two things that get edited: the roster
+and the page sources.  The rest is hidden, and the hidden set is read
+off the directory itself, so a file added to that root needs no edit
+here.  A site absent from this list shows everything, which is the
+website's case -- its root holds pages and nothing else.")
+
+  (defun rm/site-sidebar-hidden ()
+    "The names `rm/site-sidebar-keep' hides, across every site it lists.
+Names, not paths, because that is what dired-omit matches -- and because
+the sidebar shows a site root two ways: as its own root once `follow'
+re-roots the tree, and as a subtree under `rm/site-tree' before that.
+None of the hidden names recur inside a site."
+    (let (hidden)
+      (pcase-dolist (`(,root . ,keep) rm/site-sidebar-keep)
+        (let ((dir (expand-file-name root)))
+          (when (file-directory-p dir)
+            (dolist (f (directory-files dir))
+              (unless (or (member f '("." "..")) (member f keep))
+                (push f hidden))))))
+      (delete-dups hidden)))
+
+  (defun rm/sidebar-omit-refresh ()
+    "Set this sidebar's omit regexp: the shared base, plus the site rules.
+Recomputed on every readin rather than once at mode start, because the
+tree re-roots as you follow a file -- `rm/site-tree' one moment, a
+site's own root the next.  Expunges here as well: this runs on the same
+hook as dired-omit's own pass, and the new regexp must not wait for the
+next revert."
+    ;; dired-sidebar-mode is a derived MAJOR mode, so it is derived-mode-p
+    ;; that answers here -- there is no variable of that name to test.
+    (when (derived-mode-p 'dired-sidebar-mode)
+      (let* ((dir (expand-file-name default-directory))
+             (site-p (or (string-prefix-p rm/site-tree dir)
+                         (seq-some (lambda (entry)
+                                     (string-prefix-p (expand-file-name (car entry)) dir))
+                                   rm/site-sidebar-keep)))
+             (hidden (and site-p (rm/site-sidebar-hidden)))
+             ;; A teaching document builds three files and only one of
+             ;; them is a thing to check on: the Canvas package, which is
+             ;; either there or not.  The PDF and the DOCX open from
+             ;; C-c P, which shows the PDF itself -- listing them only
+             ;; crowds the folder with rows that read alike.
+             (teaching-p (string-prefix-p rm/teaching-directory dir))
+             (extra (concat (when hidden
+                              (concat "\\|\\`" (regexp-opt hidden) "\\'"))
+                            (when teaching-p
+                              "\\|\\.\\(?:pdf\\|docx\\)\\'"))))
+        (setq-local dired-omit-files
+                    (if (string-empty-p extra)
+                        rm/sidebar-omit-base
+                      (concat rm/sidebar-omit-base extra)))
+        (when (and (not (string-empty-p extra)) (bound-and-true-p dired-omit-mode))
+          (ignore-errors (dired-omit-expunge))))))
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-omit-refresh)
+
   (add-hook 'dired-sidebar-mode-hook
             (lambda ()
               (setq-local line-spacing 3   ; airier rows
-                          dired-omit-files
-                          (concat
-                           "\\`\\.\\|\\`README\\.md\\'\\|\\`TODO\\.md\\'"
-                           "\\|\\`auto\\'\\|\\`ltximg\\'"
-                           "\\|\\`\\(?:body\\|paper\\|dissertation\\|maung_cv"
-                           "\\|introduction\\|dedication\\|acknowledgements"
-                           "\\|summary\\|vita\\)\\.tex\\'")
                           ;; nano's header line would show the buffer name
                           ;; (":~/full/path/..."); show just the root's name
                           header-line-format
@@ -4985,11 +5157,13 @@ intact, so dired still resolves the real link."
                                      (directory-file-name
                                       (expand-file-name default-directory)))
                                 "/"))
+              (rm/sidebar-omit-refresh)
               (dired-omit-mode 1)
               (cursor-intangible-mode 1)  ; keeps point off the hidden banner
               ;; initial readin predates the mode, so run both once here
               (rm/sidebar-hide-heading)
               (rm/sidebar-hide-extensions)
+              (rm/sidebar-artifact-names)
               (rm/sidebar-class-titles)))
   ;; Vim-style tree navigation on plain hjkl -- the pane is read-only, so
   ;; the letters are free, and dired's single-letter legacy binds are traps
