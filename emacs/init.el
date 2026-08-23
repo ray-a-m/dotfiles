@@ -995,8 +995,11 @@ tree with a relative link at point; anything else yanks as ever."
 (defun rm/publish ()
   "Publish the document this buffer belongs to (shell `publish'), async."
   (interactive)
-  (let* ((f (or buffer-file-name
-                (user-error "This buffer is not visiting a file")))
+  ;; file-truename, not buffer-file-name: the site sources open through
+  ;; the symlinks in .local/state/emacs/sites/, and a symlinked path
+  ;; matches none of the cases below.
+  (let* ((f (file-truename (or buffer-file-name
+                               (user-error "This buffer is not visiting a file"))))
          (target
           (cond
            ((string-prefix-p rm/teaching-directory f) 'teaching)
@@ -1009,7 +1012,13 @@ tree with a relative link at point; anything else yanks as ever."
            (t (user-error "Nothing publishable here: %s" f)))))
     (when (buffer-modified-p) (save-buffer))
     (if (eq target 'teaching)
-        (rm/teaching-pdf f)
+        (progn
+          ;; Publishing a quiz means all three of its outputs: the
+          ;; handout, the screen-reader copy, and the Canvas package.
+          ;; The Canvas build runs first and finishes before pandoc
+          ;; starts, so a refusal is on screen and stays there.
+          (when (rm/teaching--quiz-file-p f) (rm/teaching-qti))
+          (rm/teaching-pdf f))
       (rm/publish--shell target))))
 (defun rm/publish--shell (target)
   "Run the shell `publish' TARGET asynchronously, reporting in the echo area."
@@ -1147,37 +1156,82 @@ Todo subtrees and :noexport: sections stay out of both."
                       (display-buffer b '(display-buffer-in-direction (direction . right)))))
            (message "pandoc pdf failed — log in *rm-publish* (M-ESC reaches it)")))))))
 
-;; A quiz is a teaching document whose questions the model wrote into an
-;; llm block.  M-P turns that block into a Canvas QTI package beside the
-;; .org: every question, its options and its answer key in one upload
-;; (Canvas > Settings > Import Course Content > QTI .zip file), instead of
-;; typing twenty questions into the Canvas editor by hand.  C-c P still
-;; makes the PDF and the DOCX; the two are separate because the paper copy
-;; and the Canvas copy are wanted at different moments.
+;; A quiz is a teaching document whose questions the model wrote into its
+;; llm blocks.  The Canvas package is part of the answer, not a second
+;; gesture: a reply that carries questions rebuilds the .zip beside the
+;; .org on the spot (`rm/teaching-qti-maybe' on `llm-after-reply-hook'),
+;; so ten questions and then five more leave one upload holding all
+;; fifteen (Canvas > Settings > Import Course Content > QTI .zip file).
+;; C-c P (M-SPC P) publishes a quiz whole: the Canvas package first and
+;; out loud, then the PDF and the DOCX.  That is the gesture for the case
+;; the reply hook cannot see -- a stem reworded by hand, an answer mark
+;; moved, a quiz written without the model at all.
 ;; org-quiz-qti.py (beside this init) owns the format and refuses to build
 ;; a quiz it cannot parse cleanly.
-(defun rm/teaching--quiz-block ()
-  "The llm block holding the quiz to export, or nil for the whole file.
-Point inside a block picks that block, which is how a file carrying
-several drafts says which one is the quiz.  A file with exactly one block
-needs no point.  A file with none is a quiz written by hand, and the whole
-file is the quiz.  Several blocks with point in none of them is the one
-error: guessing is how last week's draft reaches Canvas."
-  (and (fboundp 'llm-block-at-point)
-       (or (llm-block-at-point '("llm"))
-           ;; llm-block--all is llm.el's own internal; this init is the
-           ;; same hand, so it may use it.  Reconsider if llm.el is ever
-           ;; published.
-           (let ((all (llm-block--all '("llm"))))
-             (pcase (length all)
-               (0 nil)
-               (1 (car all))
-               (n (user-error
-                   "%d llm blocks here — put point in the quiz you want" n)))))))
+(defun rm/teaching--quiz-text ()
+  "The text of every llm block in this document, or nil when it has none.
+A quiz grows over several exchanges: ten questions in one reply, five
+more in the next, a revision of question three in a third.  All of them
+are one quiz, so the export reads the whole document and lets the last
+copy of a stem number win (--merge in org-quiz-qti.py).  This is why the
+model must keep counting up across replies instead of starting again at
+one.  A document with no llm block is a quiz written by hand, and the
+whole file is the quiz."
+  ;; llm-block--all is llm.el's own internal; this init is the same hand,
+  ;; so it may use it.  Reconsider if llm.el is ever published.
+  (and (fboundp 'llm-block--all)
+       (let ((texts (delq nil
+                          (mapcar (lambda (b)
+                                    (let ((text (llm-block-contents b)))
+                                      (unless (string-empty-p text) text)))
+                                  (llm-block--all '("llm"))))))
+         (and texts (string-join texts "\n\n")))))
 
-(defun rm/teaching--publish-first-line ()
-  "The first line of the *rm-publish* log, for the echo area."
-  (with-current-buffer (get-buffer-create "*rm-publish*")
+(defvar rm/teaching-qti-quiet nil
+  "When non-nil, the QTI export reports in the echo area and nowhere else.
+The after-reply rebuild binds this.  A reply that carries no question is
+the common case in a quiz document that also holds prose, so that one
+stays silent altogether.")
+
+(defconst rm/teaching-qti-log "*rm-qti*"
+  "Log buffer of the Canvas export.
+Its own buffer, not *rm-publish*: `rm/publish' runs the QTI and then the
+PDF, and pandoc erases its log when it starts.  A refusal must still be
+on screen after that.")
+
+(defun rm/teaching--qti-problem ()
+  "The first indented problem line of the QTI log, or nil.
+org-quiz-qti.py prints its refusal as a header and then one indented line
+per problem.  The first of those says more than the header does."
+  (with-current-buffer (get-buffer-create rm/teaching-qti-log)
+    (save-excursion
+      (goto-char (point-min))
+      (when (re-search-forward "^[ \t]+\\(.+\\)$" nil t)
+        (string-trim (match-string 1))))))
+
+(defun rm/teaching--qti-said (string)
+  "Non-nil when the QTI log holds STRING."
+  (with-current-buffer (get-buffer-create rm/teaching-qti-log)
+    (save-excursion
+      (goto-char (point-min))
+      (search-forward string nil t))))
+
+(defun rm/teaching--dired-notice (dir)
+  "List a file just written into DIR in the dired buffers already showing it.
+`global-auto-revert-mode' leaves dired buffers alone, so a Canvas package
+written beside the .org would sit there unlisted until a manual g.
+dired-subtree puts the expanded folders back after the revert, so the
+teaching sidebar keeps its shape."
+  (let ((dir (expand-file-name dir))
+        (auto-revert-verbose nil))
+    (dolist (buffer (dired-buffers-for-dir dir))
+      (with-current-buffer buffer (ignore-errors (revert-buffer))))
+    (when (fboundp 'dired-sidebar-refresh-buffer)
+      (ignore-errors (dired-sidebar-refresh-buffer)))))
+
+(defun rm/teaching--qti-first-line ()
+  "The first line of the QTI log, for the echo area."
+  (with-current-buffer (get-buffer-create rm/teaching-qti-log)
     (save-excursion
       (goto-char (point-min))
       (string-trim (buffer-substring-no-properties
@@ -1185,8 +1239,10 @@ error: guessing is how last week's draft reaches Canvas."
 
 (defun rm/teaching-qti ()
   "Export the quiz in this buffer to a Canvas QTI zip beside the .org.
-The quiz is the llm block point sits in, or the whole file when there is
-no llm block (`rm/teaching--quiz-block').
+Reached through `rm/publish' (C-c P, M-SPC P) on a quiz document, which
+runs this and then the PDF.  M-x for the Canvas package on its own.
+The quiz is every llm block in the document, or the whole file when there
+is none (`rm/teaching--quiz-text').
 The zip is named like the PDF and the DOCX (`rm/teaching--pdf-name'), so
 a stale build of the same document goes to the trash first, and it takes
 the document's #+title as the quiz name in Canvas.
@@ -1199,8 +1255,7 @@ options by position, which the script detects on its own."
                              (expand-file-name file))
       (user-error "Not a teaching document: %s" file))
     (when (buffer-modified-p) (save-buffer))
-    (let* ((block (rm/teaching--quiz-block))
-           (text (and block (llm-block-contents block)))
+    (let* ((text (rm/teaching--quiz-text))
            (base (expand-file-name (rm/teaching--pdf-name file) dir))
            (zip (concat base ".zip"))
            (title (or (rm/teaching--keyword file "title") "Quiz"))
@@ -1223,20 +1278,54 @@ options by position, which the script detects on its own."
               (unless (equal old zip)
                 (let ((delete-by-moving-to-trash t)) (delete-file old t))
                 (message "stale %s → trash" (file-name-nondirectory old))))
-            (with-current-buffer (get-buffer-create "*rm-publish*") (erase-buffer))
-            (let ((status (call-process "python3" nil "*rm-publish*" nil
-                                        script src zip title)))
-              (if (eq status 0)
-                  (message "QTI ✓ %s — %s" (file-name-nondirectory zip)
-                           (rm/teaching--publish-first-line))
-                (message "QTI failed — %s (log in *rm-publish*, M-ESC reaches it)"
-                         (rm/teaching--publish-first-line))
-                (display-buffer "*rm-publish*"))))
+            (with-current-buffer (get-buffer-create rm/teaching-qti-log)
+              (erase-buffer))
+            ;; --merge only where the blocks were joined: in a hand-written
+            ;; file a repeated stem number still means two quizzes in one
+            ;; file, and the script should stop.
+            (let ((status (apply #'call-process "python3" nil rm/teaching-qti-log nil
+                                 (append (list script src zip title)
+                                         (and text (list "--merge"))))))
+              (cond
+               ((eq status 0)
+                (rm/teaching--dired-notice dir)
+                (message "QTI ✓ %s — %s" (file-name-nondirectory zip)
+                         (rm/teaching--qti-first-line)))
+               (rm/teaching-qti-quiet
+                (unless (rm/teaching--qti-said "no questions found")
+                  (message "QTI not rebuilt — %s"
+                           (or (rm/teaching--qti-problem)
+                               (rm/teaching--qti-first-line)))))
+               (t
+                (message "QTI failed — %s (log in %s, M-ESC reaches it)"
+                         (rm/teaching--qti-first-line) rm/teaching-qti-log)
+                (display-buffer rm/teaching-qti-log)))))
         ;; src is the visited file itself when there was no block: never
         ;; delete that one.
         (when text (delete-file src))))))
 
-(keymap-global-set "M-P" #'rm/teaching-qti)
+(defun rm/teaching--quiz-file-p (&optional file)
+  "Non-nil when FILE is a quiz document under `rm/teaching-directory'.
+The :quiz: filetag is what says so.  An essay prompt or a lecture outline
+drafted in the same project is not a quiz and gets no Canvas package."
+  (let ((file (or file buffer-file-name)))
+    (and file
+         (string-prefix-p (expand-file-name rm/teaching-directory)
+                          (expand-file-name file))
+         (when-let* ((tags (rm/teaching--keyword file "filetags")))
+           (string-match-p ":quiz:" tags)))))
+
+(defun rm/teaching-qti-maybe ()
+  "Rebuild the Canvas package after a reply lands in a quiz document.
+Ask for multiple-choice questions and the .zip beside the .org holds them
+already, counting every earlier reply in the same document.  A reply with
+no question leaves the .zip alone.  C-c P (M-SPC P) is the loud version,
+for a refusal worth reading and for questions edited by hand."
+  (when (rm/teaching--quiz-file-p)
+    (let ((rm/teaching-qti-quiet t))
+      (ignore-errors (rm/teaching-qti)))))
+
+(add-hook 'llm-after-reply-hook #'rm/teaching-qti-maybe)
 
 ;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
 ;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your

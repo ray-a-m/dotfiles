@@ -3,7 +3,7 @@
 
 Called by `rm/teaching-qti' in init.el; usable by hand for the same job:
 
-    org-quiz-qti.py SRC OUT.zip "Quiz Title" [--no-shuffle]
+    org-quiz-qti.py SRC OUT.zip "Quiz Title" [--no-shuffle] [--merge]
 
 The quiz format is what the model writes into the llm block:
 
@@ -13,8 +13,11 @@ The quiz format is what the model writes into the llm block:
     c) distractor
     d) distractor
 
-The correct answer is the one option whose label carries org bold: *b)*.
-Stems also parse as `1.' or `*1.*'.
+The correct answer is the one option whose label carries org emphasis:
+*b)* or /b)/. The two marks mean the same thing here, because the model
+picks whichever it likes and both read as "this one" on the page. The
+mark must open and close with the same character and must cover the
+letter and the parenthesis together. Stems also parse as `1.' or `*1.*'.
 
 Canvas shuffles the answers per student unless --no-shuffle. Shuffling
 turns itself off when an option refers to the others by position ("all of
@@ -24,6 +27,14 @@ Every question must have one marked answer and at least two options, and
 no stem number may repeat. Anything else is an error, not a guess: a
 half-parsed quiz that imports cleanly is worse than one that refuses to
 build.
+
+--merge lifts the repeat-number rule for one caller: the elisp that feeds
+this script every llm block of a quiz document at once. A quiz grows over
+several exchanges, so the same stem number arrives again when the model
+revises a question. Under --merge the last copy of a number wins and the
+questions sort by number, which makes the whole document one quiz. Without
+the flag a repeated number still stops the build, because in a hand-written
+file it means two quizzes in one file.
 """
 import html
 import os
@@ -32,7 +43,7 @@ import sys
 import zipfile
 
 Q_RE = re.compile(r'^[/*]?(\d+)\.[/*]?\s+(.*)$')
-OPT_RE = re.compile(r'^(\*?)([a-h])\)(\*?)\s+(.*)$')
+OPT_RE = re.compile(r'^([*/]?)([a-h])\)([*/]?)\s+(.*)$')
 ITALIC_RE = re.compile(r'(?<![\w/])/([^/\n]+?)/(?![\w/])')
 BOLD_RE = re.compile(r'(?<![\w*])\*([^*\n]+?)\*(?![\w*])')
 POSITIONAL_RE = re.compile(
@@ -62,7 +73,10 @@ def parse(path):
                 cur['options'].append({
                     'label': label,
                     'text': body,
-                    'correct': bool(pre and post),
+                    # *b)* and /b)/ both mark the answer. A lone mark on
+                    # one side is emphasis that ran on from the line
+                    # before, not an answer.
+                    'correct': bool(pre) and pre == post,
                 })
                 continue
             m = Q_RE.match(line)
@@ -82,6 +96,21 @@ def parse(path):
     for q in questions:
         q['text'] = ' '.join(q['text'])
     return questions
+
+
+def merge(questions):
+    """Fold repeated stem numbers into one question, last copy winning.
+
+    Returns the questions in number order and the numbers that were
+    replaced, so the caller can say what it dropped.
+    """
+    by_num = {}
+    replaced = []
+    for q in questions:
+        if q['num'] in by_num:
+            replaced.append(q['num'])
+        by_num[q['num']] = q
+    return [by_num[n] for n in sorted(by_num)], sorted(set(replaced))
 
 
 def validate(questions):
@@ -233,6 +262,7 @@ def build(questions, quiz_id, title, shuffle):
 def main():
     argv = [a for a in sys.argv[1:] if not a.startswith('--')]
     shuffle = '--no-shuffle' not in sys.argv[1:]
+    merging = '--merge' in sys.argv[1:]
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         sys.exit(2)
@@ -241,6 +271,9 @@ def main():
     quiz_id = re.sub(r'[^a-z0-9]+', '_', title.lower()).strip('_') or 'quiz'
 
     questions = parse(src)
+    replaced = []
+    if merging:
+        questions, replaced = merge(questions)
     problems = validate(questions)
     if problems:
         print('qti: refused to build —', file=sys.stderr)
@@ -262,6 +295,8 @@ def main():
         z.writestr(f'{quiz_id}/{quiz_id}.xml', assessment)
         z.writestr(f'{quiz_id}/assessment_meta.xml', meta)
 
+    if replaced:
+        note += (' — revised Q' + ', Q'.join(str(n) for n in replaced))
     print(f'qti: {len(questions)} questions, shuffle '
           f'{"on" if shuffle else "off"}{note}')
     for q in questions:
