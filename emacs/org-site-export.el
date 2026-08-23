@@ -98,14 +98,18 @@ That page becomes /index.html; every other <name>.org becomes
 (defun rm/org-site-for-file (file)
   "Name of the site whose :source root contains FILE, or nil.
 shared/ holds config -- template, css, fonts -- not pages, so a file
-under it belongs to no site."
+under it belongs to no site.
+FILE resolves through `file-truename' first: the sidebar reaches both
+sites through the symlinks in `rm/site-tree', and a page opened that way
+lives under no :source root until the links are followed."
   (and file
        (string-match-p "\\.org\\'" file)
        (not (string-match-p "/shared/" file))
-       (car (seq-find (lambda (entry)
-                        (string-prefix-p (rm/org-site-root (car entry) :source)
-                                         (expand-file-name file)))
-                      rm/org-sites))))
+       (let ((file (file-truename file)))
+         (car (seq-find (lambda (entry)
+                          (string-prefix-p (rm/org-site-root (car entry) :source)
+                                           file))
+                        rm/org-sites)))))
 
 (defvar rm/org-site--current-root ""
   "The {{ROOT}} prefix of the page currently exporting.

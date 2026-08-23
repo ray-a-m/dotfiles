@@ -265,12 +265,21 @@ publish() {
       fi
       (
         set -e
+        # Take whatever the other box pushed: the ring is edited from
+        # this laptop and from the ai LXC, and the commit below would
+        # diverge from a tree that has moved on without it.
+        _pub_pull "$ring_src"
         mkdir -p "$ring_out"
         # Pages only -- shared/ is config.
         find "$ring_pages" -name '*.org' -not -path '*/shared/*' | sort |
           while IFS= read -r org; do
             _org_export_site "$org" || exit 1
           done
+        # The faces the stylesheet names, self-hosted beside it. The
+        # ring wears the personal site's typography, so it carries the
+        # same woff2 files, copied the way `publish site' copies them.
+        mkdir -p "$ring_out/fonts"
+        cp "$ring_pages/shared/fonts/"*.woff2 "$ring_out/fonts/"
         # The stylesheet arrives from the exporter already content-hashed.
         # ring.js gets the same treatment here, because the hop pages
         # that reference it are hand-written rather than templated: the
@@ -292,6 +301,15 @@ publish() {
           sed "s|src=\"ring\.js\"|src=\"$ring_js\"|" \
             "$ring_src/$hop.html" > "$ring_out/$hop.html"
         done
+        # Record before deploying: the sources are the account of what
+        # the ring serves, so one gesture commits them and pushes them,
+        # the way `publish site' does for the website sources.  A failed
+        # deploy after this leaves a commit and no deploy, which shows
+        # and can be re-run -- the other order hides the mismatch.
+        git -C "$ring_src" add -A
+        git -C "$ring_src" diff --cached --quiet ||
+          git -C "$ring_src" commit -m "publish ring"
+        git -C "$ring_src" push
         # --delete so a removed page disappears from the server too.
         rsync -az --delete "$ring_out/" "$ring_host:$ring_dest"
         echo "publish: philwebring deployed to $ring_host:$ring_dest"
