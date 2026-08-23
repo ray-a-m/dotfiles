@@ -4912,9 +4912,23 @@ ay26-27/<term>/<class>/ -- `l' walks in, `K' files a new document."
   ;; splash's is dotfiles/emacs (logo path), so going home re-rooted the
   ;; tree to the config dir (his repro, 2026-07-25).  No file, no follow;
   ;; dired/magit keep their own root logic.
+  ;; The sites tree is the one root that is not a project root: it gathers
+  ;; two repos that live under different parents.  Following a file into
+  ;; one of them re-roots the tree at that repo, and from there `h' walks
+  ;; to ~/projects, not back to the tree -- so opening a ring page cost
+  ;; him the way over to the website.  Hold the root still there; the
+  ;; expanded subtrees already show where the file is.
+  (defun rm/sidebar-at-site-tree-p ()
+    "Non-nil when the frame's sidebar is rooted at `rm/site-tree'."
+    (when-let* ((buffer (and (fboundp 'dired-sidebar-buffer)
+                             (dired-sidebar-buffer))))
+      (with-current-buffer buffer
+        (equal (expand-file-name default-directory)
+               (file-name-as-directory (expand-file-name rm/site-tree))))))
   (defun rm/sidebar-follow-only-files (orig &rest args)
-    (when (or buffer-file-name
-              (derived-mode-p 'dired-mode 'magit-mode))
+    (when (and (or buffer-file-name
+                   (derived-mode-p 'dired-mode 'magit-mode))
+               (not (rm/sidebar-at-site-tree-p)))
       (apply orig args)))
   (advice-add 'dired-sidebar-follow-file :around #'rm/sidebar-follow-only-files)
   ;; Hide dired's banner line (absolute path + free space); the header line
