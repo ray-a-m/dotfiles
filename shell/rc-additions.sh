@@ -297,6 +297,11 @@ publish() {
         # nothing could rewrite a hashed name -- it stays no-cache at
         # the server instead.
         cp "$ring_src/members.json" "$ring_out/"
+        # embed.css is the member badge's stylesheet, linked BY NAME from
+        # every member's site, so it is the one file here that must never
+        # be fingerprinted.  Caddy serves it no-cache: edit it, publish,
+        # and every badge in the ring changes on the next page load.
+        cp "$ring_pages/shared/embed.css" "$ring_out/"
         for hop in next prev random; do
           sed "s|src=\"ring\.js\"|src=\"$ring_js\"|" \
             "$ring_src/$hop.html" > "$ring_out/$hop.html"

@@ -1117,7 +1117,11 @@ is what puts it live."
       (goto-char (point-max))
       (unless (bolp) (insert "\n"))
       (save-buffer))
-    (kill-new (format "<p>
+    ;; The same snippet the ring's own page shows, including the
+    ;; stylesheet line: the badge's look is served from the ring, so a
+    ;; member who keeps that line follows every change made to it.
+    (kill-new (format "<link rel=\"stylesheet\" href=\"https://philwebring.org/embed.css\">
+<p class=\"philwebring\">
   <a href=\"https://philwebring.org/prev.html?from=%s\">&larr;</a>
   <a href=\"https://philwebring.org/\">philwebring</a>
   <a href=\"https://philwebring.org/random.html?from=%s\">random</a>
