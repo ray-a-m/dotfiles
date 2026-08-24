@@ -2661,8 +2661,10 @@ org file you save -- without loading the export module.")
 ;; ("org") via org-gcal (REST API v3).  ONE-WAY: we only ever POST entries,
 ;; never fetch/import, so nothing is read back.  Both the phone Google
 ;; Calendar app and rencal (itself a Google Calendar client) then display it;
-;; one push, two views.  Push on demand via M-SPC G (= C-c G, sibling of
-;; M-SPC g = git push); no timer.  (org-caldav was abandoned here: Google 403s
+;; one push, two views.  Pushes fire automatically after a schedule/deadline
+;; (`rm/org-gcal-auto-push' below); M-SPC G (= C-c G, sibling of M-SPC g =
+;; git push) is the bulk fallback; no timer.  (org-caldav was abandoned here:
+;; Google 403s
 ;; its CalDAV gateway for unverified apps, while the REST API works fine.)
 ;;
 ;; Credential storage: ~/.authinfo.gpg encrypts to this machine's GPG key
@@ -2775,15 +2777,28 @@ POST so the id/etag writeback persists; M-SPC G stays the bulk fallback."
              (or (org-get-scheduled-time (point))
                  (org-get-deadline-time (point))))
     (rm/org-gcal--ensure-auth)
-    (let ((buf (current-buffer)))
-      (deferred:nextc (rm/org-gcal--push-entry (org-gcal--get-calendar-id-of-buffer))
-        (lambda (_)
-          (with-current-buffer buf (save-buffer))
-          (message "org-gcal: auto-pushed \"%s\"" (org-get-heading t t t t)))))))
+    (let ((buf (current-buffer))
+          ;; Read the heading NOW: by the time the deferred resolves, point
+          ;; has moved on and the message would name the wrong entry (or nil).
+          (head (org-get-heading t t t t)))
+      (deferred:error
+        (deferred:nextc (rm/org-gcal--push-entry (org-gcal--get-calendar-id-of-buffer))
+          (lambda (_)
+            (with-current-buffer buf (save-buffer))
+            (message "org-gcal: auto-pushed \"%s\"" head)))
+        (lambda (err)
+          (message "org-gcal: auto-push of \"%s\" FAILED (%s) -- M-SPC G to retry"
+                   head err))))))
 
 (defun rm/org-gcal--schedule-advice (&rest _)
-  "After-advice on `org-schedule'/`org-deadline': auto-push the entry."
-  (ignore-errors (rm/org-gcal-auto-push)))
+  "After-advice on `org-schedule'/`org-deadline': auto-push the entry.
+Failures must be LOUD: a swallowed auth error here (cold gpg-agent, expired
+OAuth token) looks like auto-push not existing at all, and the habit falls
+back to manual M-SPC G pushes."
+  (condition-case err
+      (rm/org-gcal-auto-push)
+    (error (message "org-gcal: auto-push failed (%s) -- M-SPC G to retry"
+                    (error-message-string err)))))
 (dolist (fn '(org-schedule org-deadline))
   (advice-add fn :after #'rm/org-gcal--schedule-advice))
 
