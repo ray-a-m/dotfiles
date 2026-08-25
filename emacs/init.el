@@ -2958,7 +2958,18 @@ frame lands on this session."
   ;; (his call, 2026-08-16); the face also covers checkboxes and progress
   ;; One font for the whole set: circle/triangle/square otherwise fall to
   ;; Noto Sans Mono and draw larger than the Math-font pentagon/hexagon.
-  (set-face-attribute 'org-modern-symbol nil :family "Noto Sans Math" :height 0.75))
+  (set-face-attribute 'org-modern-symbol nil :family "Noto Sans Math" :height 0.75)
+  ;; Hyphenated filetags get pills too.  org-modern's own #+filetags rule
+  ;; uses `org-tag-re', which has no hyphen (org headline tags can't),
+  ;; but denote keywords keep theirs (neo-kantian, what-is-ai — the vault
+  ;; grammar, 2026-07-22), so those lines drew no pill (noticed in llm.el
+  ;; session front matter, 2026-08-25).  Same rule, hyphen admitted; the
+  ;; `when' honors the teaching no-pills local above.
+  (font-lock-add-keywords
+   'org-mode
+   '(("^[ \t]*#\\+\\(?:filetags\\|FILETAGS\\):\\( +\\)\\(:\\(?:[[:alnum:]_@#%-]+:\\)+\\)[ \t]*$"
+      (0 (when org-modern-tag (org-modern--tag)))))
+   'append))
 
 ;; org-super-agenda (alphapapa): groups the otherwise-flat todo list into
 ;; titled sections.  Wired for ONE view -- the splash `a' (rm/agenda-projects)
@@ -5081,6 +5092,16 @@ still reads the real one under the overlay."
   ;; own filter hook needs the dired-filter package), so expanded folders
   ;; would show README.md & co.  Expunge them ourselves with the same
   ;; regexp dired-omit uses (files + extensions).
+  (defun rm/sidebar-texts-source-p (path)
+    "Non-nil when PATH is a source reading in a class texts/ folder.
+The teaching omit hides the PDF/DOCX a document builds beside its org;
+a PDF in texts/ is not build exhaust but the reading itself (the class
+AI reads the folder), so it stays listed (his repro: Dudley invisible,
+2026-08-25)."
+    (and path
+         (string-prefix-p rm/teaching-directory path)
+         (equal "texts" (file-name-nondirectory
+                         (directory-file-name (file-name-directory path))))))
   (defun rm/sidebar-omit-subtree ()
     "Delete omitted entries from freshly inserted subtrees."
     (when (and (derived-mode-p 'dired-sidebar-mode)
@@ -5092,7 +5113,9 @@ still reads the real one under the overlay."
             (goto-char (point-min))
             (while (not (eobp))
               (let ((fn (dired-get-filename 'no-dir t)))
-                (if (and fn (string-match-p regexp fn))
+                (if (and fn (string-match-p regexp fn)
+                         (not (rm/sidebar-texts-source-p
+                               (dired-get-filename nil t))))
                     (delete-region (line-beginning-position)
                                    (line-beginning-position 2))
                   (forward-line 1)))))))))
@@ -5204,7 +5227,10 @@ next revert."
              ;; them is a thing to check on: the Canvas package, which is
              ;; either there or not.  The PDF and the DOCX open from
              ;; C-c P, which shows the PDF itself -- listing them only
-             ;; crowds the folder with rows that read alike.
+             ;; crowds the folder with rows that read alike.  texts/ is
+             ;; the exception: its PDFs are the readings, not exhaust,
+             ;; and rm/sidebar-texts-source-p spares them in the subtree
+             ;; expunge (the only path that ever lists them).
              (teaching-p (string-prefix-p rm/teaching-directory dir))
              (extra (concat (when hidden
                               (concat "\\|\\`" (regexp-opt hidden) "\\'"))
