@@ -2915,16 +2915,10 @@ frame lands on this session."
   :hook ((org-mode            . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda))  ; same look in C-c a
   :init
-  ;; Teaching documents: no tag pills.  Their #+filetags line is machinery
-  ;; (the agenda reads it), not a classification to look at, unlike a
-  ;; vault note's form/matter.  org-modern reads `org-modern-tag' when
-  ;; the mode turns on, so the local nil must be set before its hook
-  ;; runs: depth -10 puts this ahead of it.
-  (defun rm/teaching-no-tag-pills ()
-    (when (and buffer-file-name
-               (string-prefix-p rm/teaching-directory (expand-file-name buffer-file-name)))
-      (setq-local org-modern-tag nil)))
-  (add-hook 'org-mode-hook #'rm/teaching-no-tag-pills -10)
+  ;; Teaching documents pill their tags like everything else.  (They
+  ;; deliberately did NOT until 2026-08-25 -- rm/teaching-no-tag-pills
+  ;; set org-modern-tag nil there, "machinery, not classification" --
+  ;; but the bare gray-less filetags line read as broken, his report.)
   ;; Heading stars in-line: each leading star displays as a space (?\s --
   ;; NOT `leading', which collapses them to nothing), so a heading sits as
   ;; many columns in as its depth, and the last star is the level glyph.
@@ -2963,8 +2957,7 @@ frame lands on this session."
   ;; uses `org-tag-re', which has no hyphen (org headline tags can't),
   ;; but denote keywords keep theirs (neo-kantian, what-is-ai — the vault
   ;; grammar, 2026-07-22), so those lines drew no pill (noticed in llm.el
-  ;; session front matter, 2026-08-25).  Same rule, hyphen admitted; the
-  ;; `when' honors the teaching no-pills local above.
+  ;; session front matter, 2026-08-25).  Same rule, hyphen admitted.
   (font-lock-add-keywords
    'org-mode
    '(("^[ \t]*#\\+\\(?:filetags\\|FILETAGS\\):\\( +\\)\\(:\\(?:[[:alnum:]_@#%-]+:\\)+\\)[ \t]*$"
@@ -5092,18 +5085,20 @@ still reads the real one under the overlay."
   ;; own filter hook needs the dired-filter package), so expanded folders
   ;; would show README.md & co.  Expunge them ourselves with the same
   ;; regexp dired-omit uses (files + extensions).
-  (defun rm/sidebar-texts-source-p (path)
-    "Non-nil when PATH is a source reading in a class texts/ folder.
-The teaching omit hides the PDF/DOCX a document builds beside its org;
-a PDF in texts/ is not build exhaust but the reading itself (the class
-AI reads the folder), so it stays listed (his repro: Dudley invisible,
-2026-08-25).  PDFs only: the .md beside each is the AI's copy and
-stays hidden with the rest."
+  (defun rm/sidebar-teaching-kept-p (path)
+    "Non-nil when PATH stays listed despite the teaching omit.
+Two kinds.  A PDF in a class texts/ folder is not build exhaust but the
+reading itself (his repro: Dudley invisible, 2026-08-25) -- PDFs only:
+the .md beside each is the AI's copy and stays hidden.  And a built
+syllabus PDF sits right below its org, ready for `y' (his ask,
+2026-08-25); the DOCX stays hidden."
     (and path
-         (string-suffix-p ".pdf" path)
          (string-prefix-p rm/teaching-directory path)
-         (equal "texts" (file-name-nondirectory
-                         (directory-file-name (file-name-directory path))))))
+         (or (and (string-suffix-p ".pdf" path)
+                  (equal "texts" (file-name-nondirectory
+                                  (directory-file-name
+                                   (file-name-directory path)))))
+             (string-suffix-p "_syllabus.pdf" path))))
   (defun rm/sidebar-omit-subtree ()
     "Delete omitted entries from freshly inserted subtrees."
     (when (and (derived-mode-p 'dired-sidebar-mode)
@@ -5116,13 +5111,14 @@ stays hidden with the rest."
             (while (not (eobp))
               (let ((fn (dired-get-filename 'no-dir t)))
                 (if (and fn (string-match-p regexp fn)
-                         (not (rm/sidebar-texts-source-p
+                         (not (rm/sidebar-teaching-kept-p
                                (dired-get-filename nil t))))
                     (delete-region (line-beginning-position)
                                    (line-beginning-position 2))
                   (forward-line 1)))))))))
   (with-eval-after-load 'dired-subtree
     ;; add-hook prepends: omit runs first, then extension hiding.
+    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-artifact-names)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-class-titles)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-subtree))
@@ -5229,12 +5225,12 @@ next revert."
              ;; them is a thing to check on: the Canvas package, which is
              ;; either there or not.  The PDF and the DOCX open from
              ;; C-c P, which shows the PDF itself -- listing them only
-             ;; crowds the folder with rows that read alike.  texts/ is
-             ;; the exception: its PDFs are the readings, not exhaust,
-             ;; and rm/sidebar-texts-source-p spares them in the subtree
-             ;; expunge (the only path that ever lists them).  Only the
-             ;; PDFs though -- the .md beside each is the class AI's
-             ;; copy (zot.el's teaching sync makes it), no row for him.
+             ;; crowds the folder with rows that read alike.  Exceptions
+             ;; (rm/sidebar-teaching-kept-p, in the subtree expunge, the
+             ;; only path that ever lists them): PDFs in texts/ are the
+             ;; readings, not exhaust -- though not the .md beside each,
+             ;; the class AI's copy (zot.el's teaching sync makes it) --
+             ;; and a built _syllabus.pdf shows below its org for `y'.
              (teaching-p (string-prefix-p rm/teaching-directory dir))
              (extra (concat (when hidden
                               (concat "\\|\\`" (regexp-opt hidden) "\\'"))
@@ -5416,12 +5412,22 @@ with \"Cannot move to same file\".  A path as the new name still moves."
           (dired-sidebar-refresh-buffer)
           (rm/sidebar--reveal target)))))
   (defun rm/sidebar-yank ()
-    "Yank (copy) the file at point for `rm/sidebar-paste'."
+    "Yank the file at point: `rm/sidebar-paste' in-tree, Ctrl+V outside.
+Besides marking the file for `p', the file lands on the system
+clipboard as text/uri-list (zot.el's send trick, proven in the Outlook
+PWA 2026-08-24), so Ctrl+V in a compose window attaches it -- a built
+syllabus PDF goes to the department in two keys."
     (interactive)
     (let ((file (dired-get-filename nil t)))
       (unless file (user-error "No file at point"))
       (setq rm/sidebar-yanked file)
-      (message "Yanked %s" (abbreviate-file-name file))))
+      (if (and (not (file-directory-p file)) (executable-find "wl-copy"))
+          (progn
+            (call-process "wl-copy" nil 0 nil "-t" "text/uri-list"
+                          (concat "file://" file))
+            (message "Yanked %s (p pastes here; Ctrl+V attaches elsewhere)"
+                     (abbreviate-file-name file)))
+        (message "Yanked %s" (abbreviate-file-name file)))))
   (defun rm/sidebar-paste ()
     "Paste the yanked file into the directory at point."
     (interactive)
