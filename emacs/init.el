@@ -5097,8 +5097,10 @@ still reads the real one under the overlay."
 The teaching omit hides the PDF/DOCX a document builds beside its org;
 a PDF in texts/ is not build exhaust but the reading itself (the class
 AI reads the folder), so it stays listed (his repro: Dudley invisible,
-2026-08-25)."
+2026-08-25).  PDFs only: the .md beside each is the AI's copy and
+stays hidden with the rest."
     (and path
+         (string-suffix-p ".pdf" path)
          (string-prefix-p rm/teaching-directory path)
          (equal "texts" (file-name-nondirectory
                          (directory-file-name (file-name-directory path))))))
@@ -5230,12 +5232,14 @@ next revert."
              ;; crowds the folder with rows that read alike.  texts/ is
              ;; the exception: its PDFs are the readings, not exhaust,
              ;; and rm/sidebar-texts-source-p spares them in the subtree
-             ;; expunge (the only path that ever lists them).
+             ;; expunge (the only path that ever lists them).  Only the
+             ;; PDFs though -- the .md beside each is the class AI's
+             ;; copy (zot.el's teaching sync makes it), no row for him.
              (teaching-p (string-prefix-p rm/teaching-directory dir))
              (extra (concat (when hidden
                               (concat "\\|\\`" (regexp-opt hidden) "\\'"))
                             (when teaching-p
-                              "\\|\\.\\(?:pdf\\|docx\\)\\'"))))
+                              "\\|\\.\\(?:pdf\\|docx\\|md\\)\\'"))))
         (setq-local dired-omit-files
                     (if (string-empty-p extra)
                         rm/sidebar-omit-base
