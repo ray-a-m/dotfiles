@@ -39,23 +39,65 @@ log() { printf '[monitor-watcher] %s\n' "$*" >&2; }
 # This is only the fast path: crashes landing after the 1s check (seen
 # 2026-06-23) and login races with no monitor event are caught by
 # wallpaper-watchdog.timer within ~30s.
+# True when the active theme carries a video background — pre-Quattro via the
+# current/background symlink, Quattro via the theme's backgrounds dirs. Same
+# detection as wallpaper-watchdog.sh.
+video_expected() {
+    local legacy ext theme
+    legacy=$(readlink -f "$HOME/.config/omarchy/current/background" 2>/dev/null)
+    if [ -n "$legacy" ] && [ -e "$legacy" ]; then
+        ext="${legacy##*.}"
+        case "${ext,,}" in
+            mp4|webm|mkv|mov|avi) return 0 ;;
+            *) return 1 ;;
+        esac
+    fi
+    theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
+    [ -n "$theme" ] || return 1
+    [ -n "$(find -L "$HOME/.config/omarchy/backgrounds/$theme/" \
+        "$HOME/.local/state/omarchy/current/theme/backgrounds/" -maxdepth 1 -type f \
+        \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' -o -iname '*.avi' \) \
+        2>/dev/null | head -n1)" ]
+}
+
+# Video health = mpvpaper's layer mapped and, on every output, stacked above
+# the shell's static omarchy-background. Same awk as wallpaper-watchdog.sh.
+mpvpaper_layer_healthy() {
+    hyprctl layers 2>/dev/null | awk '
+        /^Monitor /  { mon = $2 }
+        /namespace: mpvpaper(,|$)/            { mpv[mon] = NR; seen = 1 }
+        /namespace: omarchy-background(,|$)/  { oma[mon] = NR }
+        END {
+            if (!seen) exit 1
+            for (m in mpv) if (oma[m] > mpv[m]) exit 1
+            exit 0
+        }'
+}
+
 heal_wallpaper() {
     sleep 1  # let output topology settle
+    # Nothing to heal onto with zero outputs (undock while the lid is closed,
+    # just before the suspend); the monitoradded at resume re-enters this path.
+    hyprctl monitors 2>/dev/null | grep -q '^Monitor ' || return
     # Check for an actual wallpaper LAYER, not just a live process. mpvpaper
     # (and swaybg) can survive a dock/lid transition as a running process while
     # losing its output binding — pgrep still finds it, but the screen is black.
     # The old both-dead pgrep check skipped exactly that case, which is what
     # left the external dark on lid-close (2026-07-10).
     # namespace = mpvpaper|swaybg (pre-Quattro) or omarchy-background (the
-    # Quattro shell's own image layer). A video theme whose mpvpaper died
-    # while the shell's static fallback survived slips past this fast path;
-    # wallpaper-watchdog.timer restores the video within ~30s and the
-    # fallback art keeps the screen from going black meanwhile.
-    hyprctl layers 2>/dev/null | grep -qE 'namespace: (mpvpaper|swaybg|omarchy-background)' && return
+    # Quattro shell's own image layer). Video themes get the strict check:
+    # the shell's static fallback used to satisfy the loose grep while the
+    # video was dead (undock→suspend→resume, 2026-08-24), which parked the
+    # fallback art on screen until the ~30s watchdog tick.
+    if video_expected; then
+        mpvpaper_layer_healthy && return
+    else
+        hyprctl layers 2>/dev/null | grep -qE 'namespace: (mpvpaper|swaybg|omarchy-background)' && return
+    fi
     local now; now=$(date +%s)
     (( now - _last_wp_refire < 8 )) && return
     _last_wp_refire=$now
-    log "no wallpaper layer post-event; re-firing theme-set hook"
+    log "wallpaper layer missing/buried post-event; re-firing theme-set hook"
     "$HOME/.config/omarchy/hooks/theme-set"
 }
 
