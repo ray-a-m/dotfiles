@@ -4132,6 +4132,24 @@ savehist (see `savehist-additional-variables').")
     (user-error "Bookmark slots run 1-9"))
   (1- n))
 
+(defun rm/bookmark--heal (i)
+  "Return the path in 0-based slot I, healing a stale denote path.
+A denote rename (retitle or retag) changes the filename but keeps the
+leading identifier, so when the stored file is gone and its name starts
+with one, re-resolve by globbing the identifier in the same directory.
+A unique match is written back to the slot; savehist persists it."
+  (let ((file (aref rm/bookmarks i)))
+    (if (or (null file) (file-exists-p file))
+        file
+      (let* ((dir  (file-name-directory file))
+             (base (file-name-nondirectory file))
+             (hits (and (string-match "\\`[0-9]\\{8\\}T[0-9]\\{6\\}" base)
+                        (file-expand-wildcards
+                         (concat dir (match-string 0 base) "--*")))))
+        (if (and hits (null (cdr hits)))
+            (aset rm/bookmarks i (car hits))
+          file)))))
+
 (defun rm/bookmark--detex (s)
   "Strip common LaTeX title markup from S, leaving plain text.
 Drop wrappers such as \\textbf{...}, then any stray braces and bare macros."
@@ -4161,7 +4179,7 @@ in an export block, with its markup stripped.  Else fall back to the base name."
   "Return the splash line for set slot N: the title, a dot leader, then [N].
 The line copies the Tasks block, so [N] lands in the same column (38).
 A title wider than 29 characters gets an ellipsis."
-  (let* ((title (rm/bookmark--title (aref rm/bookmarks (1- n))))
+  (let* ((title (rm/bookmark--title (rm/bookmark--heal (1- n))))
          (title (if (> (length title) 29)
                     (concat (substring title 0 28) "…")
                   title))
@@ -4208,7 +4226,7 @@ From the splash the bare digit calls this; elsewhere M-SPC N (= C-c N) does."
   (interactive (list (or (and current-prefix-arg (prefix-numeric-value
                                                   current-prefix-arg))
                          (read-number "Open bookmark (1-9): "))))
-  (let ((file (aref rm/bookmarks (rm/bookmark--slot n))))
+  (let ((file (rm/bookmark--heal (rm/bookmark--slot n))))
     (cond
      ((null file)
       (message "Bookmark %d is empty -- set it with M-SPC B from a file" n))
