@@ -3968,6 +3968,23 @@ log or a teaching document (their filetags are machinery, not labels)."
 (keymap-global-set "C-c l" llm-prefix-map)
 ;; Splash l opens the project tree (bound in the splash keymap below).
 
+;; --- zot.el: Zotero markup in the vault ------------------------------------
+;; In development at ~/code/zot.el (machine-bound like llm.el above: the
+;; package runs in THIS Emacs).  M-SPC r (= C-c r) opens the research menu
+;; over the live collection tree; opening it IS the sync moment.  Guarded:
+;; a machine without the clone skips the stanza, so C-c r and splash r stay
+;; unbound there; with the clone but without Zotero running, zot.el's own
+;; "local API unreachable" user-error is the whole failure.  Clone step
+;; (also in that repo's CLAUDE.md): git clone, then
+;;   git config core.hooksPath .beads-hooks
+;; Spec: ~/code/zot.el/SPEC.org.
+(use-package zot
+  :if (file-directory-p (expand-file-name "~/code/zot.el"))
+  :load-path "~/code/zot.el"
+  :commands (zot-menu zot-sync zot-adopt zot-link-note)
+  :init
+  (keymap-global-set "C-c r" #'zot-menu))
+
 ;; --- Prose writing environment (variable-pitch + centered) --------------
 ;; Goal: Org, Markdown and LaTeX read like a page, not a terminal.
 ;;   * the body font is Atkinson Hyperlegible Next, supplied via nano's
@@ -4483,6 +4500,9 @@ so the startup hook stays quiet when a frame opens on a file."
             (define-key map (kbd "w") #'rm/website-sidebar)     ; BOTH sites, one
                                         ; tree (sidebar, like p; listed
                                         ; first in the Bookmarks block)
+            (when (fboundp 'zot-menu)                           ; research menu --
+              (define-key map (kbd "r") #'zot-menu))            ; guarded like its
+                                        ; use-package stanza: no clone, no key
             (define-key map (kbd "c") #'rm/welcome-commands)    ; peek commands
             (use-local-map map))
           (read-only-mode 1)

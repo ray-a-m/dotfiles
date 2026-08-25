@@ -24,3 +24,14 @@ Personal configuration files for Linux.
     git clone git@github.com:ray-a-m/dotfiles.git ~/code/dotfiles
     cd ~/code/dotfiles
     ./install.sh
+
+Companion working trees the Emacs config loads from `~/code/`:
+
+    git clone git@github.com:ray-a-m/llm.el.git ~/code/llm.el
+    git clone git@github.com:ray-a-m/zot.el.git ~/code/zot.el
+    git -C ~/code/zot.el config core.hooksPath .beads-hooks
+
+llm.el is required unconditionally (`init.el` errors without the clone).
+The zot.el stanza is guarded — without the clone the machine just has no
+`r` menu — and its `core.hooksPath` line is that repo's own clone step
+(see its CLAUDE.md); zot.el also needs Zotero running for its local API.
