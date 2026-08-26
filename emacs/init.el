@@ -3986,6 +3986,12 @@ log or a teaching document (their filetags are machinery, not labels)."
   :if (file-directory-p (expand-file-name "~/code/zot.el"))
   :load-path "~/code/zot.el"
   :commands (zot-menu zot-sync zot-adopt zot-link-note)
+  :custom
+  ;; Y in the r menu burns the marks into a copy of the PDF to send; this
+  ;; is the name they carry there.  Emacs has no user-full-name to fall
+  ;; back on, and an unsigned mark beside a named colleague's blurs the
+  ;; two voices.
+  (zot-mark-author "Raymond Maung")
   :init
   (keymap-global-set "C-c r" #'zot-menu))
 
