@@ -36,3 +36,13 @@ o.window("^([Zz]otero)$", { opacity = "1.0 1.0" })
 -- Active/inactive exactly the default's effective values; fullscreen =
 -- active.
 o.window("^emacs$", { opacity = "0.95 override 0.9 override 0.95 override" })
+
+-- Bitwarden: tile it. Omarchy's default tags the desktop app
+-- `floating-window` (apps/bitwarden.lua), and apps/system.lua turns that tag
+-- into float + center + 875x600. Both lines below are necessary. Neither
+-- works alone: with only the untag, or only `tile`, the window still opens
+-- floating at 875x600. The pair was verified over repeated launches.
+-- The browser-extension popup (class chrome-nngceck…) keeps the default
+-- float. A popup is not a tiling surface.
+o.window("^(Bitwarden)$", { tag = "-floating-window" })
+o.window("^(Bitwarden)$", { tile = true })
