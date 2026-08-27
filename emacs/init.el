@@ -5087,10 +5087,18 @@ still reads the real one under the overlay."
                 (overlay-put o 'evaporate t))))
           (forward-line 1)))))
   (add-hook 'dired-after-readin-hook #'rm/sidebar-class-titles)
-  ;; dired-omit-mode does NOT reach dired-subtree's inserted lines (its
-  ;; own filter hook needs the dired-filter package), so expanded folders
-  ;; would show README.md & co.  Expunge them ourselves with the same
-  ;; regexp dired-omit uses (files + extensions).
+  ;; The sidebar runs its own expunge beside dired-omit's, because
+  ;; dired-omit's pass is a regexp and nothing else -- see
+  ;; rm/sidebar-omit-pass below for the two things that costs.
+  (defconst rm/sidebar-teaching-omit "\\.\\(?:pdf\\|docx\\|md\\)\\'"
+    "What the sidebar hides under `rm/teaching-directory'.
+A teaching document builds three files and only one of them is a thing
+to check on: the Canvas package, which is either there or not.  The PDF
+and the DOCX open from C-c P, which shows the PDF itself -- listing them
+only crowds the folder with rows that read alike.  This rule stays out
+of `dired-omit-files' on purpose: it has exceptions
+(`rm/sidebar-teaching-kept-p') that a regexp cannot carry, so
+`rm/sidebar-omit-pass' owns it instead.")
   (defun rm/sidebar-teaching-kept-p (path)
     "Non-nil when PATH stays listed despite the teaching omit.
 Two kinds.  A PDF in a class texts/ folder is not build exhaust but the
@@ -5105,35 +5113,52 @@ syllabus PDF sits right below its org, ready for `y' (his ask,
                                   (directory-file-name
                                    (file-name-directory path)))))
              (string-suffix-p "_syllabus.pdf" path))))
-  (defun rm/sidebar-omit-subtree ()
-    "Delete omitted entries from freshly inserted subtrees."
+  (defun rm/sidebar-omit-pass ()
+    "Delete the entries dired-omit misses, and the ones it would eat.
+It misses freshly inserted subtrees: at insert time they are out of
+`dired-omit-expunge''s reach (dired-subtree's own filter hook needs the
+dired-filter package), so an expanded folder would show README.md & co.
+
+And it would eat a kept teaching file.  `dired-omit-expunge' is on
+`dired-after-readin-hook' globally and rereads the whole buffer,
+restored subtrees included, matching `dired-omit-files' with no say in
+the matter -- so a syllabus PDF listed at insert time was deleted again
+by the next revert (his repro, 2026-08-27).  Hence
+`rm/sidebar-teaching-omit' is applied here instead of there, past
+`rm/sidebar-teaching-kept-p', and hence this runs on both hooks."
     (when (and (derived-mode-p 'dired-sidebar-mode)
                (bound-and-true-p dired-omit-mode))
       (let ((regexp (dired-omit-regexp))
             (inhibit-read-only t))
-        (unless (string-empty-p regexp)
-          (save-excursion
-            (goto-char (point-min))
-            (while (not (eobp))
-              (let ((fn (dired-get-filename 'no-dir t)))
-                (if (and fn (string-match-p regexp fn)
-                         (not (rm/sidebar-teaching-kept-p
-                               (dired-get-filename nil t))))
-                    (delete-region (line-beginning-position)
-                                   (line-beginning-position 2))
-                  (forward-line 1)))))))))
+        (save-excursion
+          (goto-char (point-min))
+          (while (not (eobp))
+            (let* ((name (dired-get-filename 'no-dir t))
+                   (path (and name (dired-get-filename nil t))))
+              (if (and name
+                       (or (and (not (string-empty-p regexp))
+                                (string-match-p regexp name))
+                           (and path
+                                (string-prefix-p rm/teaching-directory path)
+                                (string-match-p rm/sidebar-teaching-omit name)
+                                (not (rm/sidebar-teaching-kept-p path)))))
+                  (delete-region (line-beginning-position)
+                                 (line-beginning-position 2))
+                (forward-line 1))))))))
+  ;; Appended: dired-omit's own pass runs first, this one cleans up after.
+  (add-hook 'dired-after-readin-hook #'rm/sidebar-omit-pass t)
   (with-eval-after-load 'dired-subtree
     ;; add-hook prepends: omit runs first, then extension hiding.
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-artifact-names)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-hide-extensions)
     (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-class-titles)
-    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-subtree))
+    (add-hook 'dired-subtree-after-insert-hook #'rm/sidebar-omit-pass))
   ;; Hide clutter -- the sidebar goes further than the dired-wide omit
   ;; (see the dired section above): its buffer-local regexp also drops
   ;; dotfiles (.git, .gitignore, the . / .. self/parent entries),
   ;; README.md / TODO.md, and AUCTeX auto/, on top of the generated .tex
   ;; and artifact extensions everyone omits.  Subtree expansions are out
-  ;; of dired-omit's reach -- rm/sidebar-omit-subtree (above) covers them.
+  ;; of dired-omit's reach -- rm/sidebar-omit-pass (above) covers them.
   (setq dired-omit-verbose nil)
   (defun rm/sidebar-site-tree-look ()
     "Make the sites tree read as directories rather than as links.
@@ -5227,21 +5252,12 @@ next revert."
                                      (string-prefix-p (expand-file-name (car entry)) dir))
                                    rm/site-sidebar-keep)))
              (hidden (and site-p (rm/site-sidebar-hidden)))
-             ;; A teaching document builds three files and only one of
-             ;; them is a thing to check on: the Canvas package, which is
-             ;; either there or not.  The PDF and the DOCX open from
-             ;; C-c P, which shows the PDF itself -- listing them only
-             ;; crowds the folder with rows that read alike.  Exceptions
-             ;; (rm/sidebar-teaching-kept-p, in the subtree expunge, the
-             ;; only path that ever lists them): PDFs in texts/ are the
-             ;; readings, not exhaust -- though not the .md beside each,
-             ;; the class AI's copy (zot.el's teaching sync makes it) --
-             ;; and a built _syllabus.pdf shows below its org for `y'.
-             (teaching-p (string-prefix-p rm/teaching-directory dir))
-             (extra (concat (when hidden
-                              (concat "\\|\\`" (regexp-opt hidden) "\\'"))
-                            (when teaching-p
-                              "\\|\\.\\(?:pdf\\|docx\\|md\\)\\'"))))
+             ;; The teaching rule is deliberately absent here: it has
+             ;; exceptions, and this regexp is handed to dired-omit,
+             ;; which honours none.  rm/sidebar-omit-pass carries it.
+             (extra (or (and hidden
+                             (concat "\\|\\`" (regexp-opt hidden) "\\'"))
+                        "")))
         (setq-local dired-omit-files
                     (if (string-empty-p extra)
                         rm/sidebar-omit-base
@@ -5262,6 +5278,7 @@ next revert."
                                 "/"))
               (rm/sidebar-omit-refresh)
               (dired-omit-mode 1)
+              (rm/sidebar-omit-pass)
               (cursor-intangible-mode 1)  ; keeps point off the hidden banner
               ;; initial readin predates the mode, so run both once here
               (rm/sidebar-hide-heading)
