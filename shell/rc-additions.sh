@@ -67,11 +67,18 @@ save() {
 # research-wip is absent on purpose: its laptop tree is Syncthing-synced
 # and the services cron owns its git. NOTE: a pulled dotfiles change is
 # on disk but not reloaded (Emacs daemon, hypr) -- reload deliberately.
+# The aspell dictionary commits and pushes itself first
+# (shell/dict-commit.sh) -- it is a tracked file that ordinary use
+# rewrites, and a dirty tree is a refused pull.
 # The pull ends in Claude. `auto' is the only way this laptop starts a
 # session, so no session runs on a stale config layer. Arguments pass
 # through, so `auto --resume' works. Claude exits back to this shell.
 auto() {
   local r before
+  # The personal dictionary rewrites itself as words are taken, and a
+  # dirty tree makes the ff-only pull below refuse to run: commit and
+  # push it first, so dotfiles is clean by the time the loop reaches it.
+  "$HOME/code/dotfiles/shell/dict-commit.sh"
   for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
            "$HOME/code/homelab" "$HOME/scholarship/website" \
            "$HOME/scholarship/research-public" \

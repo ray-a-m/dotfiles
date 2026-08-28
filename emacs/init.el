@@ -926,6 +926,46 @@ tree with a relative link at point; anything else yanks as ever."
 ;; default ~/.aspell.en.pws.  M-$ then `i' saves a word here.
 (setq ispell-personal-dictionary
       (expand-file-name "aspell-personal.pws" (file-name-directory user-init-file)))
+;; The dictionary commits and pushes itself.  It is a tracked file that
+;; ordinary use rewrites -- every word taken with `i' appends to it -- so it
+;; left the dotfiles tree dirty, and a dirty tree is a pull `auto' refuses to
+;; run (2026-08-28).  Two idle seconds after aspell writes the file,
+;; shell/dict-commit.sh commits that one path (nothing else in the tree) and
+;; pushes it, so the ai box and the next session get the word too.  `auto'
+;; runs the same script, which catches a word taken while offline.
+(defvar rm/aspell--sync-timer nil
+  "Idle timer that will commit the personal dictionary, or nil.")
+
+(defun rm/aspell--sync ()
+  "Commit and push the personal dictionary, in the background.
+Reports what the script did; says nothing when it did nothing."
+  (setq rm/aspell--sync-timer nil)
+  (let ((script (expand-file-name "~/code/dotfiles/shell/dict-commit.sh")))
+    (when (file-executable-p script)
+      (let ((buf (generate-new-buffer " *aspell-dict*")))
+        (set-process-sentinel
+         (start-process "aspell-dict" buf script)
+         (lambda (_proc _event)
+           (when (buffer-live-p buf)
+             (let ((out (string-trim (with-current-buffer buf (buffer-string)))))
+               (kill-buffer buf)
+               (unless (string-empty-p out)
+                 (message "%s" out))))))))))
+
+(defun rm/aspell-sync-after-save (fn &rest args)
+  "Sync the dictionary to git when aspell has just saved it.
+`ispell-pdict-save' runs on every correction and saves only when the
+dictionary changed, so read the flag before the call: after it, it is nil
+either way.  The idle timer debounces a run of words taken in one pass."
+  (let ((modified (bound-and-true-p ispell-pdict-modified-p)))
+    (prog1 (apply fn args)
+      (when modified
+        (when (timerp rm/aspell--sync-timer) (cancel-timer rm/aspell--sync-timer))
+        (setq rm/aspell--sync-timer
+              (run-with-idle-timer 2 nil #'rm/aspell--sync))))))
+
+(advice-add 'ispell-pdict-save :around #'rm/aspell-sync-after-save)
+
 ;; Don't flag a word repeated across a line break as an error -- it fires on
 ;; e.g. a `* Emacs' heading followed by a paragraph starting "Emacs ...".
 (setq flyspell-mark-duplications-flag nil)
