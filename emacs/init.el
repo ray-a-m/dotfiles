@@ -1554,13 +1554,16 @@ for a refusal worth reading and for questions edited by hand."
          ;; list ergonomics = Obsidian's (his spec, 2026-07-24): RET
          ;; continues a list with a bullet on the very next line; on an
          ;; empty bullet it outdents a level per press, ending the list
-         ;; at top level; TAB indents the item one level (4-space steps,
-         ;; see org-list-indent-offset), C-TAB outdents (C-TAB was
-         ;; org-force-cycle-archived, never used)
+         ;; at top level; M-] indents the item and its children one
+         ;; level (4-space steps, see org-list-indent-offset) and M-[
+         ;; outdents them, the bracket pair Obsidian and every other
+         ;; editor uses.  TAB and C-TAB held these until 2026-08-27 and
+         ;; are back to stock cycling.  GUI only: a terminal reads M-[
+         ;; as the CSI escape prefix, so `emacs -nw' never sees it.
          ("RET" . rm/org-return)
          ("S-<return>" . rm/org-shift-return)
-         ("TAB" . rm/org-tab)
-         ("C-<tab>" . rm/org-untab))
+         ("M-]" . rm/org-indent-item)
+         ("M-[" . rm/org-outdent-item))
   :init
   (setq org-directory rm/org-directory    ; agenda + capture home (synced, NOT the vault)
         ;; Agenda scans the dedicated org dir *and* the research documents
@@ -1811,17 +1814,20 @@ continuation.  In a table, stock S-RET (copy down); elsewhere a newline."
         (delete-horizontal-space t)
         (insert "\n" (make-string col ?\s))))
      (t (newline))))
-  (defun rm/org-tab ()
-    "TAB on a list item indents it one level; elsewhere, stock cycling."
+  (defun rm/org-indent-item ()
+    "M-] on a list item indents it and its children one level.
+The `-tree' variant, not the plain one: a sub-list belongs to its
+parent item, so moving the parent without it would strand the
+children at their old depth and re-parent them onto the item above."
     (interactive)
     (if (org-at-item-p)
-        (org-indent-item)
-      (org-cycle)))
-  (defun rm/org-untab ()
-    "C-TAB on a list item outdents it one level."
+        (org-indent-item-tree)
+      (user-error "Not on a list item")))
+  (defun rm/org-outdent-item ()
+    "M-[ on a list item outdents it and its children one level."
     (interactive)
     (if (org-at-item-p)
-        (org-outdent-item)
+        (org-outdent-item-tree)
       (user-error "Not on a list item")))
   ;; Prose is soft-wrapped (visual-line + olivetti own the line width;
   ;; the papers' legacy hard fills were removed 2026-07-23, gated by
