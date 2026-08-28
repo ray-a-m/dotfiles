@@ -3396,6 +3396,20 @@ The term and year are in it so a course taught again is a new project."
       (string-join (delq nil (list (if (string-empty-p (car meta)) (cdr meta) (car meta))
                                    (rm/teaching--term-display term ay)))
                    " ")))
+  (defun rm/teaching--ai-note-title (class-dir)
+    "CLASS-DIR's project note title: \"Phil 104 Fall AY26-27\".
+Since llm-tvk (2026-08-28) a project note carries no project keyword:
+its project IS its title slug (`llm-project-slugs-of-file\'), read from
+the file name.  So this title must sluggify back to
+`rm/teaching--ai-slug\' exactly, or the class cannot find its note.
+That is why it keeps the raw `ay26-27\' and not the display year of
+`rm/teaching--ai-title\', which is for reading, not for naming."
+    (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts class-dir))
+                 (code (car (rm/teaching--class-meta class))))
+      (string-join (delq nil (list (if (string-empty-p code) class code)
+                                   (and term (capitalize term))
+                                   (and ay (upcase ay))))
+                   " ")))
   (defun rm/teaching--docs (class-dir)
     "The documents of CLASS-DIR: its org files outside ai/ and texts/."
     (cl-remove-if (lambda (f)
@@ -3449,7 +3463,6 @@ the first sync links texts/ and the documents."
     (require 'llm)
     (pcase-let* ((`(,ay ,term ,class) (rm/teaching--path-parts class-dir))
                  (meta (rm/teaching--class-meta class))
-                 (slug (rm/teaching--ai-slug class-dir))
                  (ai-dir (file-name-as-directory (expand-file-name "ai" class-dir)))
                  (brief (let ((b rm/teaching-ai-brief))
                           (dolist (sub `(("{{course}}" . ,(cdr meta)) ("{{code}}" . ,(car meta))
@@ -3461,8 +3474,8 @@ the first sync links texts/ and the documents."
       (let ((path (save-window-excursion
                     (let ((denote-directory ai-dir)
                           (denote-save-buffers t))
-                      (denote (concat (rm/teaching--ai-title class-dir) llm-project-note-suffix)
-                              (list llm-project-form-keyword slug llm-project-note-keyword)
+                      (denote (rm/teaching--ai-note-title class-dir)
+                              (list llm-project-note-keyword)
                               'org ai-dir)))))
         (with-current-buffer (find-file-noselect path)
           (goto-char (point-max))
@@ -4037,13 +4050,11 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
 ;; join it by file -- the ones that exist here, the new ones as llm.el
 ;; makes them (llm-referee-agenda).
 (setq org-agenda-files (append org-agenda-files (llm-referee-log-files)))
-;; A log's todo inherits the file tags :ai:<project>:referee:.  The form
+;; A log's todo inherits the file tags :<project>:referee:.  The form
 ;; keywords say nothing in the agenda; the project tag names the paper and
 ;; stays.
 (setq org-agenda-hide-tags-regexp
-      (regexp-opt (list llm-project-form-keyword llm-project-referee-keyword
-                        llm-project-note-keyword)
-                  'symbols))
+      (regexp-opt llm-project-form-keywords 'symbols))
 ;; ...and the project tag goes too: a todo in a log wears no tags at all
 ;; (his ask, 2026-08-18 -- no new tag pill for todos).  Done after the
 ;; agenda is built, per line, since the project tag is not a fixed word.
