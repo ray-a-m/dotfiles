@@ -5489,9 +5489,23 @@ An empty folder says so -- expanding it draws nothing, which reads as
     (unless (rm/sidebar--teaching-p)
       (user-error "A is a class's AI: open the teaching sidebar (C-c k)"))
     (rm/teaching-ai (rm/sidebar--dir-at-point)))
+  ;; g brings the class up to date, then redraws: `zot-teaching-sync' cuts
+  ;; what the syllabus assigns out of the PDFs Zotero stores, into the
+  ;; class's texts/ (2026-08-28).  The whole flow is one key because it is
+  ;; the same flow every week -- edit the schedule, press g.  Point inside
+  ;; a class syncs that class; above them all, every class.  Elsewhere g
+  ;; keeps dired's plain revert, and here it reverts too: a sync that
+  ;; cut something has changed the tree under point.
+  (defun rm/sidebar-teaching-sync ()
+    "Cut the class at point's assigned readings, then redraw the sidebar."
+    (interactive)
+    (when (and (rm/sidebar--teaching-p) (require 'zot nil t))
+      (zot-teaching-sync (rm/sidebar--dir-at-point)))
+    (revert-buffer))
   (define-key dired-sidebar-mode-map (kbd "K") #'rm/sidebar-teaching-class)
   (define-key dired-sidebar-mode-map (kbd "n") #'rm/sidebar-teaching-doc)
   (define-key dired-sidebar-mode-map (kbd "A") #'rm/sidebar-teaching-ai)
+  (define-key dired-sidebar-mode-map (kbd "g") #'rm/sidebar-teaching-sync)
   ;; f / b: open the file at point in a split of the MAIN window -- right
   ;; and below, the same letters as C-c w f/b (one split vocabulary
   ;; everywhere).  The main window is found the way dired-sidebar itself
