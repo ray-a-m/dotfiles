@@ -197,6 +197,29 @@ Nil when DIR does not exist.  Feeds `org-agenda-files'."
                                           ; C-c w resize keys below repeat too
 (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 (add-hook 'text-mode-hook #'visual-line-mode)   ; soft-wrap prose
+;; A soft-wrapped list item used to continue at column 0, so its second
+;; visual line started to the LEFT of its own bullet.  Emacs 30's
+;; `visual-wrap-prefix-mode' reads each line's adaptive fill prefix --
+;; for a list item Org gives the item's body column -- and indents every
+;; continuation line to it, so a wrapped item stays one visual block
+;; under its bullet.  Display only: nothing is inserted in the buffer,
+;; so the .org text and every export are unchanged.
+(add-hook 'text-mode-hook #'visual-wrap-prefix-mode)
+
+;; ...but Org's fill helper is not safe to call on every line.  On a blank
+;; line whose element carries no `:post-affiliated' -- a blank row at
+;; buffer start is the reliable case -- `org-adaptive-fill-function'
+;; evaluates `(< p nil)' and signals (org 9.7, org.el ~20053).  Filling
+;; never tripped on it, because M-q is never pressed there; but
+;; `visual-wrap-prefix-mode' asks for a prefix on EVERY line from
+;; jit-lock, so the splash's blank rows made font-lock signal and took
+;; frame creation down with it -- a client frame died on open and the
+;; daemon was left with no GUI frame at all (2026-08-27).  "No prefix" is
+;; already a legitimate return value here, so degrade to nil rather than
+;; signal.  Narrow on purpose: only the wrong-type error is swallowed.
+(define-advice org-adaptive-fill-function
+    (:around (fn &rest args) rm/adaptive-fill-nil-safe)
+  (condition-case nil (apply fn args) (wrong-type-argument nil)))
 
 ;; (which-key removed 2026-07-21.)  To list a prefix's bindings on demand,
 ;; press `C-h' after the prefix -- e.g. `C-c w C-h' shows the window menu,
