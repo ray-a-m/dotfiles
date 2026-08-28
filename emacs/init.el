@@ -1252,15 +1252,22 @@ Todo subtrees and :noexport: sections stay out of both."
                      " · "))
                ;; -M date= drops denote's timestamp from under the title; the
                ;; document states its own dates in the body.
-               ;; The lua filter drops every todo subtree: a teaching
-               ;; document carries my tasks as well as the student's text,
-               ;; and only the text is theirs.  No `unless file-exists-p'
-               ;; guard here on purpose — a missing filter must fail the
-               ;; export, not quietly print my tasks into a handout.
+               ;; The first lua filter drops every todo subtree: a
+               ;; teaching document carries my tasks as well as the
+               ;; student's text, and only the text is theirs.  The second
+               ;; gives tables the column widths pandoc's org reader does
+               ;; not supply: without them a semester schedule is set in
+               ;; `l' columns and runs off the right margin.  No `unless
+               ;; file-exists-p' guard here on purpose — a missing filter
+               ;; must fail the export, not quietly print my tasks into a
+               ;; handout.
                (common (list file "-M" "date=" "-M" (concat "title=" head)
                              "-M" (concat "subtitle=" sub) "-M" "lang=en-US"
                              "--lua-filter"
                              (expand-file-name "teaching-drop-todos.lua"
+                                               user-emacs-directory)
+                             "--lua-filter"
+                             (expand-file-name "teaching-table-widths.lua"
                                                user-emacs-directory))))
     ;; The name follows #+course/#+code and the folder, so an edit to those
     ;; renames the output; a document's folder is its own, so any OTHER
