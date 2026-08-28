@@ -3050,10 +3050,22 @@ y/p move, e/r/d act on the entry at point."
   :bind (("C-c n" . rm/denote-note))       ; instant untitled capture
   :bind-keymap ("C-c d" . rm/denote-map)
   :init
+  ;; `log' left this list on 2026-08-28: it was declared for referee
+  ;; sessions, never used once, and llm.el's `referee' says it better.
+  ;; llm.el owns three more forms -- `chat' (a session), `referee' (a
+  ;; referee log), `project' (a project note) -- and they stay out of this
+  ;; list for the reason `teaching' does, below: llm.el makes them, with
+  ;; scaffolding a hand-made note would not have.  They are forms and not
+  ;; one shared `ai' keyword because `ai' is matter, notes ABOUT
+  ;; artificial intelligence, and a referee report on the Higgs paper is
+  ;; not one of those.
   (defvar rm/denote-forms
-    '("musing" "poetry" "idea" "paperidea" "wip" "lit" "log" "talk" "meeting"
+    '("musing" "poetry" "idea" "paperidea" "wip" "lit" "talk" "meeting"
       "hub" "presentation")
-    "Note forms: the first filename keyword, exactly one per note.")
+    "Note forms offered for a new note: the first filename keyword,
+exactly one per note.  Not every form in the vault -- `teaching' and
+llm.el's `chat', `referee' and `project' are made by their own commands
+and never prompted for here.")
   (defvar rm/denote-matter
     '("physics" "hegel" "kant" "math" "aesthetics" "science" "concepts"
       "history" "neo-kantian" "phenomenology" "teaching" "fun" "ai")
