@@ -3056,7 +3056,7 @@ y/p move, e/r/d act on the entry at point."
     "Note forms: the first filename keyword, exactly one per note.")
   (defvar rm/denote-matter
     '("physics" "hegel" "kant" "math" "aesthetics" "science" "concepts"
-      "history" "neo-kantian" "phenomenology" "teaching" "fun")
+      "history" "neo-kantian" "phenomenology" "teaching" "fun" "ai")
     "Matter keywords: the research programs.  Grow this list only when a
 new program is genuinely born; free-typing new matter still works.")
   (setq denote-directory rm/notes-directory
@@ -3111,6 +3111,65 @@ denote, so nothing is missed."
                       (denote-save-buffers t))
                   (denote-rename-file-using-front-matter buffer-file-name)))))))))
   (add-hook 'after-save-hook #'rm/denote-autotitle)
+
+  ;; --- Who wrote it: the signature field ---------------------------------
+  ;; `ai' is a matter atom -- a note ABOUT artificial intelligence -- and it
+  ;; says nothing about who produced the prose.  Provenance rides denote's
+  ;; SIGNATURE instead, a field the grammar had never used: one note can be
+  ;; `20260827T153423==gen--title__talk_ai.org' and both facts stay legible,
+  ;; neither readable as the other.  A keyword would have put them in one
+  ;; namespace, where `_ai' next to `_gen' invites exactly the confusion a
+  ;; scholar cannot afford.  The mark survives a rename: the org front
+  ;; matter has no signature line, so `denote-rename-file-using-front-matter'
+  ;; falls back to the one already in the filename.
+  (defconst rm/denote-generated-signature "gen"
+    "Signature marking a note whose prose a machine produced.")
+  (defun rm/denote-toggle-generated ()
+    "Toggle the machine-produced mark on this vault note.
+Off when it is on, so a note you have rewritten into your own words
+stops claiming otherwise."
+    (interactive)
+    (require 'denote)
+    (let ((file (or buffer-file-name (user-error "Not visiting a file"))))
+      (unless (denote-file-is-note-p file)
+        (user-error "Not a denote note"))
+      (let* ((marked (equal (denote-retrieve-filename-signature file)
+                            rm/denote-generated-signature))
+             (new (if marked "" rm/denote-generated-signature))
+             (denote-rename-confirmations nil)
+             (denote-save-buffers t))
+        (denote-rename-file file 'keep-current 'keep-current new
+                            'keep-current 'keep-current)
+        (message (if marked
+                     "Mark cleared -- this note reads as yours"
+                   "Marked machine-produced (==%s)")
+                 rm/denote-generated-signature))))
+
+  ;; --- The filename follows the front matter on save ---------------------
+  ;; Denote never renames on save, so adding a tag to `#+filetags:' by hand
+  ;; changed the buffer and nothing else -- the note kept its old name and
+  ;; the new atom was invisible to dired, the picker and every keyword
+  ;; search (2026-08-28).  M-a M-s now closes that gap.  Scoped three ways:
+  ;; the vault only (teaching documents and llm.el project files are
+  ;; denote-named but live outside `denote-directory'); titled notes only,
+  ;; so the untitled path stays `rm/denote-autotitle's alone and an empty
+  ;; title can never rename a note to nothing; and `denote-save-buffers'
+  ;; nil, because we are already inside a save and do not want to re-enter
+  ;; this hook.  A name that already matches costs one comparison.
+  (defun rm/denote-sync-filename ()
+    "Rename this vault note to match the front matter just saved."
+    (when (and (featurep 'denote)
+               buffer-file-name
+               (denote-file-is-note-p buffer-file-name)
+               (string-prefix-p (expand-file-name (denote-directory))
+                                (expand-file-name buffer-file-name))
+               (not (string-empty-p (or (denote-retrieve-title-value
+                                         buffer-file-name 'org) ""))))
+      (let ((denote-rename-confirmations nil)
+            (denote-save-buffers nil)
+            (denote-kill-buffers nil))
+        (denote-rename-file-using-front-matter buffer-file-name))))
+  (add-hook 'after-save-hook #'rm/denote-sync-filename)
   (dolist (form rm/denote-forms)
     (defalias (intern (concat "rm/denote-" form))
       (lambda () (interactive) (rm/denote-new form))
@@ -3837,7 +3896,8 @@ all the typed words."
     "s" #'rm/denote-log     "t" #'rm/denote-talk      ;  l is the list key)
     "e" #'rm/denote-meeting
     "h" #'rm/denote-hub     "n" #'rm/denote-presentation
-    "a" #'rm/denote-attach)
+    "a" #'rm/denote-attach
+    "G" #'rm/denote-toggle-generated)     ; mark/unmark as machine-produced
   :config
   ;; Vault dired buffers fontify the filename grammar (ID / title / keywords
   ;; each get a face) -- the catalog reads like a catalog, not a file dump.
