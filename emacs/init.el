@@ -2736,8 +2736,9 @@ org file you save -- without loading the export module.")
 ;; Push timestamped Org TODOs from inbox.org to a dedicated Google Calendar
 ;; ("org") via org-gcal (REST API v3).  ONE-WAY: we only ever POST entries,
 ;; never fetch/import, so nothing is read back.  Both the phone Google
-;; Calendar app and rencal (itself a Google Calendar client) then display it;
-;; one push, two views.  Pushes fire automatically after a schedule/deadline
+;; Calendar app and the Omarchy bar's calendar popout (SUPER+SHIFT+C, itself
+;; a Google Calendar client) then display it; one push, two views.  Pushes
+;; fire automatically after a schedule/deadline
 ;; (`rm/org-gcal-auto-push' below); M-SPC G (= C-c G, sibling of M-SPC g =
 ;; git push) is the bulk fallback; no timer.  (org-caldav was abandoned here:
 ;; Google 403s

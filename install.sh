@@ -458,17 +458,14 @@ if [ "$OS" = "Linux" ]; then
         yay -S --noconfirm mpvpaper
     fi
     # Daily-driver apps that live in the AUR: Zotero (research library),
-    # rencal (calendar TUI), Beeper (all non-academic messaging -- unified
-    # chat, incl. self-hosted iMessage via a bbctl bridge that runs on the
-    # Mac). Personal task tracking is org-agenda only; basilk was removed
-    # 2026-08-04.
+    # Beeper (all non-academic messaging -- unified chat, incl. self-hosted
+    # iMessage via a bbctl bridge that runs on the Mac). Personal task
+    # tracking is org-agenda only; basilk was removed 2026-08-04. The
+    # calendar is the Omarchy bar widget installed below, not a TUI; rencal
+    # was removed 2026-08-29.
     if command -v yay &>/dev/null && ! pacman -Q zotero-bin &>/dev/null; then
         echo "==> Installing Zotero from AUR"
         yay -S --noconfirm zotero-bin
-    fi
-    if command -v yay &>/dev/null && ! pacman -Q rencal-bin &>/dev/null; then
-        echo "==> Installing rencal from AUR"
-        yay -S --noconfirm rencal-bin
     fi
     if command -v yay &>/dev/null && ! pacman -Q beeper-bin &>/dev/null; then
         echo "==> Installing Beeper from AUR"
@@ -539,6 +536,26 @@ if [ "$OS" = "Linux" ]; then
     fi
 fi
 
+echo "==> Installing third-party Omarchy shell plugins"
+# The calendar popout on SUPER+SHIFT+C is a git-managed plugin, not a
+# dotfiles symlink: `omarchy plugin add` clones it and `omarchy plugin
+# update` keeps it current, so the checkout is not vendored in this repo.
+# It must exist before shell.json is copied below, because that config
+# names the widget in the bar layout. Google OAuth is per-machine and
+# interactive, so the setup run stays manual.
+GCAL_CLOCK_ID="io.github.guiestrela.omarchy-google-calendar-clock"
+GCAL_CLOCK_URL="https://github.com/guiestrela/omarchy-google-calendar-clock-refresh"
+if command -v omarchy &>/dev/null; then
+    if ! omarchy plugin list 2>/dev/null | grep -q "$GCAL_CLOCK_ID"; then
+        echo "==> Adding the Google Calendar clock widget"
+        omarchy plugin add "$GCAL_CLOCK_URL" --enable --yes
+    fi
+    if [ ! -x "$HOME/.local/share/$GCAL_CLOCK_ID/bin/caldir" ]; then
+        echo "    Calendar sync is not set up on this machine. To connect it, run:"
+        echo "    ~/.config/omarchy/plugins/$GCAL_CLOCK_ID/setup"
+    fi
+fi
+
 echo "==> Symlinking custom Omarchy hooks, themes, themed, extensions, and plugins"
 # Full rm-then-recreate of each managed subdir's symlinks so themes/hooks
 # removed from the repo (e.g. blue-girl→mornye rename, philosophy deletion)
@@ -556,6 +573,12 @@ for sub in hooks themes themed extensions plugins; do
         [ -e "$entry" ] || continue
         if [ -L "$entry" ]; then
             rm "$entry"
+        elif [ -d "$entry/.git" ]; then
+            # A git checkout that `omarchy plugin add` installed (e.g. the
+            # calendar clock widget). Omarchy owns it, not dotfiles, and
+            # `omarchy plugin update` keeps it current -- so it is neither
+            # a stale symlink to remove nor a hand-made file to back up.
+            continue
         else
             mv "$entry" "$entry.bak.$(date +%s)"
         fi

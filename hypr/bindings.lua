@@ -85,11 +85,17 @@ hl.unbind("SUPER + CTRL + K")
 hl.unbind("SUPER + CTRL + Q")
 hl.unbind("XF86Calculator")
 
--- Calendar — launches rencal (AUR: rencal-bin). The default SUPER+SHIFT+C
--- HEY-webapp went away with omarchy_preinstalled_bindings=false. SUPER+C
--- (Universal copy) and SUPER+CTRL+C (capture menu) are untouched — SUPER+C
--- is load-bearing for image paste into the Claude CLI.
-o.bind("SUPER + SHIFT + C", "Calendar", "uwsm-app -- rencal")
+-- Calendar — toggles the calendar popout on the Omarchy bar. The widget is
+-- the io.github.guiestrela.omarchy-google-calendar-clock plugin, which
+-- replaces omarchy.clock and shows Google Calendar events in the popout.
+-- The bind speaks to the running shell over IPC, so nothing opens as a
+-- window; it replaced rencal (a calendar TUI in a tiling client) on
+-- 2026-08-29. The default SUPER+SHIFT+C HEY-webapp went away with
+-- omarchy_preinstalled_bindings=false. SUPER+C (Universal copy) and
+-- SUPER+CTRL+C (capture menu) are untouched — SUPER+C is load-bearing for
+-- image paste into the Claude CLI.
+o.bind("SUPER + SHIFT + C", "Calendar",
+       "omarchy-shell io.github.guiestrela.omarchy-google-calendar-clock toggle")
 
 -- Display scale: cycle through known-good Hyprland scales (1.0 → 2.0 in 0.25
 -- steps). Bridges the laptop/dock transition — bump up on the high-DPI
