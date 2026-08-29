@@ -49,6 +49,20 @@ fi
 # crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.
 alias wallpaper="$HOME/.config/omarchy/hooks/theme-set"
 
+# Temporary while the Emacs rebuild is in progress (ray-a-m/emacs):
+# `emacs` starts the from-scratch sandbox config, not stock startup.
+# The live config still runs in the daemon, reached with emacsclient.
+# Use `command emacs` for the plain binary — the batch export helpers
+# below do. The two --no-site flags keep Arch site-lisp out, so the
+# sandbox init is the only config that loads. Guarded: machines
+# without the sandbox keep stock behavior. Delete after the rebuild.
+if [ -d "$HOME/code/emacs/sandbox" ]; then
+  emacs() {
+    command emacs --init-directory "$HOME/code/emacs/sandbox" \
+      --no-site-file --no-site-lisp "$@"
+  }
+fi
+
 # One-shot: stage all, commit, and push. Message optional; defaults to ".".
 # Usage: save [message]
 save() {
@@ -110,7 +124,7 @@ serverauto() {
 _org_export_body() {
   local org="$1"
   [[ -f "$org" ]] || return 0
-  emacs -Q --batch \
+  command emacs -Q --batch \
     -l "$HOME/.config/emacs/org-paper-export.el" \
     --eval "(rm/org-paper-export-file \"$org\")"
 }
@@ -121,7 +135,7 @@ _org_export_body() {
 _org_export_site() {
   local org="$1"
   [[ -f "$org" ]] || return 0
-  emacs -Q --batch \
+  command emacs -Q --batch \
     -l "$HOME/.config/emacs/org-site-export.el" \
     --eval "(rm/org-site-export-file \"$org\")"
 }
