@@ -513,6 +513,29 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing LibreWolf from AUR"
         yay -S --noconfirm librewolf-bin
     fi
+    # H.264 and AAC playback for LibreWolf. Firefox and its forks find their
+    # H.264/AAC decoder by trying a fixed list of libavcodec sonames. LibreWolf
+    # 152 searches libavcodec.so.53 through .62. Arch ffmpeg 9 ships
+    # libavcodec.so.63, which is past the end of that list, so the browser
+    # loads no system ffmpeg and has no H.264 or AAC decoder at all. Video
+    # then attaches and decodes nothing: a black player that never starts.
+    # VP9, AV1 and Opus keep working, because LibreWolf bundles its own FFVPX
+    # for those, so the failure looks site-specific. Reddit (v.redd.it) is
+    # H.264 plus AAC and is where it showed. Chromium is unaffected because it
+    # bundles ffmpeg.
+    #
+    # ffmpeg4.4 puts libavcodec.so.58 in /usr/lib. That is inside the range
+    # LibreWolf searches, and it coexists with ffmpeg 9 because the sonames
+    # differ. No wrapper and no LD_LIBRARY_PATH are necessary.
+    #
+    # Remove this when LibreWolf ships a Firefox version that searches .63.
+    # Mozilla already raised the cap in mozilla-central. To test, compare
+    #   strings /usr/lib/librewolf/libxul.so | grep -E '^libavcodec\.so\.'
+    # against the installed /usr/lib/libavcodec.so.* soname.
+    if pacman -Q librewolf-bin &>/dev/null && ! pacman -Q ffmpeg4.4 &>/dev/null; then
+        echo "==> Installing ffmpeg4.4 (H.264/AAC decoder LibreWolf can load)"
+        sudo pacman -S --needed --noconfirm ffmpeg4.4
+    fi
     # Bitwarden auto-install policy for LibreWolf. The merge script reads
     # LibreWolf's shipped /usr/lib/librewolf/distribution/policies.json
     # (which carries its hardening defaults), overlays dotfiles/librewolf/
