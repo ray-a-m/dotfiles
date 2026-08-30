@@ -14,7 +14,7 @@ end)
 -- The theme-set hook spawns mpvpaper when the theme's wallpaper is a video
 -- (and the shell's static background stays underneath as fallback art).
 -- Re-run it after login so video backgrounds come up without a theme switch.
-o.exec_on_start("sleep 2 && ~/.config/omarchy/hooks/theme-set")
+o.exec_on_start("sleep 2 && omarchy-hook theme-set")
 
 -- Special-workspace inhabitants. Spawned at session start; the windows.lua
 -- rules (matched by --class) place them on special:music silently and snap

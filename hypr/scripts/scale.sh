@@ -78,7 +78,7 @@ fi
 # Re-keywording monitor destroys the wallpaper surface even when the scale
 # value itself was rejected — restart the daemon regardless.
 sleep 0.1
-"$HOME/.config/omarchy/hooks/theme-set" >/dev/null 2>&1 &
+omarchy-hook theme-set >/dev/null 2>&1 &
 disown
 
 notify-send -t 1500 "Display scale" "$msg"

@@ -47,7 +47,7 @@ if [ -n "${LEGACY_BG:-}" ] && [ -e "$LEGACY_BG" ]; then
         mp4|webm|mkv|mov|avi)
             pgrep -x mpvpaper >/dev/null && exit 0
             log "mpvpaper dead for video background; re-firing theme-set hook"
-            "$HOME/.config/omarchy/hooks/theme-set"
+            omarchy-hook theme-set
             ;;
         *)
             pgrep -x swaybg >/dev/null && exit 0
@@ -85,7 +85,7 @@ else
         exit 0
     fi
     log "video wallpaper missing/buried; re-firing theme-set hook"
-    "$HOME/.config/omarchy/hooks/theme-set"
+    omarchy-hook theme-set
 fi
 
 # We run as a oneshot service: the moment this script exits, systemd

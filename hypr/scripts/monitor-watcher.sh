@@ -98,7 +98,7 @@ heal_wallpaper() {
     (( now - _last_wp_refire < 8 )) && return
     _last_wp_refire=$now
     log "wallpaper layer missing/buried post-event; re-firing theme-set hook"
-    "$HOME/.config/omarchy/hooks/theme-set"
+    omarchy-hook theme-set
 }
 
 # The shell (quickshell) sometimes survives a dock transition as a process

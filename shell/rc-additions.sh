@@ -47,7 +47,7 @@ fi
 # Restart the wallpaper (mpvpaper for video themes, swaybg otherwise) by
 # re-running the omarchy theme-set hook. Instant recovery when mpvpaper
 # crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.
-alias wallpaper="$HOME/.config/omarchy/hooks/theme-set"
+alias wallpaper="omarchy-hook theme-set"
 
 # One-shot: stage all, commit, and push. Message optional; defaults to ".".
 # Usage: save [message]

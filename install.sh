@@ -450,7 +450,7 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing Zoom from AUR"
         yay -S --noconfirm zoom
     fi
-    # mpvpaper is required by omarchy/hooks/theme-set for any theme whose
+    # mpvpaper is required by omarchy/hooks/theme-set.d/wallpaper for any theme whose
     # wallpaper is a video (e.g. mornye's mp4 wallpaper). Without it the
     # hook silently fails and the wallpaper layer goes blank.
     if command -v yay &>/dev/null && ! pacman -Q mpvpaper &>/dev/null; then
@@ -594,6 +594,10 @@ for sub in hooks themes themed extensions plugins; do
     # Move any non-symlink entries out of the way; then rm all symlinks.
     for entry in "$dst_dir"/*; do
         [ -e "$entry" ] || continue
+        is_hook_dir=0
+        case "$entry" in
+            *.d) if [ -d "$entry" ]; then is_hook_dir=1; fi ;;
+        esac
         if [ -L "$entry" ]; then
             rm "$entry"
         elif [ -d "$entry/.git" ]; then
@@ -602,13 +606,38 @@ for sub in hooks themes themed extensions plugins; do
             # `omarchy plugin update` keeps it current -- so it is neither
             # a stale symlink to remove nor a hand-made file to back up.
             continue
+        elif [ "$is_hook_dir" = 1 ]; then
+            # An omarchy hook directory (theme-set.d, post-boot.d, ...).
+            # Omarchy owns it and keeps its own .sample files there, so
+            # moving it aside buries them -- that is where the whole
+            # .bak.1785707149 set came from on 2026-08-02. Clear only the
+            # symlinks this script made, so a hook dropped from the repo
+            # does not linger; the contents get relinked below.
+            for hook in "$entry"/*; do
+                if [ -L "$hook" ]; then rm "$hook"; fi
+            done
         else
             mv "$entry" "$entry.bak.$(date +%s)"
         fi
     done
-    # Recreate symlinks from the source dir.
+    # Recreate symlinks from the source dir. A *.d source directory is an
+    # omarchy hook directory shared with omarchy's own .sample files, so
+    # link the scripts inside it instead of replacing the directory.
     for src in "$src_dir"/*; do
         [ -e "$src" ] || continue
+        case "$src" in
+            *.d)
+                if [ -d "$src" ]; then
+                    hook_dst="$dst_dir/$(basename "$src")"
+                    mkdir -p "$hook_dst"
+                    for hook_src in "$src"/*; do
+                        [ -e "$hook_src" ] || continue
+                        ln -sfn "$hook_src" "$hook_dst/$(basename "$hook_src")"
+                    done
+                    continue
+                fi
+                ;;
+        esac
         ln -sfn "$src" "$dst_dir/$(basename "$src")"
     done
 done
