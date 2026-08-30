@@ -3238,7 +3238,7 @@ texts/ folder (rm/teaching-add-text), which is no document.")
     '((syllabus . "* Instructor & office hours\n\n* Description\n\n* Texts\n\n* Requirements & grading\n\n* Schedule\n\n* Policies\n")
       (essay . "* Due\n\n* Prompt\n\n* Length & format\n\n* Criteria\n")
       (presentation . "* Date\n\n* Format & length\n\n* Expectations\n\n* Rubric\n")
-      (quiz . "* Date\n\n* Coverage\n\n* Format\n\n* Questions\n\n* Answer key :noexport:\n"))
+      (quiz . ""))
     "Org skeleton per document (syllabus) or assignment kind, under the front matter.
 {{course}} {{code}} {{term}} placeholders, if used, are filled from the folder
 when the file is made; the PDF/DOCX title already carries them, so the
