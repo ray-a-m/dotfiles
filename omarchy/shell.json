@@ -5,6 +5,8 @@
       "center": [
         {
           "id": "io.github.guiestrela.omarchy-google-calendar-clock",
+          "calendarColorMode": "theme",
+          "calendarNotified": "{\"4a192535-6284-4e8f-9533-86adf40bb93d@caldir|5\":\"2026-08-30T17:54:59.589Z\",\"4a192535-6284-4e8f-9533-86adf40bb93d@caldir|0\":\"2026-08-30T17:59:59.585Z\"}",
           "format": "dddd M/d, h:mm AP",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "verticalFormat": "h\n\u2014\nmm\nAP"
@@ -51,10 +53,6 @@
     "position": "top",
     "transparent": true,
     "id": "raymond.bar"
-  },
-  "idle": {
-    "lock": 300,
-    "screensaver": 150
   },
   "plugins": [
     {
