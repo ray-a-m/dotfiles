@@ -25,7 +25,7 @@
 ;;   :look   nano (layout / faces / theme / modeline)
 ;;   :keys   native + windmove/ace-window/C-c w     :tools  magit
 ;;   :completion vertico + orderless + marginalia   :checkers spell, syntax
-;;   :lang   latex (auctex+cdlatex+reftex), org     :prose  mixed-pitch + olivetti
+;;   :lang   latex (auctex+reftex), org     :prose  mixed-pitch + olivetti
 
 ;;; Code:
 
@@ -1486,9 +1486,10 @@ for a refusal worth reading and for questions edited by hand."
 
 (add-hook 'llm-after-reply-hook #'rm/teaching-qti-maybe)
 
-;; --- LaTeX (:lang latex +cdlatex) ---------------------------------------
-;; AUCTeX + CDLaTeX, wired to latexmk and zathura so it matches your
-;; existing nvim/latexmk/zathura flow.
+;; --- LaTeX (:lang latex) ------------------------------------------------
+;; AUCTeX, wired to zathura; the real compile paths bypass its command
+;; system (rm/org-paper-compile and the `publish' shell function both
+;; call latexmk directly).
 
 ;; AUCTeX 14 defines `LaTeX-mode' / `LaTeX-mode-map' in the `latex' feature (not
 ;; `tex'), so we `use-package latex' -- still installing the `auctex' package.
@@ -1503,8 +1504,7 @@ for a refusal worth reading and for questions edited by hand."
   (use-package latex
     :ensure auctex
     :mode ("\\.tex\\'" . LaTeX-mode)        ; route .tex -> AUCTeX's LaTeX-mode
-    :hook ((LaTeX-mode . turn-on-cdlatex)   ; fast math input (impatient-scholar step 1)
-           (LaTeX-mode . turn-on-reftex)    ; \ref / \cite from the .bib
+    :hook ((LaTeX-mode . turn-on-reftex)    ; \ref / \cite from the .bib
            (LaTeX-mode . TeX-source-correlate-mode)  ; SyncTeX forward/inverse
            (LaTeX-mode . outline-minor-mode)) ; fold on \section / \subsection
     :bind (:map LaTeX-mode-map
@@ -1521,27 +1521,12 @@ for a refusal worth reading and for questions edited by hand."
           reftex-default-bibliography
           '("~/scholarship/research-wip/documents/dissertation/references.bib"))
     ;; org-like folding in LaTeX: with cycle on, TAB on a \section/\subsection
-    ;; line folds/unfolds that subtree (the heading-line keymap takes priority
-    ;; there, so cdlatex keeps TAB everywhere else).  Headings get a subtle
+    ;; line folds/unfolds that subtree.  Headings get a subtle
     ;; highlight so they're easy to spot when collapsed.
     (setq outline-minor-mode-cycle t
           outline-minor-mode-highlight 'append)
     :config
-    (setq TeX-view-program-selection '((output-pdf "Zathura"))))
-
-  ;; Adds the `LatexMk' command so C-c C-c compiles with latexmk.
-  (use-package auctex-latexmk
-    :after tex
-    :config
-    (setq auctex-latexmk-inherit-TeX-PDF-mode t)
-    (auctex-latexmk-setup)
-    (setq-default TeX-command-default "LatexMk"))
-
-  ;; CDLaTeX is enabled via the LaTeX-mode hook above; this ensures it's
-  ;; installed.  Backtick -> Greek/math symbols, apostrophe -> accents,
-  ;; _ / ^ auto-insert braces.
-  (use-package cdlatex
-    :defer t))
+    (setq TeX-view-program-selection '((output-pdf "Zathura")))))
 
 ;; --- LaTeX in buffers: highlighted source, preview on demand ------------
 ;; No in-text auto-rendering: org-fragtog REMOVED 2026-07-23 (his ruling --
@@ -3979,13 +3964,6 @@ all the typed words."
   ;; Buffer names show the note's TITLE, not the ID gibberish.
   (denote-rename-buffer-mode 1))
 
-;; consult-denote: denote's own file prompts (C-c d f, C-c d k, ...) go
-;; through consult, so picking a note gets live preview like M-ESC's buffer
-;; switch.  The custom C-c d g already rides consult-ripgrep directly.
-(use-package consult-denote
-  :after denote
-  :config (consult-denote-mode 1))
-
 ;; citar: completion over the Zotero-exported bibliographies -- browse
 ;; references, open their PDFs/URLs, and insert citation keys.  Citations in
 ;; papers stay RAW LaTeX (\textcite/\parencite); org-cite's syntax is
@@ -4063,14 +4041,6 @@ just the key(s); elsewhere insert a full \\textcite{...} (with C-u,
         corfu-auto-delay 0.15
         corfu-auto-prefix 2
         corfu-cycle t))
-
-;; citar-denote: ties bibliography entries to vault notes -- the lit form IS
-;; the reference-note keyword, so "open the note on this book" works from
-;; the citar picker (and citar-denote-open-note the other way around).
-(use-package citar-denote
-  :after (citar denote)
-  :init (setq citar-denote-keyword "lit")
-  :config (citar-denote-mode 1))
 
 ;; --- llm.el: research and referee-edit in org, on denote -------------------
 ;; In development at ~/code/llm.el (moved from ~/projects 2026-08-22: the
