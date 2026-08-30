@@ -543,3 +543,132 @@ if [ -n "${ZSH_VERSION:-}" ]; then
 elif [ -n "${BASH_VERSION:-}" ]; then
     eval "$(zoxide init bash)"
 fi
+
+# Run a system update in a detached tmux session, then reconcile the config
+# drift pacman leaves behind. `omarchy update` is already careful on its own --
+# it snapshots via snapper, holds an flock, and logs to
+# /tmp/omarchy-update.log -- but it runs inside a terminal window, and a window
+# that dies mid-transaction takes a 100-package upgrade with it. tmux makes the
+# run outlive the window, the compositor, and the shell that started it. None
+# of this duplicates what omarchy already does.
+#
+# The postflight is the part nothing does automatically. pacman writes .pacnew
+# beside any config a package updated but you had modified, and never applies
+# it; they accumulate silently until a stale config breaks a boot. It also
+# re-checks package-owned files carrying local customization -- the Plymouth
+# logo has been overwritten by omarchy-settings twice.
+#
+# Usage: sysupdate           → preflight, update inside tmux, then postflight
+#        sysupdate --check   → preflight report only; changes nothing
+#        sysupdate --post    → postflight only (re-run after a reboot)
+sysupdate() {
+  local state="$HOME/.local/state/sysupdate"
+  local repos=(~/code/dotfiles ~/code/dotfiles-private ~/scholarship/research-wip
+               ~/scholarship/website ~/code/homelab)
+  # Package-owned files that carry local customization, fingerprinted before
+  # the update so the postflight can prove whether an upgrade clobbered them.
+  local watched=(/usr/share/plymouth/themes/omarchy/logo.png)
+  mkdir -p "$state"
+
+  _sysupdate_preflight() {
+    local f n
+    echo "── preflight ─────────────────────────────────────────"
+    printf 'pending: %s repo, %s AUR\n' \
+      "$(checkupdates 2>/dev/null | wc -l)" \
+      "$( (paru -Qua 2>/dev/null || yay -Qua 2>/dev/null) | wc -l )"
+
+    # Emacs holds unsaved work in a daemon that must be restarted across its
+    # own upgrade. Save first; the restart is still a manual call, because a
+    # daemon killed behind your back loses more than it saves.
+    if pgrep -x emacs >/dev/null 2>&1; then
+      emacsclient -e '(save-some-buffers t)' >/dev/null 2>&1 &&
+        echo "emacs: buffers saved"
+      checkupdates 2>/dev/null | grep -q '^emacs' &&
+        echo "emacs: UPGRADING -- stop the daemon before continuing"
+    fi
+
+    # Migrations write through the ~/.config symlinks into these repos. A clean
+    # tree beforehand is what makes that write-through readable as a git diff.
+    for f in "${repos[@]}"; do
+      [[ -d $f/.git ]] || continue
+      n=$(git -C "$f" status --porcelain | wc -l)
+      ((n)) && printf 'dirty: %s (%s file(s))\n' "$(basename "$f")" "$n"
+    done
+
+    n=$(find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | wc -l)
+    ((n)) && echo "pacnew: $n unmerged (postflight walks them)"
+
+    for f in "${watched[@]}"; do
+      [[ -f $f ]] && sha256sum "$f"
+    done >"$state/watched.before"
+    pacman -Q emacs-wayland 2>/dev/null >"$state/emacs.before"
+    echo
+  }
+
+  _sysupdate_postflight() {
+    local f n
+    echo
+    echo "── postflight ────────────────────────────────────────"
+
+    # Anything a package silently overwrote shows up here as a hash mismatch.
+    if [[ -f $state/watched.before ]]; then
+      for f in "${watched[@]}"; do
+        [[ -f $f ]] && sha256sum "$f"
+      done >"$state/watched.after"
+      if ! diff -q "$state/watched.before" "$state/watched.after" >/dev/null; then
+        echo "CLOBBERED by this update:"
+        diff "$state/watched.before" "$state/watched.after" | grep '^>' | awk '{print "  " $3}'
+        echo "  restore: omarchy plymouth set by theme \$(omarchy-plymouth-current)"
+      fi
+    fi
+
+    # pdf-tools ships a compiled epdfinfo linked against a versioned poppler.
+    # A poppler soname bump breaks PDF viewing in Emacs until it is rebuilt.
+    f=$(find ~/.local/share/emacs/elpa -name epdfinfo -type f 2>/dev/null | head -1)
+    if [[ -n $f ]] && ldd "$f" 2>/dev/null | grep -q 'not found'; then
+      echo "pdf-tools: epdfinfo has broken links -- run M-x pdf-tools-install"
+    fi
+
+    # A major Emacs upgrade invalidates the eln cache and can break packages.
+    # Load-test the config in batch before trusting a daemon to it.
+    if [[ -f $state/emacs.before ]] &&
+       ! diff -q "$state/emacs.before" <(pacman -Q emacs-wayland 2>/dev/null) >/dev/null; then
+      echo "emacs: version changed -- load-testing init.el"
+      emacs -Q --batch -l ~/.config/emacs/init.el 2>&1 | tail -5
+    fi
+
+    for f in "${repos[@]}"; do
+      [[ -d $f/.git ]] || continue
+      n=$(git -C "$f" status --porcelain | wc -l)
+      ((n)) && printf 'migration touched: %s (%s file(s)) -- review the diff\n' \
+        "$(basename "$f")" "$n"
+    done
+
+    n=$(find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | wc -l)
+    if ((n)); then
+      echo "pacnew: $n unmerged"
+      find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | sed 's/^/  /'
+      echo "  merge: sudo DIFFPROG='nvim -d' pacdiff"
+    fi
+    [[ -f $HOME/.local/state/omarchy/reboot-required ]] && echo "REBOOT required"
+    echo "log: /tmp/omarchy-update.log"
+  }
+
+  case "${1:-}" in
+    --check) _sysupdate_preflight ;;
+    --post)  _sysupdate_postflight ;;
+    "")
+      _sysupdate_preflight
+      # -A attaches to an update already in flight instead of starting a second
+      # one, which the omarchy lock would refuse anyway.
+      if [[ -n $TMUX ]]; then
+        tmux new-session -A -d -s sysupdate 'omarchy update'
+        tmux switch-client -t sysupdate
+      else
+        tmux new-session -A -s sysupdate 'omarchy update'
+      fi
+      _sysupdate_postflight
+      ;;
+    *) echo "sysupdate: unknown option $1" >&2; return 1 ;;
+  esac
+}
