@@ -554,9 +554,7 @@ fi
 #
 # The postflight is the part nothing does automatically. pacman writes .pacnew
 # beside any config a package updated but you had modified, and never applies
-# it; they accumulate silently until a stale config breaks a boot. It also
-# re-checks package-owned files carrying local customization -- the Plymouth
-# logo has been overwritten by omarchy-settings twice.
+# it; they accumulate silently until a stale config breaks a boot.
 #
 # Usage: sysupdate           → preflight, update inside tmux, then postflight
 #        sysupdate --check   → preflight report only; changes nothing
@@ -565,9 +563,6 @@ sysupdate() {
   local state="$HOME/.local/state/sysupdate"
   local repos=(~/code/dotfiles ~/code/dotfiles-private ~/scholarship/research-wip
                ~/scholarship/website ~/code/homelab)
-  # Package-owned files that carry local customization, fingerprinted before
-  # the update so the postflight can prove whether an upgrade clobbered them.
-  local watched=(/usr/share/plymouth/themes/omarchy/logo.png)
   mkdir -p "$state"
 
   _sysupdate_preflight() {
@@ -598,9 +593,6 @@ sysupdate() {
     n=$(find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | wc -l)
     ((n)) && echo "pacnew: $n unmerged (postflight walks them)"
 
-    for f in "${watched[@]}"; do
-      [[ -f $f ]] && sha256sum "$f"
-    done >"$state/watched.before"
     pacman -Q emacs-wayland 2>/dev/null >"$state/emacs.before"
     echo
   }
@@ -609,18 +601,6 @@ sysupdate() {
     local f n
     echo
     echo "── postflight ────────────────────────────────────────"
-
-    # Anything a package silently overwrote shows up here as a hash mismatch.
-    if [[ -f $state/watched.before ]]; then
-      for f in "${watched[@]}"; do
-        [[ -f $f ]] && sha256sum "$f"
-      done >"$state/watched.after"
-      if ! diff -q "$state/watched.before" "$state/watched.after" >/dev/null; then
-        echo "CLOBBERED by this update:"
-        diff "$state/watched.before" "$state/watched.after" | grep '^>' | awk '{print "  " $3}'
-        echo "  restore: omarchy plymouth set by theme \$(omarchy-plymouth-current)"
-      fi
-    fi
 
     # pdf-tools ships a compiled epdfinfo linked against a versioned poppler.
     # A poppler soname bump breaks PDF viewing in Emacs until it is rebuilt.
