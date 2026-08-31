@@ -4172,10 +4172,17 @@ log or a teaching document (their filetags are machinery, not labels)."
          (LaTeX-mode    . olivetti-mode)
          (org-agenda-mode . rm/agenda-olivetti))
   :init (setq olivetti-body-width 72      ; text column width, in columns
-              ;; center via FRINGES, not margins (kept from the org-margin
-              ;; days; nano paints fringes in the background colour, so it
-              ;; looks identical and leaves the margins free).
-              olivetti-style t)
+              ;; center via MARGINS, not fringes.  Fringes (used until
+              ;; 2026-08-30, for org-margin -- itself gone since 2026-08-16)
+              ;; count toward the window's minimum width with no way to
+              ;; declare them collapsible, so under Emacs 31 every left/right
+              ;; side window on a fringe-centred frame died in
+              ;; `window--make-major-side-window' ("too small for splitting"
+              ;; -> "window-live-p, nil"): splash k/w/l, the r menu, the llm
+              ;; tree.  Margins look identical (both paint in the background
+              ;; colour) and the `min-margins' advice below makes them
+              ;; collapsible, so those splits shrink them freely.
+              olivetti-style nil)
   ;; The agenda is centred too (his ask, 2026-08-19), but in a wider
   ;; measure: its lines are one todo each and long, and the 72-col prose
   ;; measure would wrap them and break the columns.  Tune the 120 here.
