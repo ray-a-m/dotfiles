@@ -72,7 +72,8 @@ install_linux_deps() {
                 neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd syncthing \
                 pandoc-cli qpdf aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation ttf-roboto-mono \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
-                bitwarden bitwarden-cli
+                bitwarden bitwarden-cli \
+                isync msmtp
             ;;
         zypper)
             sudo zypper install -y neovim nodejs npm zoxide gh zathura texlive-scheme-full kitty tmux jq zsh zsh-autosuggestions zsh-syntax-highlighting
@@ -262,6 +263,23 @@ for f in xdg-terminals.list mimeapps.list; do
     fi
     ln -sfn "$src" "$dst"
 done
+
+# Mail plumbing (emacs-l7d): mbsync and msmtp read home-dot configs. The
+# configs hold no secrets -- passwords come from the GNOME keyring through
+# secret-tool -- so they are safe to track and symlink.
+if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/mail" ]; then
+    echo "==> Symlinking mail configs (mbsync, msmtp)"
+    for pair in "mbsyncrc:.mbsyncrc" "msmtprc:.msmtprc"; do
+        src="$DOTFILES_DIR/mail/${pair%%:*}"
+        dst="$HOME/${pair##*:}"
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+            mv "$dst" "$dst.bak.$(date +%s)"
+            echo "Backed up $dst"
+        fi
+        ln -sfn "$src" "$dst"
+    done
+    mkdir -p ~/.mail/fastmail ~/.mail/gmail ~/.local/state/msmtp
+fi
 
 echo "==> Registering custom MIME types (text/x-org)"
 mkdir -p ~/.local/share/mime/packages
@@ -456,6 +474,12 @@ if [ "$OS" = "Linux" ]; then
     if command -v yay &>/dev/null && ! pacman -Q mpvpaper &>/dev/null; then
         echo "==> Installing mpvpaper from AUR"
         yay -S --noconfirm mpvpaper
+    fi
+    # mu indexes the maildirs that mbsync fetches; mu4e in Emacs reads its
+    # index (emacs-l7d). AUR-only on Arch.
+    if command -v yay &>/dev/null && ! pacman -Q mu &>/dev/null; then
+        echo "==> Installing mu from AUR"
+        yay -S --noconfirm mu
     fi
     # Daily-driver apps that live in the AUR: Zotero (research library),
     # Beeper (all non-academic messaging -- unified chat, incl. self-hosted

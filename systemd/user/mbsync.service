@@ -1,0 +1,12 @@
+# Fetch mail for both accounts (emacs-l7d). The timer drives this every
+# ~5 minutes; mu4e's U key triggers the same unit, so every fetch error
+# lands in one journal: journalctl --user -u mbsync.
+
+[Unit]
+Description=Sync mail with mbsync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mbsync -a

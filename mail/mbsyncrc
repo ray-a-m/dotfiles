@@ -1,0 +1,91 @@
+# mbsync (isync 1.5) — two IMAP accounts, full history, maildirs under ~/.mail/.
+# Decided in emacs-l88, executed in emacs-l7d (ray-a-m/emacs beads).
+#
+# Secrets come from the GNOME keyring (secret-tool), never from this file.
+# Store them once per machine:
+#   secret-tool store --label="mail fastmail" service mail account fastmail
+#   secret-tool store --label="mail gmail"    service mail account gmail
+#
+# Fallback note (do not build until needed): if Google ever kills app
+# passwords, Gmail moves to XOAUTH2 via oama or mutt_oauth2.py.
+
+# Global channel defaults — apply to every channel below.
+Create Both
+Expunge Both
+SyncState *
+CopyArrivalDate yes
+
+# ---------------------------------------------------------------- Fastmail
+
+IMAPAccount fastmail
+Host imap.fastmail.com
+Port 993
+User inbox@raymondmaung.com
+PassCmd "secret-tool lookup service mail account fastmail"
+TLSType IMAPS
+
+IMAPStore fastmail-remote
+Account fastmail
+
+MaildirStore fastmail-local
+Path ~/.mail/fastmail/
+Inbox ~/.mail/fastmail/INBOX
+SubFolders Verbatim
+
+# Everything, Spam included — full history is the point.
+Channel fastmail
+Far :fastmail-remote:
+Near :fastmail-local:
+Patterns *
+
+# ------------------------------------------------------------------- Gmail
+
+IMAPAccount gmail
+Host imap.gmail.com
+Port 993
+User ronokaoswe@gmail.com
+PassCmd "secret-tool lookup service mail account gmail"
+TLSType IMAPS
+
+IMAPStore gmail-remote
+Account gmail
+
+MaildirStore gmail-local
+Path ~/.mail/gmail/
+Inbox ~/.mail/gmail/INBOX
+SubFolders Verbatim
+
+# One channel per folder, so the local names lose the "[Gmail]/" prefix.
+# All Mail is where archived mail lives — without it, history has holes.
+
+Channel gmail-inbox
+Far :gmail-remote:INBOX
+Near :gmail-local:INBOX
+
+Channel gmail-all
+Far :gmail-remote:"[Gmail]/All Mail"
+Near :gmail-local:"All Mail"
+
+Channel gmail-sent
+Far :gmail-remote:"[Gmail]/Sent Mail"
+Near :gmail-local:"Sent"
+
+Channel gmail-drafts
+Far :gmail-remote:"[Gmail]/Drafts"
+Near :gmail-local:"Drafts"
+
+Channel gmail-spam
+Far :gmail-remote:"[Gmail]/Spam"
+Near :gmail-local:"Spam"
+
+Channel gmail-trash
+Far :gmail-remote:"[Gmail]/Trash"
+Near :gmail-local:"Trash"
+
+Group gmail
+Channel gmail-inbox
+Channel gmail-all
+Channel gmail-sent
+Channel gmail-drafts
+Channel gmail-spam
+Channel gmail-trash
