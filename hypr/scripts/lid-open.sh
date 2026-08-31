@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
-# Lid-open handler. The stock lid binds are replaced wholesale in local.lua,
-# so re-enabling the internal panel is on us too, not just the mirroring:
-# - external present: mirror_on clears the clamshell flag and applies the
-#   mirror rule in one reload (the rule itself re-enables the panel).
-# - no external: defer to omarchy-hyprland-monitor-clamshell, whose enable
-#   path clears a stale clamshell flag, restores the configured scale, and
-#   wakes the panel (dpms). Near no-op when no flag exists.
+# Lid-open handler, bound to `switch:off:Lid Switch` in ~/.config/hypr/local.lua.
+# The stock lid binds are replaced wholesale there, so the open path is on us
+# too. Docked, this is a no-op that also repairs a panel that came back enabled
+# after a resume; undocked, it brings the panel back.
 
-source "$(dirname "$0")/mirror-helper.sh"
+set -u
 
-if omarchy-hw-external-monitors; then
-    mirror_on
-else
-    omarchy-hyprland-monitor-clamshell
-fi
+source "$(dirname "$0")/monitor-policy.sh"
+
+apply_monitor_policy open

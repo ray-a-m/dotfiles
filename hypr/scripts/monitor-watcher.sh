@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 # Re-evaluate dock policy on monitor hot-plug, plus an initial-state check at
-# start. Bindl on Lid Switch can't catch the case where the lid is ALREADY
-# closed and an external is then connected (or disconnected) — the lid state
-# never changes, so no event fires. This watcher subscribes to Hyprland's IPC
-# and applies policy on every monitor add/remove.
+# start. The lid binds can't catch the case where the lid is ALREADY closed and
+# an external is then connected (or disconnected) — the lid state never changes,
+# so no event fires. This watcher subscribes to Hyprland's IPC and applies the
+# policy on every monitor add/remove. The policy itself, and why it is what it
+# is, lives in monitor-policy.sh.
 #
-# Policy:
-#   lid open + external    → laptop mirrors external (so external renders at
-#                            its native resolution; laptop downscales)
-#   lid closed + external  → external standalone (drop mirror, disable internal)
-#   lid closed + no ext    → suspend
-#   lid open + no ext      → nothing to do (defaults are correct)
+# On top of the policy this adds two heals, because a dock transition can leave
+# the shell or the wallpaper alive but not painting. Both are cooldown-guarded.
 #
 # Run under systemd user manager (Restart=always) — see
 # ../../systemd/user/monitor-watcher.service. stdout/stderr go to the journal:
@@ -18,9 +15,7 @@
 
 set -u
 
-source "$(dirname "$0")/mirror-helper.sh"
-
-LID_FILE="/proc/acpi/button/lid/LID/state"
+source "$(dirname "$0")/monitor-policy.sh"
 
 # Cooldown timestamps for the heals below (epoch seconds; 0 = never). A lid/dock
 # transition fires a BURST of monitor events; without a cooldown each one would
@@ -29,8 +24,6 @@ LID_FILE="/proc/acpi/button/lid/LID/state"
 # lid-close, 2026-07-10). These persist across iterations of the socat while-loop.
 _last_qs_restart=0
 _last_wp_refire=0
-
-log() { printf '[monitor-watcher] %s\n' "$*" >&2; }
 
 # The wallpaper can vanish during a dock transition — mpvpaper either crashes
 # (SIGABRT in libavcodec/libmpv on wl_output churn, observed 2026-06-10) or
@@ -122,27 +115,6 @@ heal_shell() {
     omarchy-restart-shell >/dev/null 2>&1
 }
 
-reevaluate() {
-    if grep -q closed "$LID_FILE"; then
-        # external_present_stable (debounced) so a transient DRM disconnect
-        # during dock-transition churn doesn't suspend a docked machine — the
-        # burst of monitoradded/removed events fires reevaluate() repeatedly,
-        # and a single flake used to loop us through suspend. See mirror-helper.sh.
-        if external_present_stable; then
-            log "lid closed + external → external standalone"
-            internal_off_atomic
-        else
-            log "lid closed + no external → suspending"
-            systemctl suspend
-        fi
-    else
-        if omarchy-hw-external-monitors; then
-            log "lid open + external → mirror on"
-            mirror_on
-        fi
-    fi
-}
-
 # Wait for Hyprland socket. Under systemd user manager the service may be
 # (re)started before HYPRLAND_INSTANCE_SIGNATURE is exported into the user
 # environment, or before the socket itself exists. Poll for up to 30s.
@@ -166,11 +138,11 @@ if [ -z "$sock" ]; then
 fi
 
 log "socket ready at $sock; applying initial policy"
-reevaluate
+apply_monitor_policy
 
 socat -U - "UNIX-CONNECT:$sock" | while IFS= read -r line; do
     case "$line" in
-        monitoradded*|monitorremoved*) reevaluate; heal_wallpaper; heal_shell ;;
+        monitoradded*|monitorremoved*) apply_monitor_policy; heal_wallpaper; heal_shell ;;
     esac
 done
 

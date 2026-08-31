@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
-# Lid-close handler. With an external attached, disable the internal panel; with
-# none, suspend. internal_off_atomic goes straight from mirror to disabled in one
-# reload (NOT mirror_off then monitor-internal off) — the two-step version raced
-# mpvpaper and blanked the external's wallpaper. See mirror-helper.sh.
-# Requires logind to ignore lid events (see /etc/systemd/logind.conf.d/).
+# Lid-close handler, bound to `switch:on:Lid Switch` in ~/.config/hypr/local.lua.
+# The policy itself lives in monitor-policy.sh; this passes the lid position it
+# knows rather than letting the policy read /proc, which can still report "open"
+# at the instant the bind fires.
 
-source "$(dirname "$0")/mirror-helper.sh"
+set -u
 
-# external_present_stable (not the raw check) so a transient DRM disconnect at
-# the moment of lid-close doesn't suspend a docked machine — see mirror-helper.sh.
-if external_present_stable; then
-    internal_off_atomic
-else
-    systemctl suspend
-fi
+source "$(dirname "$0")/monitor-policy.sh"
+
+apply_monitor_policy closed
