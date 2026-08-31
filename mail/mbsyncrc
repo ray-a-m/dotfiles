@@ -20,7 +20,7 @@ CopyArrivalDate yes
 IMAPAccount fastmail
 Host imap.fastmail.com
 Port 993
-User inbox@raymondmaung.com
+User ray@raymondmaung.com
 PassCmd "secret-tool lookup service mail account fastmail"
 TLSType IMAPS
 
