@@ -568,9 +568,10 @@ sysupdate() {
   _sysupdate_preflight() {
     local f n
     echo "── preflight ─────────────────────────────────────────"
-    printf 'pending: %s repo, %s AUR\n' \
+    printf 'pending: %s repo, %s AUR, %s mise\n' \
       "$(checkupdates 2>/dev/null | wc -l)" \
-      "$( (paru -Qua 2>/dev/null || yay -Qua 2>/dev/null) | wc -l )"
+      "$( (paru -Qua 2>/dev/null || yay -Qua 2>/dev/null) | wc -l )" \
+      "$(mise outdated --json 2>/dev/null | jq 'length' 2>/dev/null || echo '?')"
 
     # Emacs holds unsaved work in a daemon that must be restarted across its
     # own upgrade. Save first; the restart is still a manual call, because a
@@ -646,6 +647,17 @@ sysupdate() {
         tmux switch-client -t sysupdate
       else
         tmux new-session -A -s sysupdate 'omarchy update'
+      fi
+      # mise tools sit outside pacman, so 'omarchy update' never sees them.
+      # claude lives here, and once the pacman claude-code was dropped this
+      # became its only update path. 'upgrade' stays inside the version ranges
+      # in config.toml -- it will not move a pinned tool. ('--bump' is the one
+      # that rewrites the pins; do not add it here.) mise itself is skipped on
+      # purpose: mise-bin comes from the AUR, so pacman owns that upgrade.
+      if command -v mise >/dev/null 2>&1; then
+        echo
+        echo "-- mise ----------------------------------------------"
+        mise upgrade
       fi
       _sysupdate_postflight
       ;;
