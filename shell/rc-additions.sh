@@ -49,6 +49,28 @@ fi
 # crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.
 alias wallpaper="omarchy-hook theme-set"
 
+# Temporary while the Emacs rebuild is in progress (ray-a-m/emacs):
+# plain `emacs` starts the rebuilt config in an isolated instance, so
+# the desk prototype (emacs-8ux) is one word away. The daemon keeps
+# running the live config (dotfiles/emacs), reached with emacsclient.
+# Batch calls pass straight through to the binary (the export helpers
+# and sysupdate's load test use it); `command emacs` also reaches it.
+# Until the private corpus exists at ~/desk/texts, the desk draws from
+# the repo's stub. Guarded: machines without the checkout keep stock
+# behavior. Delete at cutover.
+if [ -d "$HOME/code/emacs/modules" ]; then
+  emacs() {
+    case " $* " in
+      *" --batch "*|*" -batch "*) command emacs "$@"; return ;;
+    esac
+    local -a stub
+    [ -d "$HOME/desk/texts" ] ||
+      stub=(--eval '(setq rm-desk-directory (expand-file-name "test/desk-stub/" rm/config-directory))')
+    ( cd "$HOME/code/emacs" &&
+      command emacs -Q -l early-init.el -l init.el "${stub[@]}" "$@" >/dev/null 2>&1 & )
+  }
+fi
+
 # One-shot: stage all, commit, and push. Message optional; defaults to ".".
 # Usage: save [message]
 save() {
