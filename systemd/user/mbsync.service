@@ -10,3 +10,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/mbsync -a
+# Re-index after the fetch, or mu's index (what mu4e and the desk's mail
+# card read) falls behind the maildir. Lazy: only directories whose
+# timestamps changed. The leading dash tolerates the one expected
+# failure: a running mu4e server holds the store, and indexes on its own.
+ExecStartPost=-/usr/bin/mu index --lazy-check --quiet
