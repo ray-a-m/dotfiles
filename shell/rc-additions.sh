@@ -66,8 +66,12 @@ if [ -d "$HOME/code/emacs/modules" ]; then
     local -a stub
     [ -d "$HOME/desk/texts" ] ||
       stub=(--eval '(setq rm-desk-directory (expand-file-name "test/desk-stub/" rm/config-directory))')
-    ( cd "$HOME/code/emacs" &&
-      command emacs -Q -l early-init.el -l init.el "${stub[@]}" "$@" >/dev/null 2>&1 & )
+    # --init-directory, not -Q -l: early-init.el then runs before the first
+    # frame exists, as it does in a real install, so its chrome and
+    # hidden-frame settings take effect (the -l form flashed the stock
+    # frame first).
+    ( command emacs --init-directory "$HOME/code/emacs" --no-site-file \
+        "${stub[@]}" "$@" >/dev/null 2>&1 & )
   }
 fi
 
