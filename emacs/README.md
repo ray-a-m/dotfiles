@@ -239,11 +239,14 @@ grammar (all custom, in init.el's Denote section):
   stay as grep-able ink, not keywords. The full map lives on the splash.
 - **Capture is frictionless**: `C-c n` opens an untitled, unclassified note
   instantly (zero prompts). On save it titles itself from the first line
-  (`rm/denote-autotitle`, only while untitled); `M-c` (`rm/denote-classify`)
-  assigns form + matter from the curated lists and renames in place —
-  re-runnable, identifier stable. Per-form commands
-  (`C-c d i/p/m/o/w/s/t/e/h/n`) still create with a form directly,
-  prompting only for matter. (Terminology is my hylomorphic pair:
+  (`rm/denote-autotitle`, only while untitled and formless); `M-c`
+  (`rm/denote-classify`) assigns form + matter from the curated lists and
+  renames in place — re-runnable, identifier stable. Per-form commands
+  (`C-c d i/p/m/o/w/s/t/e/h/n`) create with a form directly, prompting only
+  for matter; a formed note is named from its `#+title:` field alone, on
+  save (`rm/denote-sync-filename`), never from its first line. A talk opens
+  with a `#+speaker:` line under the title and point on it; classifying an
+  existing note as a talk adds the line too (once). (Terminology is my hylomorphic pair:
   **form** = the act of writing, **matter** = the research program it
   serves; vocabulary growth is deliberate, not drift.)
 

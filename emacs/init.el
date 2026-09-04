@@ -3120,25 +3120,62 @@ new program is genuinely born; free-typing new matter still works.")
   ;; still be typed through it.
   (defun rm/denote-new (form)
     "Create a denote note of FORM, prompting only for matter.
-No title prompt: write first, name after.  An untitled note takes its
-title from the first line on save (see rm/denote-autotitle); C-c d r
-renames deliberately whenever."
+No title prompt: the note opens with `#+title:' empty, and the filename
+follows that field on save (rm/denote-sync-filename) -- never the first
+body line, which for a formed note is prose.  A talk gets a `#+speaker:'
+line under the title (2026-09-04), point left on it; C-c d r renames
+deliberately whenever."
     (require 'denote)                     ; M-x rm/denote-idea before any C-c d
     (let ((matter (let ((denote-known-keywords rm/denote-matter)
                         (denote-infer-keywords nil))
                     (denote-keywords-prompt "Matter (RET = none)"))))
-      (denote nil (cons form matter))))
+      (denote nil (cons form matter))
+      (rm/denote--ensure-form-fields form)))
+  (defvar rm/denote-speaker-forms '("talk")
+    "Forms whose front matter carries a `#+speaker:' line.")
+  (defun rm/denote--ensure-form-fields (form)
+    "Give the current note the front-matter lines FORM calls for.
+A talk gets `#+speaker:' under the title, point left on it to fill.
+Idempotent: a field already present is left alone, so classifying a
+note as a talk twice, or classifying one born as a talk, adds nothing.
+Returns non-nil when a line was added."
+    (when (and (member form rm/denote-speaker-forms)
+               (not (save-excursion
+                      (save-restriction
+                        (widen) (goto-char (point-min))
+                        (re-search-forward "^#\\+speaker:" nil t)))))
+      (rm/denote--add-front-matter-line "speaker")
+      t))
+  (defun rm/denote--add-front-matter-line (key)
+    "Insert `#+KEY:' under `#+title:' in the current note; leave point on it.
+Aligned to denote's own padding so the block reads as one column.  Denote
+reads front matter one line at a time (title, filetags, ...), so an extra
+keyword line is invisible to it and survives every rename."
+    (save-restriction
+      (widen)
+      (goto-char (point-min))
+      (when (re-search-forward "^#\\+title:\\([ \\t]*\\)" nil t)
+        (let ((pad (max 1 (- (+ (length "#+title:") (length (match-string 1)))
+                             (length (format "#+%s:" key))))))
+          (end-of-line)
+          (insert "\n" (format "#+%s:%s" key (make-string pad ?\s)))))))
   (defun rm/denote-autotitle ()
-    "First save of an untitled vault note: derive the title from line 1.
-Only fires while the note is untitled, so a deliberate C-c d r (or a
-hand-edited #+title) is never overridden.  The featurep guard: this
-sits on the GLOBAL after-save-hook, and before denote loads it errored
-void-function on every save of anything (fresh-daemon repro,
-2026-07-24) -- untitled notes can only be born from commands that load
-denote, so nothing is missed."
+    "First save of an untitled, formless vault note: title from line 1.
+Only fires while the note is untitled and has no form keyword (a C-c n
+capture), so a deliberate C-c d r (or a hand-edited #+title) is never
+overridden and a formed note is named from its title field alone.  The
+featurep guard: this sits on the GLOBAL after-save-hook, and before
+denote loads it errored void-function on every save of anything
+(fresh-daemon repro, 2026-07-24) -- untitled notes can only be born from
+commands that load denote, so nothing is missed."
     (when (and (featurep 'denote)
                buffer-file-name
                (denote-file-is-note-p buffer-file-name)
+               ;; Formless only: C-c n makes a note with no keywords, and
+               ;; line 1 IS its title.  A note born with a form (C-c d t
+               ;; ...) has a title FIELD; its first line is prose, and a
+               ;; talk's "- Speaker: X" was becoming its name (2026-09-04).
+               (null (denote-retrieve-filename-keywords buffer-file-name))
                (string-empty-p (or (denote-retrieve-title-value
                                     buffer-file-name 'org) "")))
       (save-excursion
@@ -3760,7 +3797,14 @@ tags, and the agenda groups by them."
             (denote-save-buffers t))
         (denote-rename-file buffer-file-name 'keep-current
                             (cons form matter) 'keep-current 'keep-current
-                            'keep-current)))
+                            'keep-current)
+        ;; The form's fields follow the form: reclassify as a talk and the
+        ;; `#+speaker:' line appears (2026-09-04).  The rename above saved
+        ;; the buffer; the added line is saved too, so the note on disk
+        ;; never lags its buffer by one keyword.
+        (when (rm/denote--ensure-form-fields form)
+          (save-buffer)
+          (message "Added #+speaker: -- fill it in"))))
      ((and (derived-mode-p 'org-mode)
            (or buffer-file-name (buffer-base-buffer)) ; a file OR a capture
                                         ; buffer (indirect: file-name nil,
