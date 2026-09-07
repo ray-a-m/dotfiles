@@ -5,7 +5,7 @@ Personal configuration files for Linux.
 ## Contents
 
 - **`nvim/`** — Neovim config (LazyVim-based, with LaTeX workflow)
-- **`emacs/`** — hand-rolled vanilla Emacs config (not Doom; `use-package`, learning-first). LaTeX (AUCTeX/cdlatex/latexmk/zathura) + Org notes vault (`~/Dropbox/notes`, migrated from Obsidian) + live math (xenops) + prose look (variable-pitch/olivetti). Also the org export engines: `org-paper-export.el` (papers/CV/dissertation → LaTeX) and `org-site-export.el` (raymondmaung.com pages → HTML into research-public). See `emacs/README.md`.
+- **Emacs** — the config is its own repo, `ray-a-m/emacs` at `~/code/emacs`, since the 2026-09-07 cutover; `install.sh` clones it when absent and symlinks `~/.config/emacs` at it. The org export engines (papers/CV/dissertation → LaTeX, raymondmaung.com pages → HTML) live in its `lisp/`, and the batch helpers here load them from there.
 - **`kitty/`** — Kitty terminal config
 - **`hypr/`** — Hyprland window manager config (Omarchy 4 "Quattro", Lua; per-file symlinks, machine-specific `monitors.lua` and `local.lua` stay local). Includes `hypr/scripts/` for dock/lid policy.
 - **`omarchy/`** — Omarchy customization: `hooks/theme-set.d/` (`wallpaper` manages mpvpaper for video wallpapers, `kitty-reload` signals running kitty windows; both symlinked into `~/.config/omarchy/hooks/theme-set.d/` beside omarchy's own `.sample` files, and run by `omarchy-hook theme-set` — never call the hook scripts by path) and `themes/` (`themes/mornye/` is the active custom theme — Catppuccin Latte palette + animated mp4 wallpaper; `omarchy-theme-set mornye`), `plugins/` (Quattro shell forks: `raymond.bar`, `raymond.menu`, `raymond.tray`, `raymond.workspaces-numpad`), and `shell.json`/`shell.toml` (shell config, installed as copies — the shell rewrites them in place, so live edits must be copied back here).
@@ -25,13 +25,12 @@ Personal configuration files for Linux.
     cd ~/code/dotfiles
     ./install.sh
 
-Companion working trees the Emacs config loads from `~/code/`:
+The Emacs config is its own repo, which `install.sh` clones when absent:
 
-    git clone git@github.com:ray-a-m/llm.el.git ~/code/llm.el
-    git clone git@github.com:ray-a-m/zot.el.git ~/code/zot.el
-    git -C ~/code/zot.el config core.hooksPath .beads-hooks
+    git clone git@github.com:ray-a-m/emacs.git ~/code/emacs
+    git -C ~/code/emacs config core.hooksPath .beads/hooks
 
-llm.el is required unconditionally (`init.el` errors without the clone).
-The zot.el stanza is guarded — without the clone the machine just has no
-`r` menu — and its `core.hooksPath` line is that repo's own clone step
-(see its CLAUDE.md); zot.el also needs Zotero running for its local API.
+The `core.hooksPath` line is that repo's own clone step (see its
+CLAUDE.md): without it the beads hooks, including the issues.jsonl
+export backup, are silently inert. llm.el and zot.el folded into it on
+2026-08-31, and their repos are archived.
