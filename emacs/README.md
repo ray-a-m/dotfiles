@@ -37,8 +37,9 @@ for **notes + Org**.
 | `org-site-export.el` | HTML export for the org-authored website (the `site-html` backend; pages in `~/scholarship/website` export into the research-public tree GitHub Pages serves; also loaded headless by `publish site`). See "The website in Org". |
 | `aspell-personal.pws` | Personal spelling dictionary (tracked + synced; `M-$` `i` appends to it). |
 
-Symlinked to `~/.config/emacs` by `install.sh` (`ln -sfn`, backing up any real
-dir to `~/.config/emacs.bak` first).
+Superseded 2026-09-07: `install.sh` now symlinks `~/.config/emacs` at
+`~/code/emacs` (ray-a-m/emacs), not at this directory, which is pending
+removal.
 
 ## The nano base
 
@@ -65,7 +66,7 @@ knob, `nano-font-size`.
 Runtime junk is redirected **out** of this repo so the tracked dir stays clean
 (`early-init.el` + `no-littering`; `.gitignore` is the defensive net):
 
-- `~/.config/emacs/` — this dir (symlink into dotfiles); only sources tracked
+- `~/.config/emacs/` — symlink to `~/code/emacs` (ray-a-m/emacs); only sources tracked
 - `~/.local/share/emacs/` — installed packages (`elpa/`) + `no-littering` `var/`
 - `~/.cache/emacs/` — native-compilation (`eln-cache/`)
 

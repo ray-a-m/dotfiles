@@ -49,32 +49,6 @@ fi
 # crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.
 alias wallpaper="omarchy-hook theme-set"
 
-# Temporary while the Emacs rebuild is in progress (ray-a-m/emacs):
-# plain `emacs` starts the rebuilt config in an isolated instance, so
-# the desk prototype (emacs-8ux) is one word away. The daemon keeps
-# running the live config (dotfiles/emacs), reached with emacsclient.
-# Batch calls pass straight through to the binary (the export helpers
-# and sysupdate's load test use it); `command emacs` also reaches it.
-# Until the private corpus exists at ~/desk/texts, the desk draws from
-# the repo's stub. Guarded: machines without the checkout keep stock
-# behavior. Delete at cutover.
-if [ -d "$HOME/code/emacs/modules" ]; then
-  emacs() {
-    case " $* " in
-      *" --batch "*|*" -batch "*) command emacs "$@"; return ;;
-    esac
-    local -a stub
-    [ -d "$HOME/desk/texts" ] ||
-      stub=(--eval '(setq rm-desk-directory (expand-file-name "test/desk-stub/" rm/config-directory))')
-    # --init-directory, not -Q -l: early-init.el then runs before the first
-    # frame exists, as it does in a real install, so its chrome and
-    # hidden-frame settings take effect (the -l form flashed the stock
-    # frame first).
-    ( command emacs --init-directory "$HOME/code/emacs" --no-site-file \
-        "${stub[@]}" "$@" >/dev/null 2>&1 & )
-  }
-fi
-
 # One-shot: stage all, commit, and push. Message optional; defaults to ".".
 # Usage: save [message]
 save() {
@@ -87,7 +61,7 @@ save() {
 # daemon dependency, no init.el -- the export module + the shared
 # org-paper.setup carry everything the batch path needs.
 # Pull every multi-homed repo on this laptop: the config layer
-# (dotfiles, dotfiles-private, homelab) plus the two-writer publish
+# (dotfiles, dotfiles-private, emacs, homelab) plus the two-writer publish
 # repos (website, research-public). ff-only and quiet -- one line per
 # repo that actually moved or failed, nothing for the common case.
 # research-wip is absent on purpose: its laptop tree is Syncthing-synced
@@ -103,9 +77,11 @@ auto() {
   local r before
   # The personal dictionary rewrites itself as words are taken, and a
   # dirty tree makes the ff-only pull below refuse to run: commit and
-  # push it first, so dotfiles is clean by the time the loop reaches it.
+  # push it first, so the emacs repo is clean by the time the loop
+  # reaches it.
   "$HOME/code/dotfiles/shell/dict-commit.sh"
   for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
+           "$HOME/code/emacs" \
            "$HOME/code/homelab" "$HOME/scholarship/website" \
            "$HOME/scholarship/research-public" \
            "$HOME/projects/philwebring"; do
@@ -137,7 +113,7 @@ _org_export_body() {
   local org="$1"
   [[ -f "$org" ]] || return 0
   command emacs -Q --batch \
-    -l "$HOME/.config/emacs/org-paper-export.el" \
+    -l "$HOME/.config/emacs/lisp/org-paper-export.el" \
     --eval "(rm/org-paper-export-file \"$org\")"
 }
 
@@ -148,7 +124,7 @@ _org_export_site() {
   local org="$1"
   [[ -f "$org" ]] || return 0
   command emacs -Q --batch \
-    -l "$HOME/.config/emacs/org-site-export.el" \
+    -l "$HOME/.config/emacs/lisp/org-site-export.el" \
     --eval "(rm/org-site-export-file \"$org\")"
 }
 
@@ -587,8 +563,8 @@ fi
 #        sysupdate --post    → postflight only (re-run after a reboot)
 sysupdate() {
   local state="$HOME/.local/state/sysupdate"
-  local repos=(~/code/dotfiles ~/code/dotfiles-private ~/scholarship/research-wip
-               ~/scholarship/website ~/code/homelab)
+  local repos=(~/code/dotfiles ~/code/dotfiles-private ~/code/emacs
+               ~/scholarship/research-wip ~/scholarship/website ~/code/homelab)
   mkdir -p "$state"
 
   _sysupdate_preflight() {
@@ -637,11 +613,14 @@ sysupdate() {
     fi
 
     # A major Emacs upgrade invalidates the eln cache and can break packages.
-    # Load-test the config in batch before trusting a daemon to it.
+    # Run the config's own gate (batch load, byte-compile, tests) before
+    # trusting a daemon to it. check.sh, not `-l init.el': without
+    # early-init.el the package directory is the stock default, and
+    # use-package would install every package into ~/code/emacs/elpa.
     if [[ -f $state/emacs.before ]] &&
        ! diff -q "$state/emacs.before" <(pacman -Q emacs-wayland 2>/dev/null) >/dev/null; then
-      echo "emacs: version changed -- load-testing init.el"
-      emacs -Q --batch -l ~/.config/emacs/init.el 2>&1 | tail -5
+      echo "emacs: version changed -- running the config gate (check.sh)"
+      (cd ~/.config/emacs && ./check.sh) 2>&1 | tail -5
     fi
 
     for f in "${repos[@]}"; do

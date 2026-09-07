@@ -94,6 +94,25 @@ install_linux_deps() {
     fi
 }
 
+# The Emacs config lives in its own repo, ray-a-m/emacs (private), since
+# the 2026-09-07 cutover, so a dotfiles pull no longer delivers it: clone
+# it when absent and symlink ~/.config/emacs at the clone. core.hooksPath
+# is local git config, so the clone sets it, or the repo's tracked beads
+# hooks (and the issues.jsonl export backup) are silently inert.
+install_emacs_config() {
+    echo "==> Emacs config (ray-a-m/emacs at ~/code/emacs)"
+    if [ ! -d "$HOME/code/emacs/.git" ]; then
+        mkdir -p "$HOME/code"
+        git clone git@github.com:ray-a-m/emacs.git "$HOME/code/emacs"
+        git -C "$HOME/code/emacs" config core.hooksPath .beads/hooks
+    fi
+    if [ -e ~/.config/emacs ] && [ ! -L ~/.config/emacs ]; then
+        echo "Backing up existing ~/.config/emacs to ~/.config/emacs.bak"
+        mv ~/.config/emacs ~/.config/emacs.bak
+    fi
+    ln -sfn "$HOME/code/emacs" ~/.config/emacs
+}
+
 
 # ---------------------------------------------------------------------------
 # Server flavor (--server): headless boxes like the homelab `ai` LXC
@@ -111,14 +130,15 @@ if [ "${1:-}" = "--server" ]; then
         zsh zsh-autosuggestions zsh-syntax-highlighting \
         kitty-terminfo
 
-    echo "==> Server install: symlinking nvim, emacs, tmux configs"
+    echo "==> Server install: symlinking nvim, tmux configs"
     mkdir -p ~/.config
-    for app in nvim emacs tmux; do
+    for app in nvim tmux; do
         if [ -e ~/.config/$app ] && [ ! -L ~/.config/$app ]; then
             mv ~/.config/$app ~/.config/$app.bak
         fi
         ln -sfn "$DOTFILES_DIR/$app" ~/.config/$app
     done
+    install_emacs_config
     if [ ! -d ~/.tmux/plugins/tpm ]; then
         git clone --depth 1 https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
     fi
@@ -168,12 +188,7 @@ if [ -e ~/.config/nvim ] && [ ! -L ~/.config/nvim ]; then
 fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
 
-echo "==> Symlinking emacs config"
-if [ -e ~/.config/emacs ] && [ ! -L ~/.config/emacs ]; then
-    echo "Backing up existing ~/.config/emacs to ~/.config/emacs.bak"
-    mv ~/.config/emacs ~/.config/emacs.bak
-fi
-ln -sfn "$DOTFILES_DIR/emacs" ~/.config/emacs
+install_emacs_config
 
 echo "==> Symlinking kitty config"
 if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
