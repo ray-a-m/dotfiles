@@ -681,6 +681,20 @@ for sub in hooks themes themed extensions plugins; do
     done
 done
 
+# Omarchy helper commands. omarchy/bin/ holds scripts the menu and hooks
+# call by name (omarchy-bg-video-set: the System > Wallpaper rows), so they
+# go on PATH: ~/.local/bin is in the session environment that the shell's
+# menu inherits. Links, so the repo stays the source; the orphan sweep at
+# the end of this script removes a link whose script left the repo.
+if [ -d "$DOTFILES_DIR/omarchy/bin" ]; then
+    echo "==> Symlinking Omarchy helper commands into ~/.local/bin/"
+    mkdir -p "$HOME/.local/bin"
+    for src in "$DOTFILES_DIR"/omarchy/bin/*; do
+        [ -e "$src" ] || continue
+        ln -sfn "$src" "$HOME/.local/bin/$(basename "$src")"
+    done
+fi
+
 echo "==> Installing omarchy shell config (bar layout, font size)"
 # COPIES, not symlinks: omarchy-shell-config (and the shell settings UI)
 # rewrites shell.json via tmp-file + mv, which would replace a symlink with

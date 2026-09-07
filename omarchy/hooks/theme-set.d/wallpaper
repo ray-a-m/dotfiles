@@ -65,16 +65,35 @@ if [[ -e $LEGACY_BG || -L $LEGACY_BG ]]; then
   fi
 else
   # --- Quattro path --------------------------------------------------------
-  # The current/background link only ever points at an image. A video
-  # wallpaper lives in the theme's user backgrounds dir, invisible to the
-  # shell's image-only picker — find it there.
+  # The current/background link only ever points at an image. Video
+  # wallpapers live in the theme's user backgrounds dir, invisible to the
+  # shell's image-only picker — find them there. Which one plays:
+  #   1. the video recorded in current/background-video (written by
+  #      omarchy-bg-video-set, the System > Wallpaper menu), when it is one
+  #      of this theme's videos — a choice made under another theme is
+  #      ignored, and a theme with no videos kills mpvpaper as before;
+  #   2. else the video named after the theme (mornye.mp4 for mornye), so
+  #      a fresh machine plays the theme's own wallpaper, not whichever
+  #      file sorts first;
+  #   3. else the first video by name.
   THEME_NAME=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
   VIDEO=""
   if [[ -n $THEME_NAME ]]; then
-    VIDEO=$(find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
+    mapfile -t VIDEOS < <(find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
       "$HOME/.local/state/omarchy/current/theme/backgrounds/" -maxdepth 1 -type f \
       \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' -o -iname '*.avi' \) \
-      2>/dev/null | sort | head -n1)
+      2>/dev/null | sort)
+    CHOSEN=$(readlink -f "$HOME/.local/state/omarchy/current/background-video" 2>/dev/null)
+    for v in "${VIDEOS[@]}"; do
+      if [[ -n $CHOSEN && $(readlink -f "$v") == "$CHOSEN" ]]; then VIDEO=$v; break; fi
+    done
+    if [[ -z $VIDEO ]]; then
+      for v in "${VIDEOS[@]}"; do
+        b=$(basename "$v")
+        if [[ ${b%.*} == "$THEME_NAME" ]]; then VIDEO=$v; break; fi
+      done
+    fi
+    [[ -z $VIDEO && ${#VIDEOS[@]} -gt 0 ]] && VIDEO=${VIDEOS[0]}
   fi
 
   if [[ -n $VIDEO ]]; then

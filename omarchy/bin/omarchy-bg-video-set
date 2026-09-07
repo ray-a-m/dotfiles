@@ -1,0 +1,68 @@
+#!/bin/bash
+# Choose the video wallpaper for the current theme.
+#
+#   omarchy-bg-video-set <name>      select <name>.mp4 (or a path to a video)
+#   omarchy-bg-video-set --current   print the selected video's name
+#   omarchy-bg-video-set --list      print every video the theme offers
+#
+# Quattro's own background picker is image-only; the theme-set hook
+# (omarchy/hooks/theme-set.d/wallpaper) is what runs mpvpaper. This script
+# records the choice as a symlink in Omarchy's state dir, sets the matching
+# still (<name>-static.* or 0-<name>-static.*, if one sits beside the video)
+# as the shell's image background — that layer is the lock screen and the
+# login flash — and re-fires the hook, which reads the link and respawns
+# mpvpaper with the chosen file. The omarchy-menu System > Wallpaper rows
+# call this, one per video.
+
+STATE_DIR="$HOME/.local/state/omarchy/current"
+CHOICE_LINK="$STATE_DIR/background-video"
+THEME_NAME=$(cat "$STATE_DIR/theme.name" 2>/dev/null)
+
+videos() {
+  find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
+    "$STATE_DIR/theme/backgrounds/" -maxdepth 1 -type f \
+    \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' -o -iname '*.avi' \) \
+    2>/dev/null | sort
+}
+
+stem() { local b; b=$(basename "$1"); echo "${b%.*}"; }
+
+case "$1" in
+  --current)
+    current=$(readlink -f "$CHOICE_LINK" 2>/dev/null)
+    [[ -n $current ]] && stem "$current"
+    exit 0 ;;
+  --list)
+    videos | while read -r v; do stem "$v"; done
+    exit 0 ;;
+  ""|-h|--help)
+    sed -n '2,7p' "$0" >&2
+    exit 1 ;;
+esac
+
+if [[ -f $1 ]]; then
+  VIDEO=$(realpath "$1")
+else
+  VIDEO=""
+  while read -r v; do
+    [[ $(stem "$v") == "$1" ]] && VIDEO=$(readlink -f "$v") && break
+  done < <(videos)
+fi
+
+if [[ -z $VIDEO ]]; then
+  echo "No such video wallpaper: $1 (see --list)" >&2
+  exit 1
+fi
+
+mkdir -p "$STATE_DIR"
+ln -nsf "$VIDEO" "$CHOICE_LINK"
+
+# Matching still first: the hook respawns mpvpaper on top of whatever the
+# shell paints, so set the image before re-firing.
+name=$(stem "$VIDEO")
+dir=$(dirname "$VIDEO")
+still=$(find -L "$dir" -maxdepth 1 -type f \
+  \( -name "$name-static.*" -o -name "0-$name-static.*" \) 2>/dev/null | head -n1)
+[[ -n $still ]] && omarchy-theme-bg-set "$still" >/dev/null 2>&1
+
+exec omarchy-hook theme-set

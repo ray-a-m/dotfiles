@@ -64,6 +64,24 @@
   // in a terminal.
   "power": {"icon": "", "label": "System"},
   "power.style": {"icon": "", "label": "Style", "target": "style"},
+
+  // Video wallpapers for the current theme, one row per file in
+  // dotfiles-private/omarchy/backgrounds/<theme>/ (Git LFS). The stock
+  // Style > Background picker is image-only, so this is the only GUI path
+  // to a video. Each row calls omarchy-bg-video-set (omarchy/bin/), which
+  // records the choice, sets the matching still as the lock-screen image,
+  // and re-fires the theme-set hook. The ✓ marks the recorded choice. A
+  // new video = drop the file (plus its -static still) in the backgrounds
+  // dir and add a row here.
+  "power.wallpaper": {"icon": "", "label": "Wallpaper", "aliases": ["video", "background"]},
+  "power.wallpaper.mornye": {"icon": "", "label": "Mornye", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */mornye.* ]]", "action": "omarchy-bg-video-set mornye"},
+  "power.wallpaper.beyond-the-rolling-hills": {"icon": "", "label": "Beyond the Rolling Hills", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */beyond-the-rolling-hills.* ]]", "action": "omarchy-bg-video-set beyond-the-rolling-hills"},
+  "power.wallpaper.genshin-impact-landscape": {"icon": "", "label": "Genshin Impact Landscape", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */genshin-impact-landscape.* ]]", "action": "omarchy-bg-video-set genshin-impact-landscape"},
+  "power.wallpaper.green-meadow-under-blue-sky": {"icon": "", "label": "Green Meadow Under Blue Sky", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */green-meadow-under-blue-sky.* ]]", "action": "omarchy-bg-video-set green-meadow-under-blue-sky"},
+  "power.wallpaper.green-tree": {"icon": "", "label": "Green Tree", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */green-tree.* ]]", "action": "omarchy-bg-video-set green-tree"},
+  "power.wallpaper.palm-arch-paradise": {"icon": "", "label": "Palm Arch Paradise", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */palm-arch-paradise.* ]]", "action": "omarchy-bg-video-set palm-arch-paradise"},
+  "power.wallpaper.sunlight-bamboos": {"icon": "", "label": "Sunlight Bamboos", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */sunlight-bamboos.* ]]", "action": "omarchy-bg-video-set sunlight-bamboos"},
+  "power.wallpaper.zen-bamboo-forest": {"icon": "", "label": "Zen Bamboo Forest", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */zen-bamboo-forest.* ]]", "action": "omarchy-bg-video-set zen-bamboo-forest"},
   "power.screensaver": {"icon": "󱄄", "label": "Screensaver", "action": "omarchy-launch-screensaver force"},
   "power.lock": {"icon": "", "label": "Lock", "action": "omarchy-system-lock"},
   "power.suspend": {"icon": "󰒲", "label": "Suspend", "when": "! omarchy-toggle-enabled suspend-off", "action": "systemctl suspend"},
