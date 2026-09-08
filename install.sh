@@ -293,7 +293,7 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/mail" ]; then
         fi
         ln -sfn "$src" "$dst"
     done
-    mkdir -p ~/.mail/fastmail ~/.mail/gmail ~/.local/state/msmtp
+    mkdir -p ~/.mail/fastmail ~/.local/state/msmtp
 fi
 
 echo "==> Registering custom MIME types (text/x-org)"
