@@ -5,7 +5,7 @@ Personal configuration files for Linux.
 ## Contents
 
 - **`nvim/`** — Neovim config (LazyVim-based, with LaTeX workflow)
-- **Emacs** — the config is its own repo, `ray-a-m/emacs` at `~/code/emacs`, since the 2026-09-07 cutover; `install.sh` clones it when absent and symlinks `~/.config/emacs` at it. The org export engines (papers/CV/dissertation → LaTeX, raymondmaung.com pages → HTML) live in its `lisp/`, and the batch helpers here load them from there.
+- **Emacs** — the config is its own repo, `ray-a-m/emacs` at `~/code/emacs`; `install.sh` clones it when absent and symlinks `~/.config/emacs` at it. The org export engines (papers/CV/dissertation → LaTeX, raymondmaung.com pages → HTML) live in its `lisp/`, and the batch helpers here load them from there.
 - **`kitty/`** — Kitty terminal config
 - **`hypr/`** — Hyprland window manager config (Omarchy 4 "Quattro", Lua; per-file symlinks, machine-specific `monitors.lua` and `local.lua` stay local). Includes `hypr/scripts/` for dock/lid policy.
 - **`omarchy/`** — Omarchy customization: `hooks/theme-set.d/` (`wallpaper` manages mpvpaper for video wallpapers, `kitty-reload` signals running kitty windows; both symlinked into `~/.config/omarchy/hooks/theme-set.d/` beside omarchy's own `.sample` files, and run by `omarchy-hook theme-set` — never call the hook scripts by path) and `themes/` (`themes/mornye/` is the active custom theme — Catppuccin Latte palette + animated mp4 wallpaper; `omarchy-theme-set mornye`; the videos themselves live in dotfiles-private under `omarchy/backgrounds/mornye/`), `bin/` (`omarchy-bg-video-set`, linked into `~/.local/bin/`: picks which of the theme's videos plays and sets its still as the lock-screen image; the menu's System > Wallpaper rows call it, and the hook honors the choice via `~/.local/state/omarchy/current/background-video`), `plugins/` (Quattro shell forks: `raymond.bar`, `raymond.menu`, `raymond.tray`, `raymond.workspaces-numpad`), and `shell.json`/`shell.toml` (shell config, installed as copies — the shell rewrites them in place, so live edits must be copied back here).
@@ -32,5 +32,4 @@ The Emacs config is its own repo, which `install.sh` clones when absent:
 
 The `core.hooksPath` line is that repo's own clone step (see its
 CLAUDE.md): without it the beads hooks, including the issues.jsonl
-export backup, are silently inert. llm.el and zot.el folded into it on
-2026-08-31, and their repos are archived.
+export backup, are silently inert.

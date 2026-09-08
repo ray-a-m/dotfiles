@@ -2,8 +2,8 @@
 # Commit and push the aspell personal dictionary, and nothing else.
 #
 # aspell-personal.pws, at the root of the Emacs config repo
-# (ray-a-m/emacs at ~/code/emacs since the 2026-09-07 cutover), is a
-# tracked file that ordinary use rewrites: every word taken with `i' at
+# (ray-a-m/emacs at ~/code/emacs), is a tracked file that ordinary use
+# rewrites: every word taken with `i' at
 # an M-$ prompt appends to it. A dirty tree makes the ff-only pull in
 # `auto' refuse to run, so the dictionary commits itself instead of
 # waiting for a hand (2026-08-28). Two callers, one behaviour:

@@ -94,9 +94,9 @@ install_linux_deps() {
     fi
 }
 
-# The Emacs config lives in its own repo, ray-a-m/emacs (private), since
-# the 2026-09-07 cutover, so a dotfiles pull no longer delivers it: clone
-# it when absent and symlink ~/.config/emacs at the clone. core.hooksPath
+# The Emacs config lives in its own repo, ray-a-m/emacs (private), so a
+# dotfiles pull does not deliver it: clone it when absent and symlink
+# ~/.config/emacs at the clone. core.hooksPath
 # is local git config, so the clone sets it, or the repo's tracked beads
 # hooks (and the issues.jsonl export backup) are silently inert.
 install_emacs_config() {

@@ -233,7 +233,7 @@ publish() {
         # same tree GitHub serves, so any difference between the two is a
         # difference in HOSTING, which is the only thing being tested.
         #
-        # Non-fatal, and it must stay that way until the cutover: the
+        # Non-fatal, and it must stay that way until the apex moves: the
         # push above is still the real deploy, so an unreachable server
         # is an inconvenience, not a failed publish.  Once the apex moves
         # to the tunnel this rsync BECOMES the deploy and the `|| echo'

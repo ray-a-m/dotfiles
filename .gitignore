@@ -1,9 +1,6 @@
 .DS_Store
-.beads.gate.lock
 *.swp
 *.swo
 *~
 shada/
 __pycache__/
-# llm.el runtime state (pdftotext cache, claude work dir)
-emacs/llm/
