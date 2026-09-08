@@ -1,0 +1,41 @@
+#!/bin/bash
+# Global git hooks. install.sh links ~/.config/git/hooks here and sets
+# core.hooksPath to it, so every repo runs these. Each hook name in this
+# directory is a symlink to this one file, which does two things:
+#
+# 1. commit-msg: delete AI attribution from the message. Claude Code adds
+#    a "Claude-Session:" trailer in cloud sessions that no settings key
+#    turns off ("attribution" and includeCoAuthoredBy only cover the
+#    Co-Authored-By trailer). The rule is that commits read as Raymond's
+#    alone, so this strips every known form before git records it.
+#
+# 2. Chain to the repo's own .git/hooks/<name>. core.hooksPath makes git
+#    ignore that directory, which would silently disable the git-lfs
+#    hooks (pre-push uploads the LFS objects; dotfiles-private depends on
+#    it). exec keeps stdin and the exit code, so pre-push and post-rewrite
+#    still get their ref lists.
+#
+# A repo that sets its own core.hooksPath (the emacs repo, beads hooks)
+# never reaches this file; its commit-msg delegates here by hand.
+
+hook=$(basename "$0")
+
+if [[ $hook == commit-msg && -f $1 ]]; then
+  msg=$1
+  tmp=$(mktemp) || exit 1
+  sed -E \
+    -e '/^Claude-Session:/d' \
+    -e '/^Co-Authored-By:.*[Cc]laude/d' \
+    -e '/Generated with \[?Claude Code/d' \
+    "$msg" |
+    sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' >"$tmp"
+  cat "$tmp" >"$msg"
+  rm -f "$tmp"
+fi
+
+common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+local_hook="$common/hooks/$hook"
+if [[ -x $local_hook && $(realpath -q "$local_hook") != $(realpath -q "$0") ]]; then
+  exec "$local_hook" "$@"
+fi
+exit 0

@@ -114,6 +114,17 @@ install_emacs_config() {
 }
 
 
+# Global git hooks (git/hooks/, one dispatcher behind every hook name):
+# commit-msg strips AI attribution trailers, and every hook chains to the
+# repo's own .git/hooks so git-lfs keeps working under core.hooksPath.
+# Applies to both flavors: the trailer arrives wherever Claude Code runs.
+install_git_hooks() {
+    echo "==> Global git hooks (core.hooksPath)"
+    mkdir -p ~/.config/git
+    ln -sfn "$DOTFILES_DIR/git/hooks" ~/.config/git/hooks
+    git config --global core.hooksPath "$HOME/.config/git/hooks"
+}
+
 # ---------------------------------------------------------------------------
 # Server flavor (--server): headless boxes like the homelab `ai` LXC
 # (homelab/AI-LXC-DISCUSSION.md). Shell, git, nvim, tmux, emacs batch
@@ -139,6 +150,7 @@ if [ "${1:-}" = "--server" ]; then
         ln -sfn "$DOTFILES_DIR/$app" ~/.config/$app
     done
     install_emacs_config
+    install_git_hooks
     if [ ! -d ~/.tmux/plugins/tpm ]; then
         git clone --depth 1 https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
     fi
@@ -189,6 +201,7 @@ fi
 ln -sfn "$DOTFILES_DIR/nvim" ~/.config/nvim
 
 install_emacs_config
+install_git_hooks
 
 echo "==> Symlinking kitty config"
 if [ -e ~/.config/kitty ] && [ ! -L ~/.config/kitty ]; then
