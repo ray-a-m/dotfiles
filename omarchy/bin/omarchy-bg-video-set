@@ -1,9 +1,12 @@
 #!/bin/bash
-# Choose the video wallpaper for the current theme.
+# Choose the wallpaper for the current theme, and whether it plays.
 #
 #   omarchy-bg-video-set <name>      select <name>.mp4 (or a path to a video)
 #   omarchy-bg-video-set --current   print the selected video's name
 #   omarchy-bg-video-set --list      print every video the theme offers
+#   omarchy-bg-video-set --live      play the video (default)
+#   omarchy-bg-video-set --still     show the video's still frame instead
+#   omarchy-bg-video-set --mode      print "live" or "still"
 #
 # Quattro's own background picker is image-only; the theme-set hook
 # (omarchy/hooks/theme-set.d/wallpaper) is what runs mpvpaper. This script
@@ -13,9 +16,16 @@
 # login flash — and re-fires the hook, which reads the link and respawns
 # mpvpaper with the chosen file. The omarchy-menu System > Wallpaper rows
 # call this, one per video.
+#
+# Live vs still is a per-machine toggle (~/.local/state/omarchy/toggles/
+# video-wallpaper-off, via omarchy-toggle). In still mode the hook kills
+# mpvpaper and spawns nothing, so the shell's still layer is the wallpaper:
+# the same pictures on a machine that cannot afford the decoder. The
+# selection is shared by both modes — pick a wallpaper, then pick a mode.
 
 STATE_DIR="$HOME/.local/state/omarchy/current"
 CHOICE_LINK="$STATE_DIR/background-video"
+MODE_TOGGLE=video-wallpaper-off
 THEME_NAME=$(cat "$STATE_DIR/theme.name" 2>/dev/null)
 
 videos() {
@@ -27,6 +37,35 @@ videos() {
 
 stem() { local b; b=$(basename "$1"); echo "${b%.*}"; }
 
+# The video the hook will play (or, in still mode, whose still shows):
+# the recorded choice if it belongs to this theme, else the video named
+# after the theme, else the first by name. Mirrors the hook's resolution.
+resolve_video() {
+  local chosen v b first=""
+  chosen=$(readlink -f "$CHOICE_LINK" 2>/dev/null)
+  while read -r v; do
+    [[ -z $first ]] && first=$v
+    [[ -n $chosen && $(readlink -f "$v") == "$chosen" ]] && { echo "$v"; return; }
+  done < <(videos)
+  while read -r v; do
+    b=$(basename "$v")
+    [[ ${b%.*} == "$THEME_NAME" ]] && { echo "$v"; return; }
+  done < <(videos)
+  echo "$first"
+}
+
+# Set the video's still as the shell's image background. Done before the
+# hook fires: the hook respawns mpvpaper on top of whatever the shell
+# paints, and in still mode this image IS the wallpaper.
+set_still() {
+  local name dir still
+  name=$(stem "$1")
+  dir=$(dirname "$1")
+  still=$(find -L "$dir" -maxdepth 1 -type f \
+    \( -name "$name-static.*" -o -name "0-$name-static.*" \) 2>/dev/null | head -n1)
+  [[ -n $still ]] && omarchy-theme-bg-set "$still" >/dev/null 2>&1
+}
+
 case "$1" in
   --current)
     current=$(readlink -f "$CHOICE_LINK" 2>/dev/null)
@@ -35,8 +74,20 @@ case "$1" in
   --list)
     videos | while read -r v; do stem "$v"; done
     exit 0 ;;
+  --mode)
+    if omarchy-toggle-enabled "$MODE_TOGGLE"; then echo still; else echo live; fi
+    exit 0 ;;
+  --live|--still)
+    if [[ $1 == --still ]]; then
+      omarchy-toggle "$MODE_TOGGLE" on
+    else
+      omarchy-toggle "$MODE_TOGGLE" off
+    fi
+    current=$(resolve_video)
+    [[ -n $current ]] && set_still "$(readlink -f "$current")"
+    exec omarchy-hook theme-set ;;
   ""|-h|--help)
-    sed -n '2,7p' "$0" >&2
+    sed -n '2,10p' "$0" >&2
     exit 1 ;;
 esac
 
@@ -56,13 +107,6 @@ fi
 
 mkdir -p "$STATE_DIR"
 ln -nsf "$VIDEO" "$CHOICE_LINK"
-
-# Matching still first: the hook respawns mpvpaper on top of whatever the
-# shell paints, so set the image before re-firing.
-name=$(stem "$VIDEO")
-dir=$(dirname "$VIDEO")
-still=$(find -L "$dir" -maxdepth 1 -type f \
-  \( -name "$name-static.*" -o -name "0-$name-static.*" \) 2>/dev/null | head -n1)
-[[ -n $still ]] && omarchy-theme-bg-set "$still" >/dev/null 2>&1
+set_still "$VIDEO"
 
 exec omarchy-hook theme-set

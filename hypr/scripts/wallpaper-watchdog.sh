@@ -59,6 +59,9 @@ else
     # --- Quattro path -----------------------------------------------------
     # Only video themes need healing (see header). A video is expected when
     # the current theme's user backgrounds dir contains one.
+    # Still mode (omarchy-bg-video-set --still): no video is expected, the
+    # shell paints the still; nothing to heal.
+    omarchy-toggle-enabled video-wallpaper-off && exit 0
     THEME_NAME=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
     [ -n "${THEME_NAME:-}" ] || exit 0
     VIDEO=$(find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \

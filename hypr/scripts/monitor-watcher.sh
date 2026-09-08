@@ -45,6 +45,9 @@ video_expected() {
             *) return 1 ;;
         esac
     fi
+    # Still mode (omarchy-bg-video-set --still): the shell paints the still,
+    # no video expected.
+    omarchy-toggle-enabled video-wallpaper-off && return 1
     theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
     [ -n "$theme" ] || return 1
     [ -n "$(find -L "$HOME/.config/omarchy/backgrounds/$theme/" \

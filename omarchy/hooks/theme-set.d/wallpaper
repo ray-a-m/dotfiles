@@ -65,6 +65,16 @@ if [[ -e $LEGACY_BG || -L $LEGACY_BG ]]; then
   fi
 else
   # --- Quattro path --------------------------------------------------------
+  # Still mode (per-machine, ~/.local/state/omarchy/toggles/video-wallpaper-off,
+  # set by `omarchy-bg-video-set --still` = System > Wallpaper > Still): no
+  # mpvpaper at all. The shell keeps painting the chosen video's still, which
+  # omarchy-bg-video-set already set as current/background. A machine that
+  # cannot afford a decoding mpv gets the same wallpapers as pictures.
+  if omarchy-toggle-enabled video-wallpaper-off; then
+    kill_and_wait mpvpaper
+    exit 0
+  fi
+
   # The current/background link only ever points at an image. Video
   # wallpapers live in the theme's user backgrounds dir, invisible to the
   # shell's image-only picker — find them there. Which one plays:

@@ -73,7 +73,14 @@
   // and re-fires the theme-set hook. The ✓ marks the recorded choice. A
   // new video = drop the file (plus its -static still) in the backgrounds
   // dir and add a row here.
+  //
+  // Live / Still pick whether the chosen video plays (mpvpaper) or its
+  // still frame is the wallpaper. The mode is a per-machine toggle
+  // (toggles/video-wallpaper-off), so a laptop that cannot afford the
+  // decoder keeps the same pictures without the videos being touched.
   "power.wallpaper": {"icon": "", "label": "Wallpaper", "aliases": ["video", "background"]},
+  "power.wallpaper.live": {"icon": "", "label": "Live", "checked": "! omarchy-toggle-enabled video-wallpaper-off", "action": "omarchy-bg-video-set --live"},
+  "power.wallpaper.still": {"icon": "", "label": "Still", "checked": "omarchy-toggle-enabled video-wallpaper-off", "action": "omarchy-bg-video-set --still"},
   "power.wallpaper.mornye": {"icon": "", "label": "Mornye", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */mornye.* ]]", "action": "omarchy-bg-video-set mornye"},
   "power.wallpaper.beyond-the-rolling-hills": {"icon": "", "label": "Beyond the Rolling Hills", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */beyond-the-rolling-hills.* ]]", "action": "omarchy-bg-video-set beyond-the-rolling-hills"},
   "power.wallpaper.genshin-impact-landscape": {"icon": "", "label": "Genshin Impact Landscape", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */genshin-impact-landscape.* ]]", "action": "omarchy-bg-video-set genshin-impact-landscape"},
