@@ -546,64 +546,127 @@ elif [ -n "${BASH_VERSION:-}" ]; then
     eval "$(zoxide init bash)"
 fi
 
-# Run a system update in a detached tmux session, then reconcile the config
-# drift pacman leaves behind. `omarchy update` is already careful on its own --
-# it snapshots via snapper, holds an flock, and logs to
-# /tmp/omarchy-update.log -- but it runs inside a terminal window, and a window
-# that dies mid-transaction takes a 100-package upgrade with it. tmux makes the
-# run outlive the window, the compositor, and the shell that started it. None
-# of this duplicates what omarchy already does.
+# One command to run when the Omarchy bar shows the update pill: `update`.
 #
-# The postflight is the part nothing does automatically. pacman writes .pacnew
-# beside any config a package updated but you had modified, and never applies
-# it; they accumulate silently until a stale config breaks a boot.
+# `omarchy update` is thorough on its own -- it prunes the package cache, takes
+# a Snapper snapshot, refreshes the keyrings, upgrades pacman + AUR + mise
+# tools, runs the migrations, and offers the reboot. This wrapper adds only
+# what omarchy does not do, and repeats nothing it does:
 #
-# Usage: sysupdate           → preflight, update inside tmux, then postflight
-#        sysupdate --check   → preflight report only; changes nothing
-#        sysupdate --post    → postflight only (re-run after a reboot)
-sysupdate() {
+#   tmux    the update runs in a terminal window, and a window that dies
+#           mid-transaction takes a 300-package upgrade with it. The tmux
+#           session outlives the window, the compositor, and this shell.
+#   power   a kernel or bootloader upgrade on battery is the one cheap way to
+#           end up with half an initramfs.
+#   pacnew  pacman writes a .pacnew beside every config a package changed and
+#           you had edited, and never applies it. They accumulate silently
+#           until a stale config breaks a boot, so they are merged BEFORE the
+#           new packages land -- not after, when the boot already depends on
+#           what you skipped.
+#   emacs   the daemon cannot survive its own upgrade. It is stopped here and
+#           restarted afterwards, and the config gate runs when the version
+#           moved.
+#   repos   migrations write through the ~/.config symlinks into the dotfiles
+#           working trees. A clean tree beforehand is what makes that
+#           write-through readable as a git diff.
+#
+# Usage: update           → preflight, update inside tmux, then postflight
+#        update -y        → the same, unattended (passes -y to omarchy update)
+#        update --check   → preflight report only; changes nothing
+#        update --post    → postflight only (re-run after a reboot)
+update() {
   local state="$HOME/.local/state/sysupdate"
   local repos=(~/code/dotfiles ~/code/dotfiles-private ~/code/emacs
                ~/scholarship/research-wip ~/scholarship/website ~/code/homelab)
+  # Packages worth naming before you say yes. The first group can leave the
+  # machine unbootable if the transaction is cut short; the rest only cost a
+  # session.
+  local boot_pkgs='linux|linux-lts|linux-firmware|systemd|glibc|mkinitcpio|limine[a-z-]*|sddm|nvidia[a-z-]*'
+  local watch_pkgs="$boot_pkgs|hyprland|aquamarine|mesa|pacman|archlinux-keyring|poppler|emacs-wayland|qt6-base"
+  local boot_re="^($boot_pkgs) " watch_re="^($watch_pkgs) "
+  # Set by the preflight, read by the run: a boot-critical batch on battery
+  # flips the confirmation from "press enter" to "type y".
+  local risky=""
   mkdir -p "$state"
 
-  _sysupdate_preflight() {
+  # Portable prompt: this file is sourced by both zsh and bash, and zsh's
+  # `read "?prompt"` is a syntax error in one of them. A second argument of
+  # "n" makes the answer required rather than assumed.
+  _update_ask() {
+    local reply
+    if [[ ${2:-y} == n ]]; then
+      printf '%s [y/N] ' "$1"
+      read -r reply
+      [[ $reply == [Yy]* ]]
+    else
+      printf '%s [Y/n] ' "$1"
+      read -r reply
+      [[ -z $reply || $reply == [Yy]* ]]
+    fi
+  }
+
+  _update_pacnew() {
+    find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null
+  }
+
+  _update_preflight() {
     local f n
     echo "── preflight ─────────────────────────────────────────"
-    printf 'pending: %s repo, %s AUR, %s mise\n' \
-      "$(checkupdates 2>/dev/null | wc -l)" \
-      "$( (paru -Qua 2>/dev/null || yay -Qua 2>/dev/null) | wc -l )" \
-      "$(mise outdated --json 2>/dev/null | jq 'length' 2>/dev/null || echo '?')"
 
-    # Emacs holds unsaved work in a daemon that must be restarted across its
-    # own upgrade. Save first; the restart is still a manual call, because a
-    # daemon killed behind your back loses more than it saves.
-    if pgrep -x emacs >/dev/null 2>&1; then
-      emacsclient -e '(save-some-buffers t)' >/dev/null 2>&1 &&
-        echo "emacs: buffers saved"
-      checkupdates 2>/dev/null | grep -q '^emacs' &&
-        echo "emacs: UPGRADING -- stop the daemon before continuing"
+    # checkupdates syncs a throwaway database, so it is slow. Everything below
+    # reads this one capture instead of asking again.
+    checkupdates 2>/dev/null >"$state/pending"
+    printf 'pending: %s repo, %s AUR\n' \
+      "$(wc -l <"$state/pending")" \
+      "$( (paru -Qua 2>/dev/null || yay -Qua 2>/dev/null) | wc -l )"
+
+    # Boot-critical names first, because a truncated list must not be the
+    # reason you did not see the kernel move.
+    local nwatch
+    nwatch=$(grep -cE "$watch_re" "$state/pending" 2>/dev/null)
+    { grep -E "$boot_re" "$state/pending"
+      grep -E "$watch_re" "$state/pending" | grep -vE "$boot_re"; } 2>/dev/null |
+      awk '{printf "  %s %s→%s\n", $1, $2, $4}' | head -8
+    ((nwatch > 8)) && printf '  +%s more watched\n' "$((nwatch - 8))"
+
+    # A kernel or bootloader upgrade that loses power halfway is the failure
+    # this whole function exists to prevent.
+    if grep -qE "$boot_re" "$state/pending" 2>/dev/null &&
+       [[ $(cat /sys/class/power_supply/AC/online 2>/dev/null || echo 1) == 0 ]]; then
+      echo "power:   ON BATTERY, and the kernel or bootloader is in this batch"
+      risky=1
     fi
 
-    # Migrations write through the ~/.config symlinks into these repos. A clean
-    # tree beforehand is what makes that write-through readable as a git diff.
+    # Emacs holds unsaved work. Save unconditionally; the daemon itself is only
+    # stopped when its own package is upgrading, and the postflight restarts it.
+    if systemctl --user is-active --quiet emacs 2>/dev/null; then
+      emacsclient -e '(save-some-buffers t)' >/dev/null 2>&1 &&
+        echo "emacs:   buffers saved"
+      grep -q '^emacs' "$state/pending" &&
+        echo "emacs:   UPGRADING -- the daemon stops for the run and restarts after"
+    fi
+
     for f in "${repos[@]}"; do
       [[ -d $f/.git ]] || continue
       n=$(git -C "$f" status --porcelain | wc -l)
-      ((n)) && printf 'dirty: %s (%s file(s))\n' "$(basename "$f")" "$n"
+      ((n)) && printf 'dirty:   %s (%s file(s))\n' "$(basename "$f")" "$n"
     done
 
-    n=$(find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | wc -l)
-    ((n)) && echo "pacnew: $n unmerged (postflight walks them)"
+    n=$(_update_pacnew | wc -l)
+    ((n)) && echo "pacnew:  $n unmerged -- merge these BEFORE the update"
 
     pacman -Q emacs-wayland 2>/dev/null >"$state/emacs.before"
-    echo
   }
 
-  _sysupdate_postflight() {
+  _update_postflight() {
     local f n
     echo
     echo "── postflight ────────────────────────────────────────"
+
+    if [[ -f $state/emacs.stopped ]]; then
+      rm -f "$state/emacs.stopped"
+      systemctl --user start emacs && echo "emacs: daemon restarted"
+    fi
 
     # pdf-tools ships a compiled epdfinfo linked against a versioned poppler.
     # A poppler soname bump breaks PDF viewing in Emacs until it is rebuilt.
@@ -630,42 +693,72 @@ sysupdate() {
         "$(basename "$f")" "$n"
     done
 
-    n=$(find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | wc -l)
+    n=$(_update_pacnew | wc -l)
     if ((n)); then
       echo "pacnew: $n unmerged"
-      find /etc -type f \( -name '*.pacnew' -o -name '*.pacsave' \) 2>/dev/null | sed 's/^/  /'
+      _update_pacnew | sed 's/^/  /'
       echo "  merge: sudo DIFFPROG='nvim -d' pacdiff"
     fi
+
+    # omarchy update offers its own reboot, so this only speaks up when that
+    # offer was declined and the state file is still there.
     [[ -f $HOME/.local/state/omarchy/reboot-required ]] && echo "REBOOT required"
+    if [[ -f $state/pending ]] && grep -qE '^linux ' "$state/pending"; then
+      echo "rolled back?  pick the pre-update snapshot in the Limine boot menu"
+    fi
     echo "log: /tmp/omarchy-update.log"
   }
 
-  case "${1:-}" in
-    --check) _sysupdate_preflight ;;
-    --post)  _sysupdate_postflight ;;
-    "")
-      _sysupdate_preflight
-      # -A attaches to an update already in flight instead of starting a second
-      # one, which the omarchy lock would refuse anyway.
-      if [[ -n $TMUX ]]; then
-        tmux new-session -A -d -s sysupdate 'omarchy update'
-        tmux switch-client -t sysupdate
+  _update_run() {
+    local unattended="$1"
+
+    # A pacnew that predates this update is a config the NEXT boot may depend
+    # on. Merging first is the whole point of doing it here rather than in the
+    # postflight.
+    if _update_pacnew | grep -q . && [[ -z $unattended ]]; then
+      if _update_ask "merge the pending .pacnew files first?"; then
+        sudo DIFFPROG='nvim -d' pacdiff
+      fi
+    fi
+
+    if [[ -z $unattended ]]; then
+      if [[ -n $risky ]]; then
+        _update_ask "proceed anyway, on battery?" n || { echo "aborted"; return 1; }
       else
-        tmux new-session -A -s sysupdate 'omarchy update'
+        _update_ask "proceed with the update?" || { echo "aborted"; return 1; }
       fi
-      # mise tools sit outside pacman, so 'omarchy update' never sees them.
-      # claude lives here, and once the pacman claude-code was dropped this
-      # became its only update path. 'upgrade' stays inside the version ranges
-      # in config.toml -- it will not move a pinned tool. ('--bump' is the one
-      # that rewrites the pins; do not add it here.) mise itself is skipped on
-      # purpose: mise-bin comes from the AUR, so pacman owns that upgrade.
-      if command -v mise >/dev/null 2>&1; then
-        echo
-        echo "-- mise ----------------------------------------------"
-        mise upgrade
-      fi
-      _sysupdate_postflight
+    fi
+
+    # The daemon cannot be upgraded underneath itself: the running process
+    # keeps mapping files the new package replaced. Stopping it here and
+    # leaving a marker is what lets the postflight bring it back.
+    if grep -q '^emacs' "$state/pending" 2>/dev/null &&
+       systemctl --user is-active --quiet emacs 2>/dev/null; then
+      systemctl --user stop emacs && touch "$state/emacs.stopped" &&
+        echo "emacs: daemon stopped for the upgrade"
+    fi
+
+    # -A attaches to an update already in flight instead of starting a second
+    # one, which the omarchy lock would refuse anyway.
+    if [[ -n $TMUX ]]; then
+      tmux new-session -A -d -s sysupdate "omarchy update $unattended"
+      tmux switch-client -t sysupdate
+    else
+      tmux new-session -A -s sysupdate "omarchy update $unattended"
+    fi
+  }
+
+  case "${1:-}" in
+    --check) _update_preflight ;;
+    --post)  _update_postflight ;;
+    -y|"")
+      _update_preflight
+      _update_run "${1:-}" || return 1
+      _update_postflight
       ;;
-    *) echo "sysupdate: unknown option $1" >&2; return 1 ;;
+    *) echo "update: unknown option $1" >&2; return 1 ;;
   esac
 }
+
+# The old name, kept because muscle memory outlives a rename.
+sysupdate() { update "$@"; }
