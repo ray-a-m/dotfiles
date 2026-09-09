@@ -83,7 +83,22 @@ Item {
 
   // Shared application engine (entries, hidden filters, icons, launch,
   // removal), owned by the shell and also used by the standalone launcher.
-  readonly property var appLibrary: root.shell ? root.shell.appLibrary : null
+  //
+  // Omarchy 4.0.3 workaround (basecamp/omarchy#11006, #11013, #11028). The
+  // new plugin sandbox gives a third-party menu a PluginShellApi instead of
+  // the shell root. shell.qml grants the app library on
+  // manifestHasKind(manifest, "menu"), which calls Array.isArray on the
+  // manifest that arrives as Instantiator modelData. Qt wraps that array in a
+  // QJSValue, Array.isArray answers false, and appLibrary comes through null.
+  // mergeAppRows() then stops at its own null guard, so the Apps list reads
+  // "Nothing here yet" and nothing is logged. A pristine copy of the stock
+  // menu plugin fails the same way, so re-cloning does not help.
+  //
+  // localAppLibrary below stands in until upstream restores the proxy. Delete
+  // both when it does; until then this expression prefers the real one, so the
+  // fallback stops being used on its own.
+  readonly property var appLibrary: (root.shell && root.shell.appLibrary)
+    ? root.shell.appLibrary : localAppLibrary
   property bool deleteConfirmOpen: false
   property var deleteTarget: null
   onOpenedChanged: if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
@@ -942,6 +957,105 @@ Item {
   PointerMoveGate {
     id: pointerGate
     referenceItem: card
+  }
+
+  // Stand-in for the shell's AppLibrary while the sandbox withholds it. Rows
+  // come straight from DesktopEntries, which already drops NoDisplay and
+  // OnlyShowIn/NotShowIn mismatches, minus the ids omarchy lists in
+  // default/omarchy/launcher.hides. That reproduces the stock Apps list
+  // exactly. Two things live in the shell and cannot be reached from here:
+  // launch feedback (the OSD shown while an app opens), and the icon index,
+  // which both rescans for apps installed after the shell started and keeps
+  // the themed lookup from resolving a name like "zoom" to an action icon.
+  // Only sortedEntries("") is called by this menu, so the query argument is
+  // ignored; search is filtered downstream.
+  QtObject {
+    id: localAppLibrary
+
+    signal appsChanged()
+
+    property var hiddenIds: ({})
+
+    function loadHides(rawText) {
+      var next = ({})
+      var lines = String(rawText || "").split(/\n/)
+      for (var i = 0; i < lines.length; i++) {
+        var id = lines[i].trim()
+        if (id.slice(-8) === ".desktop") id = id.slice(0, -8)
+        if (id.length > 0) next[id] = true
+      }
+      localAppLibrary.hiddenIds = next
+      localAppLibrary.appsChanged()
+    }
+
+    function entryName(entry) {
+      return String((entry && entry.name) || (entry && entry.id) || "")
+    }
+
+    function entrySubtext(entry) {
+      return String((entry && entry.genericName) || "")
+    }
+
+    function sortedEntries(query) {
+      var values = DesktopEntries.applications.values || []
+      var rows = []
+      for (var i = 0; i < values.length; i++) {
+        var entry = values[i]
+        if (!entry || entry.noDisplay) continue
+        if (localAppLibrary.hiddenIds[String(entry.id || "")]) continue
+        var name = localAppLibrary.entryName(entry)
+        if (!name) continue
+        rows.push({ entry: entry, key: name.toLowerCase() })
+      }
+      rows.sort(function(a, b) {
+        if (a.key < b.key) return -1
+        if (a.key > b.key) return 1
+        return 0
+      })
+      return rows
+    }
+
+    function iconSource(icon) {
+      var value = String(icon || "")
+      if (value.length === 0) return Quickshell.iconPath("application-x-executable", true)
+      if (value.indexOf("file://") === 0 || value.indexOf("image://") === 0) return value
+      if (value.charAt(0) === "/") return Util.fileUrl(value)
+      var themed = Quickshell.iconPath(value, true)
+      return themed.length > 0 ? themed : Quickshell.iconPath("application-x-executable", true)
+    }
+
+    function refreshIcons() { }
+
+    function launch(desktopId, name) {
+      var id = String(desktopId || "")
+      if (!id) return
+      // Same resolver the shell uses: a scope under app-graphical.slice, and
+      // gtk-launch keeps ids with spaces (and UWSM-hostile entries) working.
+      Util.execDetached("uwsm-app -- gtk-launch " + Util.shellQuote(id + ".desktop"))
+    }
+
+    function remove(desktopId, name) {
+      var id = String(desktopId || "")
+      if (!id) return
+      Util.execDetached(Util.shellQuote(root.omarchyPath + "/bin/omarchy-remove-launcher-entry")
+        + " " + Util.shellQuote(id) + " " + Util.shellQuote(String(name || id)))
+    }
+  }
+
+  FileView {
+    path: root.omarchyPath + "/default/omarchy/launcher.hides"
+    watchChanges: true
+    printErrors: false
+    onLoaded: localAppLibrary.loadHides(text())
+    onFileChanged: localAppLibrary.loadHides(text())
+    onLoadFailed: localAppLibrary.loadHides("")
+  }
+
+  // DesktopEntries fills in shortly after first access, so the first open can
+  // land on an empty list; this puts the rows in when it does.
+  Connections {
+    target: DesktopEntries.applications
+    function onValuesChanged() { localAppLibrary.appsChanged() }
   }
 
   Connections {
