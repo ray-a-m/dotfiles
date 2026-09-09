@@ -49,12 +49,6 @@ fi
 # crashes; wallpaper-watchdog.timer (systemd user) also auto-heals within ~30s.
 alias wallpaper="omarchy-hook theme-set"
 
-# One-shot: stage all, commit, and push. Message optional; defaults to ".".
-# Usage: save [message]
-save() {
-  git add -A && git commit -m "${1:-.}" && git push
-}
-
 # Regenerate a document's .tex build artifacts (body + driver) from its org
 # source where one exists — org is the authoring surface for everything in
 # research-wip; the .tex are gitignored artifacts.  emacs -Q on purpose: no
