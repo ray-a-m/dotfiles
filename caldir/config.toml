@@ -1,0 +1,3 @@
+calendar_dir = "~/.local/share/caldir"
+time_format = "12h"
+default_calendar = "ronokaoswe-gmail-com"

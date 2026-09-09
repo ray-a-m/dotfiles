@@ -4,3 +4,10 @@
 *~
 shada/
 __pycache__/
+
+# caldir: only caldir/config.toml is tracked. The OAuth tokens for both
+# Google accounts live one directory away in ~/.config/caldir/providers/,
+# so refuse them here even if the tree is ever copied in wholesale.
+caldir/providers/
+caldir/session/
+caldir/*.ics

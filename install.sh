@@ -725,6 +725,23 @@ for f in shell.json shell.toml; do
     fi
 done
 
+echo "==> Symlinking caldir client config"
+# Caldir is the engine behind the Omarchy calendar widget above. Only
+# config.toml is tracked: it holds the store path, the clock format and
+# the default calendar, all machine-independent.
+#
+# SYMLINK, not a copy (unlike shell.json): caldir only reads this file and
+# never rewrites it, so a symlink cannot be clobbered and the tracked copy
+# cannot drift out of sync with the live one.
+#
+# The rest of ~/.config/caldir stays UNTRACKED on purpose. providers/google/
+# session/ holds the OAuth refresh tokens for both Google accounts, and the
+# events themselves are data under ~/.local/share/caldir. Never add either.
+if [ -f "$DOTFILES_DIR/caldir/config.toml" ]; then
+    mkdir -p ~/.config/caldir
+    ln -sfn "$DOTFILES_DIR/caldir/config.toml" ~/.config/caldir/config.toml
+fi
+
 echo "==> Refreshing TeX ls-R cache for dotfiles texmf tree"
 # TEXMFHOME points directly at dotfiles/texmf/ via rc-additions.sh and the
 # Hyprland env block. The tree is committed as-is — no per-machine symlink
