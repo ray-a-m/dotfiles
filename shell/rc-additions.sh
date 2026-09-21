@@ -107,7 +107,7 @@ _org_export_body() {
   local org="$1"
   [[ -f "$org" ]] || return 0
   command emacs -Q --batch \
-    -l "$HOME/.config/emacs/lisp/org-paper-export.el" \
+    -l "$HOME/.config/emacs/runtime/lisp/org-paper-export.el" \
     --eval "(rm/org-paper-export-file \"$org\")"
 }
 
@@ -118,7 +118,7 @@ _org_export_site() {
   local org="$1"
   [[ -f "$org" ]] || return 0
   command emacs -Q --batch \
-    -l "$HOME/.config/emacs/lisp/org-site-export.el" \
+    -l "$HOME/.config/emacs/runtime/lisp/org-site-export.el" \
     --eval "(rm/org-site-export-file \"$org\")"
 }
 
