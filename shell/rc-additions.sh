@@ -439,6 +439,8 @@ texclear() {
 #   doublespace paper.org foo.pdf    → ~/Documents/<paper>/foo.pdf  (trailing .pdf optional)
 # Org is the authoring surface, so the argument is optional and names the org
 # source. A bare name or a .tex still resolves to the same document.
+# Each build also keeps its source under <out-dir>/sources/, which is what
+# `paperdiff' reads to show what changed since a draft was sent.
 doublespace() {
   local input="$1"
   local out_name="$2"
@@ -504,6 +506,20 @@ doublespace() {
     local dest="$out_dir/${out_name}.pdf"
     if cp "$build_dir/${jobname}.pdf" "$dest"; then
       echo "doublespace: wrote $dest"
+      # Keep the source this PDF was built from, beside it. A sent draft
+      # is the only baseline `paperdiff' can work from -- research-wip
+      # has no local git, and the PDF itself cannot be diffed with any
+      # fidelity. Two copies: one carrying the PDF's own name, so
+      # paperdiff can find it from the PDF, and one dated, so today's
+      # send survives the next build overwriting the first.
+      local src_dir="$out_dir/sources" stamp
+      if [[ -f "$org" ]]; then stamp="$PWD/$org"
+      elif [[ -f "$tex" ]]; then stamp="$PWD/$tex"; fi
+      if [[ -n "$stamp" ]] && mkdir -p "$src_dir"; then
+        local ext="${stamp##*.}"
+        cp "$stamp" "$src_dir/${out_name}.${ext}"
+        cp "$stamp" "$src_dir/${out_name}-$(date +%F).${ext}"
+      fi
     else
       echo "doublespace: build succeeded but copy to $dest failed"
       rc=1
