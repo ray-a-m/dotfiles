@@ -60,6 +60,17 @@ DOUBLESPACE_PRETEX='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in
 
 die() { printf 'paperdiff: %s\n' "$1" >&2; exit 1; }
 
+# The drafts `doublespace' kept for a paper, newest first.  Dated copies
+# only: the undated one is a mirror of the latest build, kept so a PDF
+# can be resolved to its source, and naming it as a baseline would say
+# nothing about which draft it holds.
+kept_drafts() {
+  local slug="$1"
+  [ -n "$slug" ] || return 0
+  ls -t "$HOME/Documents/$slug/sources"/*-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].* \
+    2>/dev/null || true
+}
+
 usage() {
   cat >&2 <<'EOF'
 usage: paperdiff [-o out.pdf] [--single] [--no-open] [--keep] <old> <new>
@@ -108,15 +119,26 @@ resolve() {
       # back wrong. `doublespace' keeps the source it built each PDF from,
       # under sources/ beside it, so pointing at the file that was
       # actually sent works and loses nothing.
-      local dir stem cand
+      local dir stem cand kept
+      [ -f "$a" ] || die "no such file: $a"
       dir="$(dirname "$a")"; stem="$(basename "${a%.pdf}")"
       for cand in "$dir/sources/$stem.org" "$dir/sources/$stem.tex"; do
         [ -f "$cand" ] && { printf '%s\n' "$cand"; return; }
       done
-      die "no source kept for $(basename "$a") -- looked in $dir/sources/.
+      # Nothing beside it.  A PDF's own text cannot stand in: it has to
+      # be guessed back out of the typesetting, which returns math,
+      # citations and footnotes wrong.  Say what CAN be used instead.
+      kept="$(kept_drafts "$slug_hint" | head -5 | sed 's|^|      |')"
+      if [ -n "$kept" ]; then
+        die "no source kept beside $(basename "$a") (looked in $dir/sources/).
+    A PDF cannot be diffed directly, but these drafts of $slug_hint were
+    kept, newest first -- name one of them instead:
+$kept"
+      fi
+      die "no source kept beside $(basename "$a") (looked in $dir/sources/).
     A PDF cannot be diffed directly.  doublespace keeps the source of
-    every PDF it builds from now on, so the next one you send has a
-    baseline; for this one, point at an .org you still have."
+    every PDF it builds, so drafts you send from now on have a baseline.
+    This one predates that, so point at an .org you still have."
       ;;
   esac
   if [ -d "$a" ]; then
@@ -149,7 +171,9 @@ if [ "${#args[@]}" -eq 1 ]; then
   is_slug "${args[0]}" ||
     die "one argument must be a paper slug; give two versions otherwise"
   sent_dir="$HOME/Documents/${args[0]}/sources"
-  baseline="$(ls -t "$sent_dir"/*.org "$sent_dir"/*.tex 2>/dev/null | head -1 || true)"
+  baseline="$(kept_drafts "${args[0]}" | head -1)"
+  [ -n "$baseline" ] ||
+    baseline="$(ls -t "$sent_dir"/*.org "$sent_dir"/*.tex 2>/dev/null | head -1 || true)"
   [ -n "$baseline" ] ||
     die "nothing kept in $sent_dir to compare against.
     doublespace saves its source there, so the next draft you build has
@@ -161,6 +185,12 @@ if is_slug "${args[0]}" && ! is_slug "${args[1]}"; then
   set -- "${args[1]}" "${args[0]}"        # slug given first: it is the new side
   args=("$1" "$2")
 fi
+
+# Which paper this is about, where one side names it: the PDF branch
+# above reports that paper's kept drafts when a PDF has no source.
+slug_hint=""
+is_slug "${args[1]}" && slug_hint="${args[1]}"
+is_slug "${args[0]}" && slug_hint="${args[0]}"
 
 old_src="$(resolve "${args[0]}")"
 new_src="$(resolve "${args[1]}")"
