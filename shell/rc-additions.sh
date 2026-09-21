@@ -399,6 +399,52 @@ publish() {
   )
 }
 
+# ── The handbook ──────────────────────────────────────────────────────────────
+# Every custom command and cross-tool workflow is written up in
+# dotfiles-private/docs/workflows.org, one heading each.  `howto' is the
+# lookup: no argument lists the headings, a name prints that section.
+# A name matches a heading's title exactly, or its first word, a leading
+# "The" ignored (so `howto packet' finds "packet" and not "The job packet,
+# start to finish", and `howto job packet' finds the section); anything
+# looser lists the candidates instead of guessing.
+# The book is org, so Emacs opens it as a file too.
+howto() {
+  local book="$HOME/code/dotfiles-private/docs/workflows.org"
+  if [[ ! -f "$book" ]]; then
+    echo "howto: no handbook at $book (dotfiles-private not installed here?)"
+    return 1
+  fi
+  if [[ -z "$1" ]]; then
+    awk '/^\*+ / { n = length($1); sub(/^\*+ /, ""); printf "%*s%s\n", 2 * (n - 1), "", $0 }' "$book"
+    return 0
+  fi
+  local q="$*" out
+  out=$(awk -v q="$q" '
+    BEGIN { q = tolower(q) }
+    /^\*+ / {
+      lvl = length($1)
+      if (on && lvl <= plvl) exit
+      if (!on) {
+        t = $0; sub(/^\*+ /, "", t); t = tolower(t); sub(/^the /, "", t)
+        if (t == q || index(t, q " ") == 1 || index(t, q "/") == 1 || index(t, q ",") == 1) { on = 1; plvl = lvl }
+      }
+    }
+    on { print }
+  ' "$book")
+  if [[ -n "$out" ]]; then
+    printf '%s\n' "$out"
+    return 0
+  fi
+  out=$(awk -v q="$q" 'BEGIN { q = tolower(q) } /^\*+ / { t = $0; sub(/^\*+ /, "", t); if (index(tolower(t), q)) print "  " t }' "$book")
+  if [[ -n "$out" ]]; then
+    echo "howto: no heading named \"$q\"; these mention it:"
+    printf '%s\n' "$out"
+  else
+    echo "howto: nothing in the handbook mentions \"$q\" (howto lists the headings)"
+  fi
+  return 1
+}
+
 # ── The job-application packet ────────────────────────────────────────────────
 # documents/application/ in research-wip holds one .org per component of a job
 # application (research statement, teaching statement, teaching portfolio,
