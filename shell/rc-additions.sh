@@ -399,6 +399,23 @@ publish() {
   )
 }
 
+# A marked-up PDF of what changed between two versions of a paper --
+# deletions struck through, additions underlined, the paper otherwise
+# set as usual. For an advisor who wants to read what is new rather
+# than re-read the whole draft. Either side may be a paper.org, a
+# body.tex, a paper directory, or a research-wip slug, so the old side
+# can be whatever copy the advisor still has:
+#
+#   paperdiff ~/Downloads/symmetry-july.org symmetry-reality
+#
+# Deliberately not git-backed: research-wip on this laptop is a pure
+# Syncthing tree with no .git (its history lives on services, at
+# /srv/git/research-wip.git), and the versions that matter here are the
+# ones that were actually sent, which no history records anyway.
+paperdiff() {
+  "$HOME/code/dotfiles/shell/paperdiff.sh" "$@"
+}
+
 # Clear stale latexmk build artifacts in the cwd. Use when builds fail with
 # stale-aux symptoms (runaway argument on a contentsline, biber's "malformed
 # bcf", latexmk's "Nothing to do" with a cached error). Keeps the PDF so any
