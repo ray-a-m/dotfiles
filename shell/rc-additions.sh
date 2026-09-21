@@ -399,6 +399,262 @@ publish() {
   )
 }
 
+# ── The job-application packet ────────────────────────────────────────────────
+# documents/application/ in research-wip holds one .org per component of a job
+# application (research statement, teaching statement, teaching portfolio,
+# diversity statement, research proposal, dissertation abstract, referees), a
+# cover letter per school in letters/, and packet.org naming the order they are
+# bound in.  Same arrangement as the dissertation, one level down: each
+# component compiles alone AND flows into the combined document.
+#
+# Usage: packet                     every component, then the whole packet
+#        packet research-statement  one component, alone
+#        packet uchicago            letters/uchicago.org: that letter, and the
+#                                   packet with it bound in first
+#        packet --list              what can be built
+#        packet sample <slug>       the writing sample: that paper, built as
+#                                   the packet's file; --anonymous strips the
+#                                   author for a search that reads blind
+#        packet add <pdf> <name>    copy an outside PDF into exhibits/<name>.pdf
+#        packet extract             convert the exhibits to markdown (marker,
+#                                   in the daemon) so their text can be read
+#
+# PDFs land in ~/Documents/application/ as Maung_Research-Statement.pdf and
+# such: a search committee sees the file name, so the file name says who it is
+# and what it is.  Interfolio takes one file per item, which is why every
+# component is also built alone.
+#
+# Deliberately NOT part of `publish': that function copies into
+# research-public, which GitHub Pages serves as raymondmaung.com.  No
+# application material belongs there -- the evaluation exhibits carry student
+# comments.  Nothing in this function writes outside ~/Documents and the
+# scratch build directory.
+#
+# The CV and the writing sample are bound as exhibits from where their own
+# pipelines leave them (`publish cv', a paper build); this function does not
+# rebuild them, and says which exhibits were missing when it ends.
+
+# Title-case a slug for an output file name: research-statement ->
+# Research-Statement.  awk, not ${x^} or sed's \u: this file is sourced by
+# both zsh and bash, and by a BSD sed on the Mac.
+_packet_title() {
+  printf '%s\n' "$1" | awk -F- '{
+    for (i = 1; i <= NF; i++)
+      printf "%s%s%s", (i > 1 ? "-" : ""), toupper(substr($i, 1, 1)), substr($i, 2)
+    print ""
+  }'
+}
+
+# latexmk DRIVER in DIR, into a scratch directory, and copy the PDF to DEST.
+# Extra arguments go to latexmk (the -usepretex a per-school packet needs).
+# Building out of tree keeps the aux files out of research-wip; a failed build
+# keeps its directory, and the message names the log.
+_packet_build() {
+  local dir="$1" driver="$2" dest="$3"
+  shift 3
+  local build jobname rc
+  jobname="${driver%.tex}"
+  build=$(mktemp -d -t packet.XXXXXX) || return 1
+  (
+    cd "$dir" || exit 1
+    latexmk -pdf -interaction=nonstopmode -halt-on-error \
+      -outdir="$build" -jobname="$jobname" "$@" "$driver"
+  )
+  rc=$?
+  if [[ $rc -eq 0 && -f "$build/$jobname.pdf" ]]; then
+    cp "$build/$jobname.pdf" "$dest" || return 1
+    rm -rf "$build"
+    echo "packet: wrote $dest"
+    return 0
+  fi
+  echo "packet: $driver failed — log in $build/$jobname.log"
+  return 1
+}
+
+# Every component .org, one per line.  README.org is the map of the directory
+# and applications.org is the job tracker: neither builds anything, and the
+# export refuses them too (rm/org-paper-application-non-documents).
+_packet_components() {
+  local app="$1" org base
+  find "$app" -maxdepth 1 -name '*.org' | sort | while IFS= read -r org; do
+    base="${org##*/}"
+    base="${base%.org}"
+    case "$base" in README|applications|packet) continue ;; esac
+    printf '%s\n' "$base"
+  done
+}
+
+# The components' bodies, refreshed.  packet.org \input's all of them, so they
+# are exported before the packet is built -- a stale body would otherwise be
+# bound in with nothing to show it.
+_packet_export_components() {
+  local app="$1" name
+  _packet_components "$app" | while IFS= read -r name; do
+    _org_export_body "$app/$name.org" || exit 1
+  done
+}
+
+# Exhibits packet.org names that are not on disk.  The build leaves a
+# placeholder page for each, so this is the only place it is said aloud.
+# A line that is commented out -- in LaTeX with % or in Org with # -- is not
+# a binding and is not asked about, so the match starts at the line.
+_packet_missing_exhibits() {
+  local app="$1" ex
+  sed -n 's/^[[:space:]]*\\packetexhibit{[^}]*}{\([^}]*\)}.*/\1/p' "$app/packet.org" |
+    while IFS= read -r ex; do
+      [[ -f "$app/$ex" ]] || echo "packet: exhibit missing — $ex"
+    done
+}
+
+packet() {
+  local app="$HOME/scholarship/research-wip/documents/application"
+  local out="$HOME/Documents/application"
+  local target="$1"
+  local name institution pretex letter_dir
+
+  if [[ ! -d "$app" ]]; then
+    echo "packet: no application directory at $app"
+    return 1
+  fi
+
+  if [[ "$target" == "--list" || "$target" == "-l" ]]; then
+    echo "components:"
+    _packet_components "$app" | sed 's/^/  /'
+    echo "letters:"
+    find "$app/letters" -maxdepth 1 -name '*.org' 2>/dev/null | sort |
+      while IFS= read -r f; do
+        f="${f##*/}"
+        printf '  %s\n' "${f%.org}"
+      done
+    return 0
+  fi
+
+  mkdir -p "$out" || return 1
+
+  # The writing sample: a paper, built into the packet's directory.  The
+  # paper's own build, not doublespace's -- a sample goes as the paper is
+  # set.  Anonymized, the file name carries no name either: a blind search
+  # sees the file name first.
+  if [[ "$target" == sample ]]; then
+    local slug="$2" anon="$3" paper_dir
+    if [[ -z "$slug" ]]; then
+      echo "usage: packet sample <paper-slug> [--anonymous]"
+      return 1
+    fi
+    paper_dir="$HOME/scholarship/research-wip/documents/papers/$slug"
+    if [[ ! -f "$paper_dir/paper.org" ]]; then
+      echo "packet: no paper at $paper_dir"
+      return 1
+    fi
+    _org_export_body "$paper_dir/paper.org" || return 1
+    if [[ "$anon" == --anonymous ]]; then
+      _packet_build "$paper_dir" paper.tex "$out/Writing-Sample.pdf" \
+        '-usepretex=\def\paperanonymous{}'
+    elif [[ -n "$anon" ]]; then
+      echo "packet: unknown option $anon (only --anonymous)"
+      return 1
+    else
+      _packet_build "$paper_dir" paper.tex "$out/Maung_Writing-Sample.pdf"
+    fi
+    return $?
+  fi
+
+  # An outside PDF, taken into exhibits/ under the packet's naming
+  # (<kind>-<course-or-source>-<term>).  Never overwrites: an exhibit that
+  # already has a markdown beside it would silently lose the match.
+  if [[ "$target" == add ]]; then
+    local src="$2" ex="$3"
+    if [[ -z "$src" || -z "$ex" ]]; then
+      echo "usage: packet add <pdf> <name>    e.g. packet add ~/Downloads/eval.pdf evals-biomedical-ethics-fa25"
+      return 1
+    fi
+    if [[ ! -f "$src" ]]; then
+      echo "packet: no such file: $src"
+      return 1
+    fi
+    ex="${ex%.pdf}"
+    if [[ -e "$app/exhibits/$ex.pdf" ]]; then
+      echo "packet: exhibits/$ex.pdf exists; pick another name"
+      return 1
+    fi
+    cp "$src" "$app/exhibits/$ex.pdf" || return 1
+    echo "packet: added exhibits/$ex.pdf"
+    echo "packet: to bind it whole, add to packet.org:  \\packetexhibit{Title}{exhibits/$ex.pdf}"
+    echo "packet: for its text, run:  packet extract"
+    return 0
+  fi
+
+  # The exhibits' text.  Conversion is rm-ai's (marker, with the claim and
+  # cache machinery the Zotero cuts use), so it runs in the daemon and lands
+  # a .md beside each PDF a little later; the daemon reports when it has.
+  if [[ "$target" == extract ]]; then
+    local reply
+    if ! reply=$(emacsclient --eval '(rm/application-extract-exhibits)' 2>&1); then
+      echo "packet: the Emacs daemon did not answer -- is it running?"
+      echo "$reply"
+      return 1
+    fi
+    # The reply is a quoted string, or nil when a conversion was queued.
+    case "$reply" in
+      nil|[0-9]*) echo "packet: converting in the daemon; the .md files land beside the PDFs" ;;
+      *) echo "packet: ${reply#\"}" | sed 's/"$//' ;;
+    esac
+    return 0
+  fi
+
+  # A component, alone.
+  if [[ -n "$target" && "$target" != packet && -f "$app/$target.org" ]]; then
+    case "$target" in
+      README|applications)
+        echo "packet: $target is not a document"
+        return 1
+        ;;
+    esac
+    _org_export_body "$app/$target.org" || return 1
+    _packet_build "$app" "$target.tex" "$out/Maung_$(_packet_title "$target").pdf"
+    return $?
+  fi
+
+  # A school: its cover letter, then the packet with that letter bound in.
+  # Both, because a search wants the letter as its own upload as well.
+  if [[ -n "$target" && "$target" != packet && -f "$app/letters/$target.org" ]]; then
+    letter_dir="$app/letters"
+    _org_export_body "$letter_dir/$target.org" || return 1
+    _packet_build "$letter_dir" "$target.tex" \
+      "$out/Maung_Cover-Letter_$(_packet_title "$target").pdf" || return 1
+    # #+INSTITUTION: is the display name the packet's cover page carries.
+    institution=$(sed -n 's/^#+INSTITUTION:[[:space:]]*//p' "$letter_dir/$target.org" | head -1)
+    pretex="\\def\\packetletter{$target}"
+    [[ -n "$institution" ]] && pretex="$pretex\\def\\packetfor{$institution}"
+    _packet_export_components "$app" || return 1
+    _org_export_body "$app/packet.org" || return 1
+    _packet_build "$app" packet.tex \
+      "$out/Maung_Application-Packet_$(_packet_title "$target").pdf" \
+      "-usepretex=$pretex" || return 1
+    _packet_missing_exhibits "$app"
+    return 0
+  fi
+
+  if [[ -n "$target" && "$target" != packet ]]; then
+    echo "packet: no component or letter named $target (packet --list)"
+    return 1
+  fi
+
+  # No argument: every component alone, then the packet with no letter.
+  # `packet packet' is the packet by itself.
+  if [[ -z "$target" ]]; then
+    _packet_components "$app" | while IFS= read -r name; do
+      _org_export_body "$app/$name.org" || exit 1
+      _packet_build "$app" "$name.tex" "$out/Maung_$(_packet_title "$name").pdf" || exit 1
+    done || return 1
+  else
+    _packet_export_components "$app" || return 1
+  fi
+  _org_export_body "$app/packet.org" || return 1
+  _packet_build "$app" packet.tex "$out/Maung_Application-Packet.pdf" || return 1
+  _packet_missing_exhibits "$app"
+}
+
 # A marked-up PDF of what changed between two versions of a paper --
 # deletions struck through, additions underlined, the paper otherwise
 # set as usual. For an advisor who wants to read what is new rather
