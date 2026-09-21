@@ -5,7 +5,9 @@
 # advisor a draft they can read for what is NEW instead of re-reading
 # the whole thing.
 #
-#   paperdiff <old> <new>
+#   paperdiff <slug>                against the last draft you sent
+#   paperdiff <slug> <old-file>     the current paper against an old copy
+#   paperdiff <old> <new>           any two versions, oldest first
 #
 # Each side is a paper.org, a body.tex, a full .tex, a paper directory,
 # or a bare slug from research-wip.  Arbitrary paths are the point: the
@@ -14,7 +16,25 @@
 # -- research-wip is a pure Syncthing tree on this laptop and has no
 # .git at all.
 #
-#   paperdiff ~/Downloads/paper-july.org symmetry-reality
+# A bare slug always means the CURRENT paper, so it is the new side
+# wherever it is typed: `paperdiff symmetry-reality old.org' and
+# `paperdiff old.org symmetry-reality' do the same thing.  Two paths
+# keep the order given, oldest first, the way diff takes them.
+#
+# The result is built the way `doublespace' builds what Raymond
+# actually sends -- double spaced, 1.25in side margins -- and lands
+# beside it in ~/Documents/<slug>/.  --single builds it at the
+# paper's own spacing instead.
+#
+# `doublespace' keeps the source of every PDF it builds, under
+# sources/ beside the PDF.  So a PDF that was sent names a real source:
+# pass the PDF and this reads that instead, which is why the markup
+# holds up -- a PDF's own text cannot be diffed with any fidelity.  One
+# argument takes the newest of those sources.
+#
+#   paperdiff symmetry-reality
+#   paperdiff symmetry-reality ~/Documents/symmetry-reality/paper-doublespaced.pdf
+#   paperdiff symmetry-reality ~/Downloads/paper-july.org
 #   paperdiff old/paper.org new/paper.org -o ~/Desktop/for-advisor.pdf
 #
 # How it works: both sides are exported (org) or wrapped (tex) into
@@ -31,6 +51,10 @@ set -euo pipefail
 WIP="$HOME/scholarship/research-wip"
 PAPERS="$WIP/documents/papers"
 EXPORTER="$HOME/.config/emacs/runtime/lisp/org-paper-export.el"
+# What `doublespace' passes latexmk.  The marked-up copy goes to the same
+# reader as the doublespaced build, so it is set the same way: one diff
+# to read, one format to read it in, and room in the margin to write.
+DOUBLESPACE_PRETEX='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in}\def\paperrightmargin{1.25in}'
 # The pre-refactor location, in case this runs against an older config.
 [ -f "$EXPORTER" ] || EXPORTER="$HOME/.config/emacs/lisp/org-paper-export.el"
 
@@ -38,21 +62,28 @@ die() { printf 'paperdiff: %s\n' "$1" >&2; exit 1; }
 
 usage() {
   cat >&2 <<'EOF'
-usage: paperdiff [-o out.pdf] [--no-open] [--keep] <old> <new>
+usage: paperdiff [-o out.pdf] [--single] [--no-open] [--keep] <old> <new>
+       paperdiff <slug>            against the last draft you sent
 
   <old>, <new>   paper.org | body.tex | a full .tex | a paper directory
                  | a research-wip slug (e.g. symmetry-reality)
-  -o out.pdf     where to write it (default: ./<slug>-diff.pdf)
+                 | a PDF doublespace built (its kept source is used)
+                 A slug is always the current version, so it is the new
+                 side wherever it is typed.  Two paths: oldest first.
+  -o out.pdf     where to write it
+                 (default: ~/Documents/<slug>/<slug>-diff.pdf)
+  --single       build at the paper's own spacing, not doublespace's
   --no-open      do not open the result in zathura
   --keep         keep the scratch build tree and print its path
 EOF
   exit 1
 }
 
-out=""; open=1; keep=0; args=()
+out=""; open=1; keep=0; spacing=double; args=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -o|--output) out="${2:-}"; [ -n "$out" ] || usage; shift 2 ;;
+    --single)    spacing=single; shift ;;
     --no-open)   open=0; shift ;;
     --keep)      keep=1; shift ;;
     -h|--help)   usage ;;
@@ -60,7 +91,7 @@ while [ $# -gt 0 ]; do
     *)           args+=("$1"); shift ;;
   esac
 done
-[ "${#args[@]}" -eq 2 ] || usage
+case "${#args[@]}" in 1|2) ;; *) usage ;; esac
 
 for t in latexdiff latexmk emacs; do
   command -v "$t" >/dev/null || die "$t is not installed"
@@ -70,6 +101,24 @@ done
 # bare word is a research-wip slug; a directory is a paper directory.
 resolve() {
   local a="$1"
+  case "$a" in
+    *.pdf)
+      # A PDF holds no diffable source -- its text has to be guessed back
+      # out of the typesetting, and math, citations and footnotes all come
+      # back wrong. `doublespace' keeps the source it built each PDF from,
+      # under sources/ beside it, so pointing at the file that was
+      # actually sent works and loses nothing.
+      local dir stem cand
+      dir="$(dirname "$a")"; stem="$(basename "${a%.pdf}")"
+      for cand in "$dir/sources/$stem.org" "$dir/sources/$stem.tex"; do
+        [ -f "$cand" ] && { printf '%s\n' "$cand"; return; }
+      done
+      die "no source kept for $(basename "$a") -- looked in $dir/sources/.
+    A PDF cannot be diffed directly.  doublespace keeps the source of
+    every PDF it builds from now on, so the next one you send has a
+    baseline; for this one, point at an .org you still have."
+      ;;
+  esac
   if [ -d "$a" ]; then
     [ -f "$a/paper.org" ] && { printf '%s\n' "$a/paper.org"; return; }
     [ -f "$a/paper.tex" ] && { printf '%s\n' "$a/paper.tex"; return; }
@@ -84,6 +133,35 @@ resolve() {
   esac
 }
 
+# A bare word naming a paper in research-wip: the current version, and
+# so always the new side.  Typing the slug first reads naturally when
+# the question is "what has changed since the copy he has", which is
+# the usual one, so both orders are accepted and mean the same thing.
+is_slug() {
+  case "$1" in */*) return 1 ;; esac
+  [ -e "$1" ] && return 1
+  [ -f "$PAPERS/$1/paper.org" ]
+}
+# One argument, a slug: against the newest draft `doublespace' kept for
+# it -- "what has changed since I last sent this", which is the question
+# most often being asked.
+if [ "${#args[@]}" -eq 1 ]; then
+  is_slug "${args[0]}" ||
+    die "one argument must be a paper slug; give two versions otherwise"
+  sent_dir="$HOME/Documents/${args[0]}/sources"
+  baseline="$(ls -t "$sent_dir"/*.org "$sent_dir"/*.tex 2>/dev/null | head -1 || true)"
+  [ -n "$baseline" ] ||
+    die "nothing kept in $sent_dir to compare against.
+    doublespace saves its source there, so the next draft you build has
+    a baseline; until then, name the old version yourself."
+  args=("$baseline" "${args[0]}")
+fi
+
+if is_slug "${args[0]}" && ! is_slug "${args[1]}"; then
+  set -- "${args[1]}" "${args[0]}"        # slug given first: it is the new side
+  args=("$1" "$2")
+fi
+
 old_src="$(resolve "${args[0]}")"
 new_src="$(resolve "${args[1]}")"
 old_src="$(cd "$(dirname "$old_src")" && pwd)/$(basename "$old_src")"
@@ -95,7 +173,9 @@ new_src="$(cd "$(dirname "$new_src")" && pwd)/$(basename "$new_src")"
 # loose file in ~/Downloads falls back to its own basename.
 slug="$(basename "$(dirname "$new_src")")"
 case "$slug" in .|/|Downloads|Desktop|tmp) slug="$(basename "${new_src%.*}")" ;; esac
-[ -n "$out" ] || out="$PWD/$slug-diff.pdf"
+# Beside the doublespaced build of the same paper, which is the file
+# this one is sent with (`doublespace' writes ~/Documents/<slug>/).
+[ -n "$out" ] || out="$HOME/Documents/$slug/$slug-diff.pdf"
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/paperdiff.XXXXXX")"
 cleanup() { [ "$keep" -eq 1 ] || rm -rf "$tmp"; }
@@ -146,7 +226,7 @@ build_side() {
       else
         # A body alone: give it the same driver the exporter writes, so
         # both sides reach the same preamble and the diff is prose only.
-        bib="$(ls "$dir"/*.bib 2>/dev/null | head -1)"
+        bib="$(ls "$dir"/*.bib 2>/dev/null | head -1 || true)"
         if [ -n "$bib" ]; then bib="$(basename "$bib")"
         else bib="../../dissertation/references.bib"; fi
         { echo '\input{../../shared/preamble.tex}'
@@ -178,8 +258,10 @@ build() {
   ( cd "$new_dir" && latexdiff --flatten "$@" "$old_tex" "$new_tex" ) \
     > "$new_dir/diff.tex" 2>"$tmp/latexdiff.log" ||
     { sed -n '$p' "$tmp/latexdiff.log" >&2; return 1; }
+  local pretex=()
+  [ "$spacing" = double ] && pretex=(-usepretex="$DOUBLESPACE_PRETEX")
   ( cd "$new_dir" && latexmk -pdf -interaction=nonstopmode -halt-on-error \
-      diff.tex ) >"$tmp/latexmk-$label.log" 2>&1
+      "${pretex[@]}" diff.tex ) >"$tmp/latexmk-$label.log" 2>&1
 }
 
 if   build coarse    --math-markup=coarse; then :
@@ -198,8 +280,9 @@ fi
 [ -f "$new_dir/diff.pdf" ] || die "latexmk reported success but wrote no PDF"
 mkdir -p "$(dirname "$out")"
 cp "$new_dir/diff.pdf" "$out"
-printf 'paperdiff: wrote %s (%s pages)\n' "$out" \
-  "$(pdfinfo "$out" 2>/dev/null | awk '/^Pages:/{print $2}')"
+printf 'paperdiff: wrote %s (%s pages, %s)\n' "$out" \
+  "$(pdfinfo "$out" 2>/dev/null | awk '/^Pages:/{print $2}')" \
+  "$([ "$spacing" = double ] && echo 'double spaced' || echo "the paper's own spacing")"
 if [ "$keep" -eq 1 ]; then printf 'paperdiff: scratch tree at %s\n' "$tmp"; fi
 
 if [ "$open" -eq 1 ] && command -v zathura >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
