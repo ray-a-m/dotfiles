@@ -5,45 +5,42 @@
 # advisor a draft they can read for what is NEW instead of re-reading
 # the whole thing.
 #
-#   paperdiff <slug>                against the last draft you sent
-#   paperdiff <slug> <old-file>     the current paper against an old copy
-#   paperdiff <old> <new>           any two versions, oldest first
+# The call this exists for:
 #
-# Each side is a paper.org, a body.tex, a full .tex, a paper directory,
-# or a bare slug from research-wip.  Arbitrary paths are the point: the
-# old side is usually whatever copy the advisor still has, sitting in
-# ~/Downloads with a name like paper-july.org.  Nothing here reads git
-# -- research-wip is a pure Syncthing tree on this laptop and has no
-# .git at all.
+#   paperdiff <slug> <the copy he has>
 #
-# A bare slug always means the CURRENT paper, so it is the new side
-# wherever it is typed: `paperdiff symmetry-reality old.org' and
-# `paperdiff old.org symmetry-reality' do the same thing.  Two paths
-# keep the order given, oldest first, the way diff takes them.
+# The slug is the paper as it stands now; the second argument is the
+# version to compare against, which is whatever copy the reader still
+# has.  That may be the PDF that was sent, an .org kept from then, or
+# just the date it went out:
 #
-# The result is built the way `doublespace' builds what Raymond
-# actually sends -- double spaced, 1.25in side margins -- and lands
-# beside it in ~/Documents/<slug>/.  --single builds it at the
-# paper's own spacing instead.
-#
-# `doublespace' keeps the source of every PDF it builds, under
-# sources/ beside the PDF.  So a PDF that was sent names a real source:
-# pass the PDF and this reads that instead, which is why the markup
-# holds up -- a PDF's own text cannot be diffed with any fidelity.  One
-# argument takes the newest of those sources.
-#
-# A PDF with no source beside it -- one built before doublespace kept
-# them -- falls back to the pushed history of research-wip: the paper as
-# it stood when that PDF was typeset, read from a local blobless mirror
-# of the GitHub repo (this laptop's tree has no .git).  @<date> asks the
-# same question directly.
-#
-#   paperdiff symmetry-reality
-#   paperdiff symmetry-reality ~/Documents/symmetry-reality/paper-doublespaced.pdf
 #   paperdiff symmetry-reality ~/paper-doublespaced.pdf
-#   paperdiff symmetry-reality @2026-08-03
 #   paperdiff symmetry-reality ~/Downloads/paper-july.org
-#   paperdiff old/paper.org new/paper.org -o ~/Desktop/for-advisor.pdf
+#   paperdiff symmetry-reality @2026-08-03
+#   paperdiff symmetry-reality                 # the last draft sent
+#   paperdiff old/paper.org new/paper.org      # two versions, oldest first
+#
+# A slug always means the CURRENT paper, so it may be typed either side;
+# two paths are read oldest first, the way diff takes them.  Each side
+# may be a paper.org, a body.tex, a full .tex, a paper directory, a
+# slug, a PDF, or @<date>.
+#
+# The result is built the way `doublespace' builds what actually gets
+# sent -- double spaced, 1.25in side margins -- and lands beside it in
+# ~/Documents/<slug>/.  --single builds it at the paper's own spacing.
+#
+# Where an old version comes from, in order.  `doublespace' keeps the
+# source of every PDF it builds under sources/ beside the PDF, so a PDF
+# that was sent names real source and the markup holds up.  A PDF with
+# none -- one built before that was kept -- falls back to the pushed
+# history of research-wip: the paper as it stood when that PDF was
+# typeset, by the date the PDF itself carries.  @<date> asks the history
+# the same question directly.  The history is read from a local blobless
+# mirror of the GitHub repo, because research-wip has no .git on this
+# laptop -- it is a Syncthing tree, and the sync cron on services owns
+# its git.  A PDF's own text is never used: it has to be guessed back
+# out of the typesetting, which returns math, citations and footnotes
+# wrong.
 #
 # How it works: both sides are exported (org) or wrapped (tex) into
 # throwaway trees that mirror documents/papers/<slug>/ exactly, with
@@ -58,21 +55,22 @@ set -euo pipefail
 
 WIP="$HOME/scholarship/research-wip"
 PAPERS="$WIP/documents/papers"
+
 EXPORTER="$HOME/.config/emacs/runtime/lisp/org-paper-export.el"
+# The pre-refactor location, in case this runs against an older config.
+[ -f "$EXPORTER" ] || EXPORTER="$HOME/.config/emacs/lisp/org-paper-export.el"
+
 # What `doublespace' passes latexmk.  The marked-up copy goes to the same
 # reader as the doublespaced build, so it is set the same way: one diff
 # to read, one format to read it in, and room in the margin to write.
-# research-wip has no .git on this machine: the sync cron on services owns
-# it and pushes to GitHub, so an older version of a paper comes from there.
-# Mirrored locally, blobless, fetched only when a date asks for something
-# newer than the mirror holds.
+DOUBLESPACE_PRETEX='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in}\def\paperrightmargin{1.25in}'
+
+# The pushed history, for an old version that exists nowhere on disk.
+# Mirrored locally, blobless, fetched only when a date asks for
+# something newer than the mirror holds.
 HISTORY_URL="git@github.com:ray-a-m/research-wip.git"
 HISTORY_CACHE="$HOME/.cache/paperdiff/research-wip.git"
 hist_tmp=""
-
-DOUBLESPACE_PRETEX='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in}\def\paperrightmargin{1.25in}'
-# The pre-refactor location, in case this runs against an older config.
-[ -f "$EXPORTER" ] || EXPORTER="$HOME/.config/emacs/lisp/org-paper-export.el"
 
 die() { printf 'paperdiff: %s\n' "$1" >&2; exit 1; }
 
@@ -89,16 +87,14 @@ kept_drafts() {
 
 usage() {
   cat >&2 <<'EOF'
-usage: paperdiff [-o out.pdf] [--single] [--no-open] [--keep] <old> <new>
-       paperdiff <slug>            against the last draft you sent
+usage: paperdiff [options] <slug> <the copy he has>
+       paperdiff [options] <slug>            the last draft you sent
+       paperdiff [options] <old> <new>       two versions, oldest first
 
-  <old>, <new>   paper.org | body.tex | a full .tex | a paper directory
-                 | a research-wip slug (e.g. symmetry-reality)
-                 | a PDF (its kept source, else the paper as it stood
-                   when that PDF was typeset)
-                 | @<date>, e.g. @2026-08-03
-                 A slug is always the current version, so it is the new
-                 side wherever it is typed.  Two paths: oldest first.
+  <slug>         a paper in research-wip, e.g. symmetry-reality; always
+                 the CURRENT version, so it may be typed either side
+  <the copy>     a PDF that was sent | @<date>, e.g. @2026-08-03
+                 | a paper.org | a body.tex | a full .tex | a paper dir
   -o out.pdf     where to write it
                  (default: ~/Documents/<slug>/<slug>-diff.pdf)
   --single       build at the paper's own spacing, not doublespace's
