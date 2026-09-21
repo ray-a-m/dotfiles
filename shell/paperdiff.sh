@@ -360,6 +360,10 @@ printf 'paperdiff: old  %s\n' "$old_src"
 printf 'paperdiff: new  %s\n' "$new_src"
 old_tex="$(build_side old "$old_src")"
 new_tex="$(build_side new "$new_src")"
+# Where it is going, before latexmk goes quiet for half a minute: the
+# run prints nothing while it builds, and a silent terminal reads like
+# a hang rather than a compile.
+printf 'paperdiff: building %s ...\n' "$out"
 new_dir="$(dirname "$new_tex")"
 
 # Three attempts, each looser than the last.  Marking up changed math
