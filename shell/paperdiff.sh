@@ -32,8 +32,16 @@
 # holds up -- a PDF's own text cannot be diffed with any fidelity.  One
 # argument takes the newest of those sources.
 #
+# A PDF with no source beside it -- one built before doublespace kept
+# them -- falls back to the pushed history of research-wip: the paper as
+# it stood when that PDF was typeset, read from a local blobless mirror
+# of the GitHub repo (this laptop's tree has no .git).  @<date> asks the
+# same question directly.
+#
 #   paperdiff symmetry-reality
 #   paperdiff symmetry-reality ~/Documents/symmetry-reality/paper-doublespaced.pdf
+#   paperdiff symmetry-reality ~/paper-doublespaced.pdf
+#   paperdiff symmetry-reality @2026-08-03
 #   paperdiff symmetry-reality ~/Downloads/paper-july.org
 #   paperdiff old/paper.org new/paper.org -o ~/Desktop/for-advisor.pdf
 #
@@ -54,6 +62,14 @@ EXPORTER="$HOME/.config/emacs/runtime/lisp/org-paper-export.el"
 # What `doublespace' passes latexmk.  The marked-up copy goes to the same
 # reader as the doublespaced build, so it is set the same way: one diff
 # to read, one format to read it in, and room in the margin to write.
+# research-wip has no .git on this machine: the sync cron on services owns
+# it and pushes to GitHub, so an older version of a paper comes from there.
+# Mirrored locally, blobless, fetched only when a date asks for something
+# newer than the mirror holds.
+HISTORY_URL="git@github.com:ray-a-m/research-wip.git"
+HISTORY_CACHE="$HOME/.cache/paperdiff/research-wip.git"
+hist_tmp=""
+
 DOUBLESPACE_PRETEX='\def\paperspacing{\doublespacing}\def\paperleftmargin{1.25in}\def\paperrightmargin{1.25in}'
 # The pre-refactor location, in case this runs against an older config.
 [ -f "$EXPORTER" ] || EXPORTER="$HOME/.config/emacs/lisp/org-paper-export.el"
@@ -78,7 +94,9 @@ usage: paperdiff [-o out.pdf] [--single] [--no-open] [--keep] <old> <new>
 
   <old>, <new>   paper.org | body.tex | a full .tex | a paper directory
                  | a research-wip slug (e.g. symmetry-reality)
-                 | a PDF doublespace built (its kept source is used)
+                 | a PDF (its kept source, else the paper as it stood
+                   when that PDF was typeset)
+                 | @<date>, e.g. @2026-08-03
                  A slug is always the current version, so it is the new
                  side wherever it is typed.  Two paths: oldest first.
   -o out.pdf     where to write it
@@ -108,11 +126,68 @@ for t in latexdiff latexmk emacs; do
   command -v "$t" >/dev/null || die "$t is not installed"
 done
 
+# The date a PDF was typeset, which is what to ask the history for.
+pdf_date() {
+  local d
+  d="$(pdfinfo "$1" 2>/dev/null | awk -F': +' '/^CreationDate:/{print $2}' || true)"
+  [ -n "$d" ] || d="$(date -r "$1" '+%Y-%m-%d %H:%M:%S %z')"
+  date -d "$d" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || printf '%s\n' "$d"
+}
+
+# The local mirror of research-wip's pushed history, cloned on first use.
+history_repo() {
+  if [ ! -d "$HISTORY_CACHE" ]; then
+    mkdir -p "$(dirname "$HISTORY_CACHE")"
+    git clone --bare --filter=blob:none -q "$HISTORY_URL" "$HISTORY_CACHE" \
+      2>/dev/null || { rm -rf "$HISTORY_CACHE"; return 1; }
+  fi
+  printf '%s\n' "$HISTORY_CACHE"
+}
+
+# SLUG's paper.org as it stood at WHEN, written to a scratch file whose
+# path is echoed.  The commit is the last one that touched the paper at or
+# before WHEN, which for a PDF is the state it was typeset from -- the
+# sync cron commits on an interval, so it can trail the build slightly.
+source_at() {
+  local slug="$1" when="$2" repo sha path out newest
+  [ -n "$slug" ] || return 1
+  repo="$(history_repo)" || return 1
+  # Only reach for the network when the mirror cannot already answer.
+  newest="$(git -C "$repo" log -1 --format=%cI 2>/dev/null || true)"
+  if [ -n "$newest" ] &&
+     [ "$(date -d "$when" +%s 2>/dev/null || echo 0)" -gt "$(date -d "$newest" +%s)" ]; then
+    git -C "$repo" fetch -q --filter=blob:none origin \
+      '+refs/heads/*:refs/heads/*' 2>/dev/null || true
+  fi
+  path="documents/papers/$slug/paper.org"
+  sha="$(git -C "$repo" log -1 --format=%H --before="$when" -- "$path" 2>/dev/null || true)"
+  [ -n "$sha" ] || return 1
+  [ -n "$hist_tmp" ] || hist_tmp="$(mktemp -d "${TMPDIR:-/tmp}/paperdiff-hist.XXXXXX")"
+  out="$hist_tmp/$slug-$(printf '%.7s' "$sha").org"
+  git -C "$repo" show "$sha:$path" > "$out" 2>/dev/null || return 1
+  printf 'paperdiff: history %s as of %s (commit %.7s)\n' \
+    "$path" "$(git -C "$repo" log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' "$sha")" \
+    "$sha" >&2
+  printf '%s\n' "$out"
+}
+
 # A side's argument, resolved to the one file that stands for it.  A
 # bare word is a research-wip slug; a directory is a paper directory.
 resolve() {
   local a="$1"
   case "$a" in
+    @*)
+      # @<date>: the paper as it stood then, from the pushed history.
+      # `paperdiff symmetry-reality @2026-08-03' -- for a copy whose date
+      # is known but whose file is gone.
+      local when="${a#@}" cand
+      cand="$(source_at "$slug_hint" "$when")" ||
+        die "no history for ${slug_hint:-that paper} at $when.
+    A date needs the paper named too, and the mirror of research-wip's
+    pushed history needs to be reachable (github.com)."
+      printf '%s\n' "$cand"
+      return
+      ;;
     *.pdf)
       # A PDF holds no diffable source -- its text has to be guessed back
       # out of the typesetting, and math, citations and footnotes all come
@@ -125,9 +200,15 @@ resolve() {
       for cand in "$dir/sources/$stem.org" "$dir/sources/$stem.tex"; do
         [ -f "$cand" ] && { printf '%s\n' "$cand"; return; }
       done
-      # Nothing beside it.  A PDF's own text cannot stand in: it has to
+      # Nothing beside it -- a PDF built before doublespace kept sources,
+      # or one built elsewhere.  Its own text cannot stand in: that has to
       # be guessed back out of the typesetting, which returns math,
-      # citations and footnotes wrong.  Say what CAN be used instead.
+      # citations and footnotes wrong.  The history can, though: take the
+      # paper as it stood when this PDF was typeset.
+      if cand="$(source_at "$slug_hint" "$(pdf_date "$a")")"; then
+        printf '%s\n' "$cand"; return
+      fi
+      # Neither: say what CAN be used instead.
       kept="$(kept_drafts "$slug_hint" | head -5 | sed 's|^|      |')"
       if [ -n "$kept" ]; then
         die "no source kept beside $(basename "$a") (looked in $dir/sources/).
@@ -208,7 +289,10 @@ case "$slug" in .|/|Downloads|Desktop|tmp) slug="$(basename "${new_src%.*}")" ;;
 [ -n "$out" ] || out="$HOME/Documents/$slug/$slug-diff.pdf"
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/paperdiff.XXXXXX")"
-cleanup() { [ "$keep" -eq 1 ] || rm -rf "$tmp"; }
+cleanup() {
+  [ "$keep" -eq 1 ] && return 0
+  rm -rf "${tmp:-}" "${hist_tmp:-}"
+}
 trap cleanup EXIT
 
 # Build one side's tree and echo the driver .tex it compiles from.  The
