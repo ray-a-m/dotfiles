@@ -65,14 +65,15 @@
   "power": {"icon": "", "label": "System"},
   "power.style": {"icon": "", "label": "Style", "target": "style"},
 
-  // Video wallpapers for the current theme, one row per file in
-  // dotfiles-private/omarchy/backgrounds/<theme>/ (Git LFS). The stock
-  // Style > Background picker is image-only, so this is the only GUI path
-  // to a video. Each row calls omarchy-bg-video-set (omarchy/bin/), which
-  // records the choice, sets the matching still as the lock-screen image,
-  // and re-fires the theme-set hook. The ✓ marks the recorded choice. A
-  // new video = drop the file (plus its -static still) in the backgrounds
-  // dir and add a row here.
+  // Wallpapers for the current theme, one row per file in
+  // dotfiles-private/omarchy/backgrounds/<theme>/ (videos in Git LFS). The
+  // stock Style > Background picker is image-only, so this is the only GUI
+  // path to a video. Each row calls omarchy-bg-video-set (omarchy/bin/),
+  // which records the choice, sets the matching still as the lock-screen
+  // image, and re-fires the theme-set hook. The ✓ marks the recorded
+  // choice. A new video = drop the file (plus its -static still) in the
+  // backgrounds dir and add a row here. A still-only wallpaper (Bliss) is
+  // a plain image there with no video; the hook then runs no mpvpaper.
   //
   // Live / Still pick whether the chosen video plays (mpvpaper) or its
   // still frame is the wallpaper. The mode is a per-machine toggle
@@ -89,6 +90,7 @@
   "power.wallpaper.palm-arch-paradise": {"icon": "", "label": "Palm Arch Paradise", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */palm-arch-paradise.* ]]", "action": "omarchy-bg-video-set palm-arch-paradise"},
   "power.wallpaper.sunlight-bamboos": {"icon": "", "label": "Sunlight Bamboos", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */sunlight-bamboos.* ]]", "action": "omarchy-bg-video-set sunlight-bamboos"},
   "power.wallpaper.zen-bamboo-forest": {"icon": "", "label": "Zen Bamboo Forest", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */zen-bamboo-forest.* ]]", "action": "omarchy-bg-video-set zen-bamboo-forest"},
+  "power.wallpaper.bliss": {"icon": "", "label": "Bliss", "checked": "[[ $(readlink \"$HOME/.local/state/omarchy/current/background-video\") == */bliss.* ]]", "action": "omarchy-bg-video-set bliss"},
   "power.screensaver": {"icon": "󱄄", "label": "Screensaver", "action": "omarchy-launch-screensaver force"},
   "power.lock": {"icon": "", "label": "Lock", "action": "omarchy-system-lock"},
   "power.suspend": {"icon": "󰒲", "label": "Suspend", "when": "! omarchy-toggle-enabled suspend-off", "action": "systemctl suspend"},

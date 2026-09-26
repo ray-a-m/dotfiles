@@ -1,9 +1,10 @@
 #!/bin/bash
 # Choose the wallpaper for the current theme, and whether it plays.
 #
-#   omarchy-bg-video-set <name>      select <name>.mp4 (or a path to a video)
-#   omarchy-bg-video-set --current   print the selected video's name
-#   omarchy-bg-video-set --list      print every video the theme offers
+#   omarchy-bg-video-set <name>      select <name>.mp4, or <name>.jpg/png for
+#                                    a still-only wallpaper (or a path)
+#   omarchy-bg-video-set --current   print the selected wallpaper's name
+#   omarchy-bg-video-set --list      print every wallpaper the theme offers
 #   omarchy-bg-video-set --live      play the video (default)
 #   omarchy-bg-video-set --still     show the video's still frame instead
 #   omarchy-bg-video-set --mode      print "live" or "still"
@@ -15,7 +16,12 @@
 # as the shell's image background — that layer is the lock screen and the
 # login flash — and re-fires the hook, which reads the link and respawns
 # mpvpaper with the chosen file. The omarchy-menu System > Wallpaper rows
-# call this, one per video.
+# call this, one per wallpaper.
+#
+# A wallpaper can also be a plain image with no video (bliss.jpg): any
+# image in the backgrounds dir whose name is not a video's -static frame.
+# Choosing one records it the same way and sets it as the shell's image;
+# the hook sees a still and kills mpvpaper, whatever the Live/Still mode.
 #
 # Live vs still is a per-machine toggle (~/.local/state/omarchy/toggles/
 # video-wallpaper-off, via omarchy-toggle). In still mode the hook kills
@@ -28,14 +34,33 @@ CHOICE_LINK="$STATE_DIR/background-video"
 MODE_TOGGLE=video-wallpaper-off
 THEME_NAME=$(cat "$STATE_DIR/theme.name" 2>/dev/null)
 
+BG_DIRS=("$HOME/.config/omarchy/backgrounds/$THEME_NAME/" "$STATE_DIR/theme/backgrounds/")
+
 videos() {
-  find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
-    "$STATE_DIR/theme/backgrounds/" -maxdepth 1 -type f \
+  find -L "${BG_DIRS[@]}" -maxdepth 1 -type f \
     \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' -o -iname '*.avi' \) \
     2>/dev/null | sort
 }
 
+# Still-only wallpapers: images that are not some video's -static frame.
+stills() {
+  find -L "${BG_DIRS[@]}" -maxdepth 1 -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+    ! -name '*-static.*' 2>/dev/null | sort
+}
+
 stem() { local b; b=$(basename "$1"); echo "${b%.*}"; }
+
+# The recorded choice when it is one of this theme's still-only images.
+chosen_still() {
+  local chosen s
+  chosen=$(readlink -f "$CHOICE_LINK" 2>/dev/null)
+  [[ -n $chosen ]] || return 1
+  while read -r s; do
+    [[ $(readlink -f "$s") == "$chosen" ]] && { echo "$s"; return 0; }
+  done < <(stills)
+  return 1
+}
 
 # The video the hook will play (or, in still mode, whose still shows):
 # the recorded choice if it belongs to this theme, else the video named
@@ -66,13 +91,25 @@ set_still() {
   [[ -n $still ]] && omarchy-theme-bg-set "$still" >/dev/null 2>&1
 }
 
+# Paint whatever is chosen: a still-only image as itself, a video by its
+# still frame.
+apply_choice() {
+  local still current
+  if still=$(chosen_still); then
+    omarchy-theme-bg-set "$(readlink -f "$still")" >/dev/null 2>&1
+  else
+    current=$(resolve_video)
+    [[ -n $current ]] && set_still "$(readlink -f "$current")"
+  fi
+}
+
 case "$1" in
   --current)
     current=$(readlink -f "$CHOICE_LINK" 2>/dev/null)
     [[ -n $current ]] && stem "$current"
     exit 0 ;;
   --list)
-    videos | while read -r v; do stem "$v"; done
+    { videos; stills; } | while read -r v; do stem "$v"; done
     exit 0 ;;
   --mode)
     if omarchy-toggle-enabled "$MODE_TOGGLE"; then echo still; else echo live; fi
@@ -83,30 +120,29 @@ case "$1" in
     else
       omarchy-toggle "$MODE_TOGGLE" off
     fi
-    current=$(resolve_video)
-    [[ -n $current ]] && set_still "$(readlink -f "$current")"
+    apply_choice
     exec omarchy-hook theme-set ;;
   ""|-h|--help)
-    sed -n '2,10p' "$0" >&2
+    sed -n '2,11p' "$0" >&2
     exit 1 ;;
 esac
 
 if [[ -f $1 ]]; then
-  VIDEO=$(realpath "$1")
+  CHOICE=$(realpath "$1")
 else
-  VIDEO=""
+  CHOICE=""
   while read -r v; do
-    [[ $(stem "$v") == "$1" ]] && VIDEO=$(readlink -f "$v") && break
-  done < <(videos)
+    [[ $(stem "$v") == "$1" ]] && CHOICE=$(readlink -f "$v") && break
+  done < <({ videos; stills; })
 fi
 
-if [[ -z $VIDEO ]]; then
-  echo "No such video wallpaper: $1 (see --list)" >&2
+if [[ -z $CHOICE ]]; then
+  echo "No such wallpaper: $1 (see --list)" >&2
   exit 1
 fi
 
 mkdir -p "$STATE_DIR"
-ln -nsf "$VIDEO" "$CHOICE_LINK"
-set_still "$VIDEO"
+ln -nsf "$CHOICE" "$CHOICE_LINK"
+apply_choice
 
 exec omarchy-hook theme-set

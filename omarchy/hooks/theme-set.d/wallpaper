@@ -86,14 +86,29 @@ else
   #      a fresh machine plays the theme's own wallpaper, not whichever
   #      file sorts first;
   #   3. else the first video by name.
+  # A recorded choice that is one of this theme's plain images (a
+  # still-only wallpaper such as bliss.jpg, not a video's -static frame)
+  # means no video at all: omarchy-bg-video-set already set it as the
+  # shell's image, so kill mpvpaper and let the shell paint it.
   THEME_NAME=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
   VIDEO=""
   if [[ -n $THEME_NAME ]]; then
+    CHOSEN=$(readlink -f "$HOME/.local/state/omarchy/current/background-video" 2>/dev/null)
+    if [[ -n $CHOSEN && -f $CHOSEN ]] && ! is_video "$CHOSEN"; then
+      while IFS= read -r s; do
+        if [[ $(readlink -f "$s") == "$CHOSEN" ]]; then
+          kill_and_wait mpvpaper
+          exit 0
+        fi
+      done < <(find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
+        "$HOME/.local/state/omarchy/current/theme/backgrounds/" -maxdepth 1 -type f \
+        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+        ! -name '*-static.*' 2>/dev/null)
+    fi
     mapfile -t VIDEOS < <(find -L "$HOME/.config/omarchy/backgrounds/$THEME_NAME/" \
       "$HOME/.local/state/omarchy/current/theme/backgrounds/" -maxdepth 1 -type f \
       \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' -o -iname '*.avi' \) \
       2>/dev/null | sort)
-    CHOSEN=$(readlink -f "$HOME/.local/state/omarchy/current/background-video" 2>/dev/null)
     for v in "${VIDEOS[@]}"; do
       if [[ -n $CHOSEN && $(readlink -f "$v") == "$CHOSEN" ]]; then VIDEO=$v; break; fi
     done
