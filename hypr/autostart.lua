@@ -16,8 +16,9 @@ end)
 -- Re-run it after login so video backgrounds come up without a theme switch.
 o.exec_on_start("sleep 2 && omarchy-hook theme-set")
 
--- Special-workspace inhabitants. Spawned at session start; the windows.lua
--- rules (matched by --class) place them on special:music silently and snap
--- them back if ever moved.
-o.launch_on_start("kitty --class spotify-player -e spotify_player")
+-- Special-workspace inhabitant. Spawned at session start; the windows.lua
+-- rule (matched by --class) places it on special:music silently and snaps
+-- it back if ever moved. Spotify (the regular desktop client, since the
+-- TUI was dropped 2026-09-25) is NOT autostarted: music.sh launches it
+-- into the same workspace on demand.
 o.launch_on_start("kitty --class cmus -e cmus")

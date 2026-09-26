@@ -2,9 +2,10 @@
 -- override or extend them. Port of the pre-Quattro windows.conf.
 
 -- Pin special-workspace inhabitants to their workspaces. The kitty --class
--- tags in autostart.lua make these rules target the right windows (and
--- pull them back if ever moved).
-o.window("^spotify-player$", { workspace = "special:music silent" })
+-- tag in autostart.lua/music.sh makes the cmus rule target the right
+-- window; Spotify is the regular desktop client (class "Spotify"). Both
+-- get pulled back if ever moved.
+o.window("^[Ss]potify$", { workspace = "special:music silent" })
 o.window("^cmus$", { workspace = "special:music silent" })
 
 -- Pill-fork omarchy bar (raymond.bar plugin): the bar window is fully

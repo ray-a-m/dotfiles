@@ -69,7 +69,7 @@ install_linux_deps() {
             ;;
         pacman)
             sudo pacman -S --needed --noconfirm \
-                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux spotify-player cmus yazi glow jq ddgr quickshell eza keyd syncthing \
+                neovim emacs-wayland nodejs-lts-jod npm zoxide fzf github-cli zathura zathura-pdf-mupdf texlive-meta texlab kitty tmux cmus yazi glow jq ddgr quickshell eza keyd syncthing \
                 pandoc-cli qpdf aspell aspell-en ttf-jetbrains-mono-nerd ttf-liberation ttf-roboto-mono \
                 zsh zsh-autosuggestions zsh-syntax-highlighting \
                 bitwarden bitwarden-cli \
@@ -244,15 +244,6 @@ fi
 # raymond.bar plugin, symlinked with the other omarchy plugins below). The
 # quickshell/ dir stays in the repo as pre-Quattro reference only, so no
 # ~/.config/quickshell symlink is created anymore.
-
-if [ -d "$DOTFILES_DIR/spotify-player" ]; then
-    echo "==> Symlinking spotify-player config"
-    mkdir -p ~/.config/spotify-player
-    for src in "$DOTFILES_DIR"/spotify-player/*; do
-        [ -e "$src" ] || continue
-        ln -sfn "$src" ~/.config/spotify-player/"$(basename "$src")"
-    done
-fi
 
 if [ -d "$DOTFILES_DIR/cmus" ]; then
     echo "==> Symlinking cmus config"
