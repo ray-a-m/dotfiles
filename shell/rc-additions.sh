@@ -446,7 +446,7 @@ howto() {
 }
 
 # ── The job-application packet ────────────────────────────────────────────────
-# documents/application/ in research-wip holds one .org per component of a job
+# documents/applications/jobs/ in research-wip holds one .org per component of a job
 # application (research statement, teaching statement, teaching portfolio,
 # diversity statement, research proposal, dissertation abstract, referees), a
 # cover letter per school in letters/, and packet.org naming the order they are
@@ -465,7 +465,7 @@ howto() {
 #        packet extract             convert the exhibits to markdown (marker,
 #                                   in the daemon) so their text can be read
 #
-# PDFs land in ~/Documents/application/ as Maung_Research-Statement.pdf and
+# PDFs land in ~/Documents/applications/jobs/ as Maung_Research-Statement.pdf and
 # such: a search committee sees the file name, so the file name says who it is
 # and what it is.  Interfolio takes one file per item, which is why every
 # component is also built alone.
@@ -498,7 +498,7 @@ _packet_title() {
 _packet_build() {
   local dir="$1" driver="$2" dest="$3"
   shift 3
-  local build jobname rc
+  local build jobname rc label="${_build_label:-packet}"
   jobname="${driver%.tex}"
   build=$(mktemp -d -t packet.XXXXXX) || return 1
   (
@@ -510,22 +510,22 @@ _packet_build() {
   if [[ $rc -eq 0 && -f "$build/$jobname.pdf" ]]; then
     cp "$build/$jobname.pdf" "$dest" || return 1
     rm -rf "$build"
-    echo "packet: wrote $dest"
+    echo "$label: wrote $dest"
     return 0
   fi
-  echo "packet: $driver failed — log in $build/$jobname.log"
+  echo "$label: $driver failed — log in $build/$jobname.log"
   return 1
 }
 
 # Every component .org, one per line.  README.org is the map of the directory
-# and applications.org is the job tracker: neither builds anything, and the
-# export refuses them too (rm/org-paper-application-non-documents).
+# and jobs.org is the job tracker: neither builds anything, and the export
+# refuses them too (rm/org-paper-application-non-documents).
 _packet_components() {
   local app="$1" org base
   find "$app" -maxdepth 1 -name '*.org' | sort | while IFS= read -r org; do
     base="${org##*/}"
     base="${base%.org}"
-    case "$base" in README|applications|packet) continue ;; esac
+    case "$base" in README|jobs|packet) continue ;; esac
     printf '%s\n' "$base"
   done
 }
@@ -553,8 +553,8 @@ _packet_missing_exhibits() {
 }
 
 packet() {
-  local app="$HOME/scholarship/research-wip/documents/application"
-  local out="$HOME/Documents/application"
+  local app="$HOME/scholarship/research-wip/documents/applications/jobs"
+  local out="$HOME/Documents/applications/jobs"
   local target="$1"
   local name institution pretex letter_dir
 
@@ -651,7 +651,7 @@ packet() {
   # A component, alone.
   if [[ -n "$target" && "$target" != packet && -f "$app/$target.org" ]]; then
     case "$target" in
-      README|applications)
+      README|jobs)
         echo "packet: $target is not a document"
         return 1
         ;;
@@ -699,6 +699,139 @@ packet() {
   _org_export_body "$app/packet.org" || return 1
   _packet_build "$app" packet.tex "$out/Maung_Application-Packet.pdf" || return 1
   _packet_missing_exhibits "$app"
+}
+
+# Build a grant application, or one item of it.  documents/applications/
+# grants/<slug>/ in research-wip holds one .org per item the funder takes
+# (proposal.org, budget.org, ...), bundle.org when a portal wants one PDF,
+# exhibits/ for PDFs from outside the pipeline, and the call as call.pdf.
+# The packet's arrangement, one directory per application -- with the
+# funder's format as data on each item: #+FONTSIZE:, #+MARGINS:,
+# #+SPACING: reach the generated driver as \def's the grants preamble
+# reads, and #+PAGE_LIMIT: is checked here after the build, with pdfinfo,
+# because a page over the limit is the one thing a funder will not read.
+# PDFs land in ~/Documents/applications/grants/<slug>/ as Maung_Proposal.pdf
+# and such -- one file per upload, named for the reader.
+#
+# A new grant is a copy of the template: cp -r template acls-2027.  Not
+# part of `publish', like the packet: nothing here is public.
+
+# Every item .org of a grant directory, one per line.  README.org is the
+# map and bundle.org the bound order: neither is an item.
+_grant_items() {
+  local dir="$1" org base
+  find "$dir" -maxdepth 1 -name '*.org' | sort | while IFS= read -r org; do
+    base="${org##*/}"
+    base="${base%.org}"
+    case "$base" in README|bundle) continue ;; esac
+    printf '%s\n' "$base"
+  done
+}
+
+# The item's #+PAGE_LIMIT:, against the PDF just built.  Said aloud, not
+# fatal: the PDF is still the thing to look at.
+_grant_check_pages() {
+  local org="$1" pdf="$2" limit pages
+  limit=$(sed -n 's/^#+PAGE_LIMIT:[[:space:]]*//p' "$org" | head -1)
+  [[ -n "$limit" ]] || return 0
+  pages=$(pdfinfo "$pdf" 2>/dev/null | awk '/^Pages:/{print $2}')
+  [[ -n "$pages" ]] || return 0
+  if (( pages > limit )); then
+    echo "grant: ${pdf##*/} runs $pages pages; the call allows $limit"
+  fi
+}
+
+grant() {
+  local root="$HOME/scholarship/research-wip/documents/applications/grants"
+  local slug="$1" target="$2"
+  local _build_label=grant
+  local dir out name
+
+  if [[ ! -d "$root" ]]; then
+    echo "grant: no grants directory at $root"
+    return 1
+  fi
+
+  if [[ -z "$slug" || "$slug" == "--list" || "$slug" == "-l" ]]; then
+    find "$root" -mindepth 1 -maxdepth 1 -type d | sort | while IFS= read -r dir; do
+      name="${dir##*/}"
+      [[ "$name" == template ]] && continue
+      printf '%s:' "$name"
+      _grant_items "$dir" | tr '\n' ' ' | sed 's/^/ /'
+      [[ -f "$dir/bundle.org" ]] && printf '+ bundle'
+      echo
+    done
+    echo "template: cp -r $root/template $root/<slug>"
+    return 0
+  fi
+
+  dir="$root/$slug"
+  if [[ ! -d "$dir" ]]; then
+    echo "grant: no grant named $slug (grant --list)"
+    return 1
+  fi
+  out="$HOME/Documents/applications/grants/$slug"
+
+  # An outside PDF into the grant's exhibits/, never overwriting.
+  if [[ "$target" == add ]]; then
+    local src="$3" ex="$4"
+    if [[ -z "$src" || -z "$ex" ]]; then
+      echo "usage: grant $slug add <pdf> <name>    e.g. grant $slug add ~/Downloads/transcript.pdf transcript-uic-2026"
+      return 1
+    fi
+    if [[ ! -f "$src" ]]; then
+      echo "grant: no such file: $src"
+      return 1
+    fi
+    ex="${ex%.pdf}"
+    mkdir -p "$dir/exhibits"
+    if [[ -e "$dir/exhibits/$ex.pdf" ]]; then
+      echo "grant: exhibits/$ex.pdf exists; pick another name"
+      return 1
+    fi
+    cp "$src" "$dir/exhibits/$ex.pdf" || return 1
+    echo "grant: added $slug/exhibits/$ex.pdf"
+    echo "grant: to bind it whole, add to bundle.org:  \\grantexhibit{Title}{exhibits/$ex.pdf}"
+    return 0
+  fi
+
+  mkdir -p "$out" || return 1
+
+  # One item, alone.
+  if [[ -n "$target" ]]; then
+    case "$target" in
+      README)
+        echo "grant: README is not an item"
+        return 1
+        ;;
+    esac
+    if [[ ! -f "$dir/$target.org" ]]; then
+      echo "grant: no item named $target in $slug (grant --list)"
+      return 1
+    fi
+    _org_export_body "$dir/$target.org" || return 1
+    if [[ "$target" == bundle ]]; then
+      _grant_items "$dir" | while IFS= read -r name; do
+        _org_export_body "$dir/$name.org" || exit 1
+      done || return 1
+      _packet_build "$dir" bundle.tex "$out/Maung_Application_$(_packet_title "$slug").pdf" || return 1
+    else
+      _packet_build "$dir" "$target.tex" "$out/Maung_$(_packet_title "$target").pdf" || return 1
+      _grant_check_pages "$dir/$target.org" "$out/Maung_$(_packet_title "$target").pdf"
+    fi
+    return 0
+  fi
+
+  # No item named: every item alone, then the bundle if the grant has one.
+  _grant_items "$dir" | while IFS= read -r name; do
+    _org_export_body "$dir/$name.org" || exit 1
+    _packet_build "$dir" "$name.tex" "$out/Maung_$(_packet_title "$name").pdf" || exit 1
+    _grant_check_pages "$dir/$name.org" "$out/Maung_$(_packet_title "$name").pdf"
+  done || return 1
+  if [[ -f "$dir/bundle.org" ]]; then
+    _org_export_body "$dir/bundle.org" || return 1
+    _packet_build "$dir" bundle.tex "$out/Maung_Application_$(_packet_title "$slug").pdf" || return 1
+  fi
 }
 
 # A marked-up PDF of what changed between two versions of a paper --
