@@ -517,15 +517,15 @@ _packet_build() {
   return 1
 }
 
-# Every component .org, one per line.  README.org is the map of the directory
-# and jobs.org is the job tracker: neither builds anything, and the export
-# refuses them too (rm/org-paper-application-non-documents).
+# Every component .org, one per line.  README.org is the map of the
+# directory: it builds nothing, and the export refuses it too
+# (rm/org-paper-application-non-documents).
 _packet_components() {
   local app="$1" org base
   find "$app" -maxdepth 1 -name '*.org' | sort | while IFS= read -r org; do
     base="${org##*/}"
     base="${base%.org}"
-    case "$base" in README|jobs|packet) continue ;; esac
+    case "$base" in README|packet) continue ;; esac
     printf '%s\n' "$base"
   done
 }
@@ -651,7 +651,7 @@ packet() {
   # A component, alone.
   if [[ -n "$target" && "$target" != packet && -f "$app/$target.org" ]]; then
     case "$target" in
-      README|jobs)
+      README)
         echo "packet: $target is not a document"
         return 1
         ;;
