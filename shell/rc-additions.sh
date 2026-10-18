@@ -728,6 +728,17 @@ _grant_items() {
   done
 }
 
+# Exhibits bundle.org names that are not on disk.  The build adds no page
+# for one (the funder's form is bound as it comes or not at all), so this
+# is the only place it is said aloud.  Commented-out lines are not bindings.
+_grant_missing_exhibits() {
+  local dir="$1" ex
+  sed -n 's/^[[:space:]]*\\grantexhibit{[^}]*}{\([^}]*\)}.*/\1/p' "$dir/bundle.org" |
+    while IFS= read -r ex; do
+      [[ -f "$dir/$ex" ]] || echo "grant: exhibit missing — $ex"
+    done
+}
+
 # The item's #+PAGE_LIMIT:, against the PDF just built.  Said aloud, not
 # fatal: the PDF is still the thing to look at.
 _grant_check_pages() {
@@ -815,6 +826,7 @@ grant() {
         _org_export_body "$dir/$name.org" || exit 1
       done || return 1
       _packet_build "$dir" bundle.tex "$out/Maung_Application_$(_packet_title "$slug").pdf" || return 1
+      _grant_missing_exhibits "$dir"
     else
       _packet_build "$dir" "$target.tex" "$out/Maung_$(_packet_title "$target").pdf" || return 1
       _grant_check_pages "$dir/$target.org" "$out/Maung_$(_packet_title "$target").pdf"
@@ -831,6 +843,7 @@ grant() {
   if [[ -f "$dir/bundle.org" ]]; then
     _org_export_body "$dir/bundle.org" || return 1
     _packet_build "$dir" bundle.tex "$out/Maung_Application_$(_packet_title "$slug").pdf" || return 1
+    _grant_missing_exhibits "$dir"
   fi
 }
 
