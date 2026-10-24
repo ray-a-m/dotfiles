@@ -10,9 +10,12 @@ run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=$t "$1"'
 mime = "text/markdown"
 run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=$t "$1"'
 
-# Open .org and markdown in Emacs on <Enter>.  emacsclient reuses a running
+# Open .org and .tex in Emacs on <Enter>.  emacsclient reuses a running
 # Emacs (or starts a daemon on first use via -a ""); -n returns immediately so
 # yazi doesn't block, and orphan detaches the frame from yazi's lifetime.
+# Markdown is not here on purpose (2026-10-25): it falls through to yazi's
+# own text opener, $EDITOR (omarchy-launch-editor, so nvim) -- where the xdg default
+# (xdg/mimeapps.list) sends it.
 [opener]
 emacs = [
     { run = 'emacsclient -c -n -a "" "$@"', desc = "Emacs", orphan = true },
@@ -20,18 +23,6 @@ emacs = [
 
 [[open.prepend_rules]]
 url = "*.org"
-use = "emacs"
-
-[[open.prepend_rules]]
-mime = "text/markdown"
-use = "emacs"
-
-[[open.prepend_rules]]
-url = "*.md"
-use = "emacs"
-
-[[open.prepend_rules]]
-url = "*.markdown"
 use = "emacs"
 
 [[open.prepend_rules]]
