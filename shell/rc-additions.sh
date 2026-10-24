@@ -55,27 +55,30 @@ alias wallpaper="omarchy-hook theme-set"
 # daemon dependency, no init.el -- the export module + the shared
 # org-paper.setup carry everything the batch path needs.
 # Pull every multi-homed repo on this laptop: the config layer
-# (dotfiles, dotfiles-private, emacs, homelab) plus the two-writer publish
+# (dotfiles, dotfiles-private, homelab) plus the two-writer publish
 # repos (website, research-public). ff-only and quiet -- one line per
 # repo that actually moved or failed, nothing for the common case.
-# research-wip is absent on purpose: its laptop tree is Syncthing-synced
-# and the services cron owns its git. NOTE: a pulled dotfiles change is
-# on disk but not reloaded (Emacs daemon, hypr) -- reload deliberately.
-# The aspell dictionary commits and pushes itself first
-# (shell/dict-commit.sh) -- it is a tracked file that ordinary use
-# rewrites, and a dirty tree is a refused pull.
+# Two repos are absent on purpose. research-wip: its laptop tree is
+# Syncthing-synced and the services cron owns its git. emacs: its
+# runtime/ is a send-only Syncthing folder from this laptop to the
+# other machines, so they take the config the moment it is saved here;
+# the git repo is that config's history, not its distribution, and no
+# other machine writes to origin. A pull there had nothing to bring and
+# refused anyway whenever the tree was dirty (the dictionary, work in
+# progress) -- the standing "emacs -- pull failed" line (2026-10-25).
+# NOTE: a pulled dotfiles change is on disk but not reloaded (Emacs
+# daemon, hypr) -- reload deliberately. The aspell dictionary commits
+# and pushes itself first (shell/dict-commit.sh): it is a tracked file
+# that ordinary use rewrites, and a commit keeps the history honest.
 # The pull ends in Claude. `auto' is the only way this laptop starts a
 # session, so no session runs on a stale config layer. Arguments pass
 # through, so `auto --resume' works. Claude exits back to this shell.
 auto() {
   local r before
-  # The personal dictionary rewrites itself as words are taken, and a
-  # dirty tree makes the ff-only pull below refuse to run: commit and
-  # push it first, so the emacs repo is clean by the time the loop
-  # reaches it.
+  # The personal dictionary rewrites itself as words are taken: commit
+  # it now, which catches a word taken while the laptop was offline.
   "$HOME/code/dotfiles/shell/dict-commit.sh"
   for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
-           "$HOME/code/emacs" \
            "$HOME/code/homelab" "$HOME/scholarship/website" \
            "$HOME/scholarship/research-public" \
            "$HOME/projects/philwebring"; do

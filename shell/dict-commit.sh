@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Commit and push the aspell personal dictionary, and nothing else.
 #
-# aspell-personal.pws, at the root of the Emacs config repo
-# (ray-a-m/emacs at ~/code/emacs), is a tracked file that ordinary use
-# rewrites: every word taken with `i' at
-# an M-$ prompt appends to it. A dirty tree makes the ff-only pull in
-# `auto' refuse to run, so the dictionary commits itself instead of
-# waiting for a hand (2026-08-28). Two callers, one behaviour:
+# runtime/aspell-personal.pws in the Emacs config repo (ray-a-m/emacs
+# at ~/code/emacs; it sat at the repo root until the portable-runtime
+# refactor of 2026-09-15, and this script looked there until 2026-10-25,
+# silently committing nothing) is a tracked file that ordinary use
+# rewrites: every word taken with `i' at an M-$ prompt appends to it.
+# So the dictionary commits itself instead of waiting for a hand
+# (2026-08-28): the history stays honest and the tree stays clean for
+# the work that is actually in progress. Two callers, one behaviour:
 # rm-checkers runs this two idle seconds after aspell saves the file,
-# and `auto' runs it before the pull, which catches a word taken while
+# and `auto' runs it at session start, which catches a word taken while
 # the laptop was offline. The commit passes through that repo's beads
 # pre-commit hook: the hook's gate runs only for staged .el paths, and
 # the path-limited commit below takes only the dictionary.
@@ -18,7 +20,7 @@
 # happens only when the dictionary is the only thing waiting to go out.
 
 repo="$HOME/code/emacs"
-file="aspell-personal.pws"
+file="runtime/aspell-personal.pws"
 
 [ -d "$repo/.git" ] || exit 0
 cd "$repo" || exit 0
