@@ -448,6 +448,37 @@ howto() {
   return 1
 }
 
+# ── The application tracker ──────────────────────────────────────────────────
+# documents/applications/jobs/postings.org in research-wip is the tracker: the
+# job boards' postdoc ads that match the areas named at its top, one row each,
+# kept current by the `postings' scanner (homelab repo,
+# roles/services/files/postings.py), which the services LXC runs at six every
+# morning and the sync cron commits.  This function runs the same scanner here,
+# by hand, on the laptop's copy of the file -- the one Syncthing carries -- so
+# a new ad can be looked for without waiting for the morning, and a change to
+# the areas or types can be tried with --dry-run first.  Both copies converge:
+# the scan is idempotent, and a scan that finds the file edited under it
+# writes nothing.
+#
+# Usage: postings            scan now, update the tracker
+#        postings --dry-run  say what would change, write nothing
+#
+# Status is yours in Emacs: open -> submitted or ignored; the scanner closes
+# what passes its hard deadline or is confirmed gone.  Nothing here publishes.
+postings() {
+  local script=~/code/homelab/roles/services/files/postings.py
+  local file=~/scholarship/research-wip/documents/applications/jobs/postings.org
+  if [[ ! -f "$script" ]]; then
+    echo "postings: no scanner at $script (clone ray-a-m/homelab)"
+    return 1
+  fi
+  if [[ ! -f "$file" ]]; then
+    echo "postings: no tracker at $file"
+    return 1
+  fi
+  python3 "$script" --file "$file" "$@"
+}
+
 # ── The job-application packet ────────────────────────────────────────────────
 # documents/applications/jobs/ in research-wip holds one .org per component of a job
 # application (research statement, teaching statement, teaching portfolio,
