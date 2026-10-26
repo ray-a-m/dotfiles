@@ -36,6 +36,8 @@
 
   "emacs": {"icon": "", "label": "Emacs", "action": "gtk-launch emacsclient"},
 
+  "gabriel": {"icon": "󰚩", "label": "Gabriel", "action": "gtk-launch gabriel"},
+
   "research": {"icon": "󰂺", "label": "Research"},
   "research.chatgpt": {"icon": "", "label": "ChatGPT", "action": "gtk-launch chatgpt"},
   "research.claude": {"icon": "", "label": "Claude", "action": "gtk-launch claude"},
