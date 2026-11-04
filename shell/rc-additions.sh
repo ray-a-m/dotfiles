@@ -66,33 +66,69 @@ alias wallpaper="omarchy-hook theme-set"
 # other machine writes to origin. A pull there had nothing to bring and
 # refused anyway whenever the tree was dirty (the dictionary, work in
 # progress) -- the standing "emacs -- pull failed" line (2026-10-25).
+# Two failure classes printed a line here on most mornings, and neither
+# was a divergence (2026-11-04). A dirty tree: every repo has
+# pull.rebase set, and git refuses to rebase over unstaged changes even
+# for a fast-forward, so --autostash parks them around the pull and
+# restores them, as Claude's own SessionStart hook has since
+# 2026-08-27. No network: on campus the laptop roams between access
+# points, and a session often starts inside the seconds a
+# re-association takes, so the pulls first wait for GitHub to answer,
+# up to about twenty seconds, and when it never does they say so once
+# instead of six times. A pull that still fails prints git's own error
+# line, not a guess at the reason.
 # NOTE: a pulled dotfiles change is on disk but not reloaded (Emacs
 # daemon, hypr) -- reload deliberately. The aspell dictionary commits
 # and pushes itself first (shell/dict-commit.sh): it is a tracked file
 # that ordinary use rewrites, and a commit keeps the history honest.
-# The pull ends in Claude. `auto' is the only way this laptop starts a
-# session, so no session runs on a stale config layer. Arguments pass
-# through, so `auto --resume' works. Claude exits back to this shell.
+# The pull ends in Claude, told through RM_CONFIG_PULLED that the
+# config layer is fresh so its SessionStart hook does not pull
+# dotfiles-private a second time. `auto' is the only way this laptop
+# starts a session, so no session runs on a stale config layer.
+# Arguments pass through, so `auto --resume' works. Claude exits back
+# to this shell.
 auto() {
-  local r before
+  local r before err
   # The personal dictionary rewrites itself as words are taken: commit
   # it now, which catches a word taken while the laptop was offline.
   "$HOME/code/dotfiles/shell/dict-commit.sh"
-  for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
-           "$HOME/code/homelab" "$HOME/scholarship/website" \
-           "$HOME/scholarship/research-public" \
-           "$HOME/projects/philwebring"; do
-    [ -d "$r/.git" ] || continue
-    before=$(git -C "$r" rev-parse HEAD)
-    if ! timeout 20 git -C "$r" pull --ff-only -q 2>/dev/null; then
-      echo "auto: $(basename "$r") — pull failed (offline, dirty, or diverged)"
-      continue
-    fi
-    if [ "$before" != "$(git -C "$r" rev-parse HEAD)" ]; then
-      echo "auto: $(basename "$r") updated"
-    fi
+  if _auto_github_up; then
+    for r in "$HOME/code/dotfiles" "$HOME/code/dotfiles-private" \
+             "$HOME/code/homelab" "$HOME/scholarship/website" \
+             "$HOME/scholarship/research-public" \
+             "$HOME/projects/philwebring"; do
+      [ -d "$r/.git" ] || continue
+      before=$(git -C "$r" rev-parse HEAD)
+      if ! err=$(timeout 20 git -C "$r" pull --ff-only --autostash -q 2>&1 >/dev/null); then
+        # git's own reason, its fatal/error line; none means nothing
+        # came back before the timeout.
+        err=$(printf '%s\n' "$err" | sed -nE 's/^(fatal|error): //p' | head -n1)
+        echo "auto: $(basename "$r") — pull failed: ${err:-timed out}"
+        continue
+      fi
+      if [ "$before" != "$(git -C "$r" rev-parse HEAD)" ]; then
+        echo "auto: $(basename "$r") updated"
+      fi
+    done
+  else
+    echo "auto: GitHub unreachable — nothing pulled"
+  fi
+  RM_CONFIG_PULLED=1 claude "$@"
+}
+
+# True once GitHub answers an unauthenticated ls-remote of the public
+# dotfiles repo; four tries, three seconds apart, so a WiFi
+# re-association in progress gets to finish. False after about twenty
+# seconds without an answer.
+_auto_github_up() {
+  local tries=0
+  until GIT_TERMINAL_PROMPT=0 timeout 4 git ls-remote -q --exit-code \
+          https://github.com/ray-a-m/dotfiles.git HEAD >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -ge 4 ] && return 1
+    sleep 3
   done
-  claude "$@"
+  return 0
 }
 
 # Attach to the ai LXC's tmux session over the LAN or the mesh. On
