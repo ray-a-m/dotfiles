@@ -1,12 +1,12 @@
-# Force Firefox/LibreWolf to use native Wayland when launched from a shell.
+# Force Firefox to use native Wayland when launched from a shell.
 # Hyprland's envs.conf already sets this for keybind-launched apps; this
 # covers the terminal-launch case.
 export MOZ_ENABLE_WAYLAND=1
 
 # Default browser for tools that consult $BROWSER (some CLIs, email/PWA
 # clients) instead of xdg-open. xdg-mime already routes http/https to
-# librewolf.desktop; this closes the env-var fallback path.
-export BROWSER=librewolf
+# firefox.desktop; this closes the env-var fallback path.
+export BROWSER=firefox
 
 # Route omarchy-capture-screenshot output into a Screenshots/ subdir so
 # the parent ~/Pictures/ stays available for other images. The script

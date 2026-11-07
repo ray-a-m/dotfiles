@@ -29,7 +29,7 @@ require("default.hypr.toggles")
 
 -- Default browser for keybind-launched GUI apps that consult $BROWSER
 -- (shell rc-additions.sh sets the same for terminal-launched apps).
-hl.env("BROWSER", "librewolf")
+hl.env("BROWSER", "firefox")
 
 -- Route omarchy-capture-screenshot into a Screenshots/ subdir under
 -- Pictures, freeing the parent for other images. Same dual-set pattern

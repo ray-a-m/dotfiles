@@ -454,20 +454,6 @@ if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/systemd" ]; then
     fi
 fi
 
-# Pacman hooks: redeploy system-side artifacts that pacman wipes when
-# upstream packages upgrade. Currently used for the LibreWolf policies
-# merge (librewolf-policies.hook). Hooks run /bin/sh -c with hardcoded
-# dotfile paths — pacman runs them as root with no usable environment,
-# so $HOME / $DOTFILES_DIR cannot be expanded inside the hook file.
-if [ "$OS" = "Linux" ] && [ -d "$DOTFILES_DIR/pacman-hooks" ]; then
-    echo "==> Installing pacman hooks"
-    for src in "$DOTFILES_DIR"/pacman-hooks/*.hook; do
-        [ -e "$src" ] || continue
-        name="$(basename "$src")"
-        sudo install -Dm644 "$src" "/etc/pacman.d/hooks/$name"
-    done
-fi
-
 if [ "$OS" = "Linux" ]; then
     if command -v omarchy-install-chromium-google-account &>/dev/null; then
         # The omarchy script no-ops if chromium-flags.conf doesn't exist yet
@@ -545,60 +531,38 @@ if [ "$OS" = "Linux" ]; then
     fi
     # firefox-pwa hosts the PWAs whose upstreams publish a manifest and
     # don't block non-Chromium browsers, so external links open in the
-    # default browser (LibreWolf) instead of being trapped in a Chromium
+    # default browser (Firefox) instead of being trapped in a Chromium
     # app window. The launchers, and the pwa-setup script that registers
     # them, live in the private overlay (run at the end of this script).
     if command -v yay &>/dev/null && ! pacman -Q firefox-pwa &>/dev/null; then
         echo "==> Installing firefox-pwa from AUR"
         yay -S --noconfirm firefox-pwa
     fi
-    if command -v yay &>/dev/null && ! pacman -Q librewolf-bin &>/dev/null; then
-        echo "==> Installing LibreWolf from AUR"
-        yay -S --noconfirm librewolf-bin
+    # Firefox, Omarchy's way: the package, the Wayland environment file and
+    # Omarchy's own policy file (/usr/lib/firefox/distribution/policies.json).
+    # Moved from LibreWolf on 2026-11-07; the profile came over whole. The
+    # Arch package links the system ffmpeg, so H.264 and AAC play without
+    # the ffmpeg4.4 side package LibreWolf needed.
+    if command -v omarchy-install-browser &>/dev/null && ! pacman -Q firefox &>/dev/null; then
+        echo "==> Installing Firefox"
+        omarchy-install-browser firefox
     fi
-    # H.264 and AAC playback for LibreWolf. Firefox and its forks find their
-    # H.264/AAC decoder by trying a fixed list of libavcodec sonames. LibreWolf
-    # 152 searches libavcodec.so.53 through .62. Arch ffmpeg 9 ships
-    # libavcodec.so.63, which is past the end of that list, so the browser
-    # loads no system ffmpeg and has no H.264 or AAC decoder at all. Video
-    # then attaches and decodes nothing: a black player that never starts.
-    # VP9, AV1 and Opus keep working, because LibreWolf bundles its own FFVPX
-    # for those, so the failure looks site-specific. Reddit (v.redd.it) is
-    # H.264 plus AAC and is where it showed. Chromium is unaffected because it
-    # bundles ffmpeg.
-    #
-    # ffmpeg4.4 puts libavcodec.so.58 in /usr/lib. That is inside the range
-    # LibreWolf searches, and it coexists with ffmpeg 9 because the sonames
-    # differ. No wrapper and no LD_LIBRARY_PATH are necessary.
-    #
-    # Remove this when LibreWolf ships a Firefox version that searches .63.
-    # Mozilla already raised the cap in mozilla-central. To test, compare
-    #   strings /usr/lib/librewolf/libxul.so | grep -E '^libavcodec\.so\.'
-    # against the installed /usr/lib/libavcodec.so.* soname.
-    if pacman -Q librewolf-bin &>/dev/null && ! pacman -Q ffmpeg4.4 &>/dev/null; then
-        echo "==> Installing ffmpeg4.4 (H.264/AAC decoder LibreWolf can load)"
-        sudo pacman -S --needed --noconfirm ffmpeg4.4
-    fi
-    # Bitwarden auto-install policy for LibreWolf. The merge script reads
-    # LibreWolf's shipped /usr/lib/librewolf/distribution/policies.json
-    # (which carries its hardening defaults), overlays dotfiles/librewolf/
-    # policies-overlay.json (Bitwarden extension), and writes the union to
-    # /etc/librewolf/policies/policies.json. The pacman hook installed
-    # earlier re-runs this on every librewolf-bin upgrade.
-    if [ -f /usr/lib/librewolf/distribution/policies.json ] && \
-       [ -x "$DOTFILES_DIR/librewolf/merge-policies.sh" ]; then
-        echo "==> Merging LibreWolf policies (Bitwarden auto-install)"
-        "$DOTFILES_DIR/librewolf/merge-policies.sh"
+    # Bitwarden auto-install policy. Firefox reads one policy file, Omarchy
+    # writes it at install time only, and the package does not own it, so an
+    # upgrade leaves it alone. The merge script folds dotfiles/firefox/
+    # policies-overlay.json into that file in place; a second run is a no-op.
+    if [ -f /usr/lib/firefox/distribution/policies.json ] && \
+       [ -x "$DOTFILES_DIR/firefox/merge-policies.sh" ]; then
+        echo "==> Merging Firefox policies (Bitwarden auto-install)"
+        "$DOTFILES_DIR/firefox/merge-policies.sh"
     fi
 
-    # LibreWolf pref overrides (dotfiles/librewolf/user.js). The main job is
-    # the timezone. LibreWolf turns on resistFingerprinting by default, which
-    # reports UTC to every website and makes calendar sites show the wrong
-    # local time. The script links user.js into each profile. Read the header
-    # of user.js for the measured trade-off.
-    if [ -x "$DOTFILES_DIR/librewolf/link-user-js.sh" ]; then
-        echo "==> Linking LibreWolf user.js (real timezone, keep other protections)"
-        "$DOTFILES_DIR/librewolf/link-user-js.sh"
+    # Firefox pref overrides (dotfiles/firefox/user.js): fingerprinting
+    # protection on, with the real timezone. The script links user.js into
+    # each profile. Read the header of user.js for the measured trade-off.
+    if [ -x "$DOTFILES_DIR/firefox/link-user-js.sh" ]; then
+        echo "==> Linking Firefox user.js (fingerprinting protection, real timezone)"
+        "$DOTFILES_DIR/firefox/link-user-js.sh"
     fi
 fi
 

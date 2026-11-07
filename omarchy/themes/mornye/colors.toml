@@ -6,7 +6,7 @@
 # scheme never derived from the palette (no light.mode marker = dark), so
 # the setup was latte terminals + a dark browser/GTK. Quattro's background-
 # luminance auto-detect would classify this palette "light" and flip
-# LibreWolf/GTK light — pin the mode so it can't.
+# Firefox/GTK light — pin the mode so it can't.
 mode = "dark"
 
 accent = "#1e66f5"
