@@ -15,7 +15,7 @@
 #    it). exec keeps stdin and the exit code, so pre-push and post-rewrite
 #    still get their ref lists.
 #
-# A repo that sets its own core.hooksPath (the emacs repo, beads hooks)
+# A repo that sets its own core.hooksPath (the emacs repo, .githooks)
 # never reaches this file; its commit-msg delegates here by hand.
 
 hook=$(basename "$0")

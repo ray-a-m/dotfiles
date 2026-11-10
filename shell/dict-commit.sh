@@ -11,7 +11,7 @@
 # the work that is actually in progress. Two callers, one behaviour:
 # rm-checkers runs this two idle seconds after aspell saves the file,
 # and `auto' runs it at session start, which catches a word taken while
-# the laptop was offline. The commit passes through that repo's beads
+# the laptop was offline. The commit passes through that repo's
 # pre-commit hook: the hook's gate runs only for staged .el paths, and
 # the path-limited commit below takes only the dictionary.
 #

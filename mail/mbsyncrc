@@ -1,6 +1,6 @@
 # mbsync (isync 1.5) — one IMAP account, Fastmail, full history, maildir
 # under ~/.mail/fastmail/. Decided in emacs-l88, executed in emacs-l7d;
-# Gmail left in emacs-v6o (ray-a-m/emacs beads).
+# Gmail left in emacs-v6o (ray-a-m/emacs, wayfinder/).
 #
 # The secret comes from the GNOME keyring (secret-tool), never from this
 # file. Store it once per machine:

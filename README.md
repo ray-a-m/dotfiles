@@ -29,8 +29,8 @@ Personal configuration files for Linux.
 The Emacs config is its own repo, which `install.sh` clones when absent:
 
     git clone git@github.com:ray-a-m/emacs.git ~/code/emacs
-    git -C ~/code/emacs config core.hooksPath .beads/hooks
+    git -C ~/code/emacs config core.hooksPath ~/code/emacs/.githooks
 
 The `core.hooksPath` line is that repo's own clone step (see its
-CLAUDE.md): without it the beads hooks, including the issues.jsonl
-export backup, are silently inert.
+CLAUDE.md): without it the pre-commit gate is silently inert.
+`install.sh` sets it on every run.

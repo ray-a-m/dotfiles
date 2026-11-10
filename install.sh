@@ -97,15 +97,16 @@ install_linux_deps() {
 # The Emacs config lives in its own repo, ray-a-m/emacs (private), so a
 # dotfiles pull does not deliver it: clone it when absent and symlink
 # ~/.config/emacs at the clone. core.hooksPath
-# is local git config, so the clone sets it, or the repo's tracked beads
-# hooks (and the issues.jsonl export backup) are silently inert.
+# is local git config, so this sets it on every run, or the repo's
+# tracked hooks (the pre-commit gate) are silently inert. The path is
+# absolute so that a linked worktree runs the same hooks.
 install_emacs_config() {
     echo "==> Emacs config (ray-a-m/emacs at ~/code/emacs)"
     if [ ! -d "$HOME/code/emacs/.git" ]; then
         mkdir -p "$HOME/code"
         git clone git@github.com:ray-a-m/emacs.git "$HOME/code/emacs"
-        git -C "$HOME/code/emacs" config core.hooksPath .beads/hooks
     fi
+    git -C "$HOME/code/emacs" config core.hooksPath "$HOME/code/emacs/.githooks"
     if [ -e ~/.config/emacs ] && [ ! -L ~/.config/emacs ]; then
         echo "Backing up existing ~/.config/emacs to ~/.config/emacs.bak"
         mv ~/.config/emacs ~/.config/emacs.bak
@@ -519,15 +520,6 @@ if [ "$OS" = "Linux" ]; then
         echo "==> Installing NetBird from AUR"
         yay -S --noconfirm netbird-bin
         sudo systemctl enable --now netbird 2>/dev/null || true
-    fi
-    # beads (bd): dependency-graph issue tracker and persistent memory for
-    # coding agents. Agent-facing only -- personal tasks stay in org-agenda.
-    # Each repo gets its own .beads/ database; databases stay local (no
-    # `bd dolt push`), so no cross-machine schema skew to manage. Only the
-    # binary is dotfiles-tracked. Never run `bd init` in research-public.
-    if command -v yay &>/dev/null && ! pacman -Q beads-bin &>/dev/null; then
-        echo "==> Installing beads from AUR"
-        yay -S --noconfirm beads-bin
     fi
     # firefox-pwa hosts the PWAs whose upstreams publish a manifest and
     # don't block non-Chromium browsers, so external links open in the
