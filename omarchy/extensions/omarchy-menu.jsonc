@@ -16,7 +16,8 @@
   "apps": {"parent": "unlisted", "icon": "󰀻", "label": "Apps", "aliases": ["app", "applications"], "provider": "apps"},
   "learn": {"parent": "unlisted", "icon": "󰧑", "label": "Learn"},
   "trigger": {"parent": "unlisted", "icon": "󱓞", "label": "Trigger"},
-  "style": {"parent": "unlisted", "icon": "", "label": "Style"},
+  // Stock renamed its "style" submenu to "appearance" (alias "style").
+  "appearance": {"parent": "unlisted", "icon": "󰏘", "label": "Appearance", "aliases": ["style"]},
   "setup": {"parent": "unlisted", "icon": "", "label": "Setup", "aliases": ["settings"]},
   "install": {"parent": "unlisted", "icon": "󰉉", "label": "Install"},
   "remove": {"parent": "unlisted", "icon": "󰭌", "label": "Remove", "aliases": ["uninstall"]},
@@ -65,7 +66,7 @@
   // history). The rare intentional logout stays available as `omarchy logout`
   // in a terminal.
   "power": {"icon": "", "label": "System"},
-  "power.style": {"icon": "", "label": "Style", "target": "style"},
+  "power.style": {"icon": "", "label": "Style", "target": "appearance"},
 
   // Wallpapers for the current theme, one row per file in
   // dotfiles-private/omarchy/backgrounds/<theme>/ (videos in Git LFS). The
