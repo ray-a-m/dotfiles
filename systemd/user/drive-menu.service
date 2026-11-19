@@ -1,0 +1,10 @@
+[Unit]
+Description=Mirror the Writing Projects Drive folder into the Omarchy menu
+# The script is in the private overlay and needs an rclone remote; a
+# machine with neither skips the unit.
+ConditionPathExists=%h/.config/rclone/rclone.conf
+
+[Service]
+Type=oneshot
+ExecCondition=/usr/bin/env sh -c 'command -v drive-menu >/dev/null'
+ExecStart=/usr/bin/env drive-menu

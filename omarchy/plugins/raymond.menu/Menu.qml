@@ -38,6 +38,7 @@ Item {
   function refresh() {
     defaultMenuFile.reload()
     userMenuFile.reload()
+    generatedMenuFile.reload()
     return "ok"
   }
 
@@ -51,6 +52,11 @@ Item {
   property string userMenuPath: Quickshell.env("HOME") + "/.config/omarchy/extensions/omarchy-menu.jsonc"
   property var defaultMenuItems: []
   property var userMenuItems: []
+  // clone patch: a third source, written by a program and not by hand
+  // (drive-menu writes the Writing submenu there). It is machine state, so
+  // it stays out of the dotfiles repo. Its rows merge after the user rows.
+  property string generatedMenuPath: Quickshell.env("HOME") + "/.local/state/omarchy-menu-generated.jsonc"
+  property var generatedMenuItems: []
   property bool opened: false
   property string mode: "menu"
   readonly property bool dmenuActive: mode === "select" || mode === "input"
@@ -287,7 +293,7 @@ Item {
   // on a per-key basis (so the user can tweak label/icon/action without
   // re-declaring the whole row).
   function rebuildItemsFromSources() {
-    var mergedMenu = MenuModel.mergeMenuSources(root.defaultMenuItems, root.userMenuItems)
+    var mergedMenu = MenuModel.mergeMenuSources(root.defaultMenuItems, root.userMenuItems.concat(root.generatedMenuItems))
     root.providerRevision += 1
     root.providersLoaded = ({})
     root.providerQueue = []
@@ -1084,6 +1090,18 @@ Item {
     printErrors: false
     onLoaded: { root.userMenuItems = root.parseMenuJsonc(text()); root.rebuildItemsFromSources() }
     onLoadFailed: { root.userMenuItems = []; root.rebuildItemsFromSources() }
+    onFileChanged: reload()
+  }
+
+  // clone patch: the generated source (see generatedMenuPath). A missing
+  // file is normal and gives no rows.
+  FileView {
+    id: generatedMenuFile
+    path: root.generatedMenuPath
+    watchChanges: true
+    printErrors: false
+    onLoaded: { root.generatedMenuItems = root.parseMenuJsonc(text()); root.rebuildItemsFromSources() }
+    onLoadFailed: { root.generatedMenuItems = []; root.rebuildItemsFromSources() }
     onFileChanged: reload()
   }
 

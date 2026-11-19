@@ -1,8 +1,8 @@
 {
   // Port of the pre-Quattro walker menu (menu.sh in this directory's git
   // history) to the Quattro Quickshell menu. Top level: Mail / Emacs /
-  // Research / Files / Portals / System. Apps are not listed here because
-  // SUPER+SPACE opens the app launcher directly.
+  // Writing / Gabriel / Research / Files / Portals / Server / System. Apps
+  // are not listed here because SUPER+SPACE opens the app launcher directly.
   //
   // The stock root rows move to an unlisted parent, which no submenu
   // displays. A `when: "false"` guard would also break their routes and the
@@ -36,6 +36,14 @@
   "mail.uic": {"icon": "", "label": "UIC", "action": "gtk-launch uic-email"},
 
   "emacs": {"icon": "", "label": "Emacs", "action": "gtk-launch emacsclient"},
+
+  // The Writing Projects folder in the personal Drive. drive-menu (private
+  // overlay) mirrors the folder into a generated file that the plugin reads
+  // after this one; its "writing" row has no action, so the row opens a
+  // submenu of the folder's items. On a machine with no generated file this
+  // row stands as written and opens the folder in Drive. The URL lives in
+  // the launcher in dotfiles-private/applications/ (this repo is public).
+  "writing": {"icon": "󰏫", "label": "Writing", "action": "gtk-launch writing-projects"},
 
   "gabriel": {"icon": "󰚩", "label": "Gabriel", "action": "gtk-launch gabriel"},
 
