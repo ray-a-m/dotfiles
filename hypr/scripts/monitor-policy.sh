@@ -171,6 +171,15 @@ apply_monitor_policy() {
         if external_present_stable; then
             log "lid closed + external → panel off"
             internal_off
+        elif ! lid_closed; then
+            # The "closed" this was handed is 6 s old by now. On some resumes
+            # the switch reports a closed/opened pair, and a handler that the
+            # last suspend froze finishes its wait after the wake. Both then
+            # suspended an open laptop while the password was being typed
+            # (journal 2026-11-18 19:58). Suspend only if the lid is still
+            # closed. The /proc lag that makes the binds pass the position
+            # does not apply here: this read comes after the full wait.
+            log "lid closed event is stale (lid is open now) → not suspending"
         else
             log "lid closed + no external → suspending"
             systemctl suspend
